@@ -4,6 +4,31 @@ The original accepted concepts were compared with baseline browser renders at
 1440 × 900. The detail-refinement concepts were compared with the final live
 renders at 1280 × 720 and 390 × 844.
 
+## Canonical fidelity acceptance
+
+| # | Exact check | Evidence | Result |
+|---:|---|---|:---:|
+| 1 | Outer mainland silhouette | 607-point coast derived from the supplied 1889 × 1144 reference; long east-west aspect, western bays, southern inlets, and tapered stormward coast are retained. | Pass |
+| 2 | Aimia | Independent 71-point western island polygon remains detached at the reference-map spacing. | Pass |
+| 3 | Reshi and secondary islands | 52 shoreline-detected islands preserve the northern arc, southern chains, and eastern Origin groups instead of synthetic pebbles. | Pass |
+| 4 | Inland water | Five cutout water bodies include the reference-shaped Purelake at the same relative position and extent. | Pass |
+| 5 | Mountain systems | Nine named ridge systems drive the continuous heightfield and remain visible at continent scale. | Pass |
+| 6 | Rivers | Ten reference-traced trunks follow terrain toward the correct lake or coast corridors. | Pass |
+| 7 | Political geography | Sixteen shared frontier polylines and 12 country labels distinguish national, disputed, and porous boundaries in both 3D and the minimap. | Pass |
+| 8 | Destination agreement | Terrain, minimap, labels, cameras, search, and travel controls consume the same canonical anchors; geometry tests verify representative spatial relationships. | Pass |
+| 9 | Geographic scale | 102.272 coast units map to the documented roughly 4,000-mile continental width, or about 39.1 miles per geographic unit. | Pass |
+| 10 | Water and relief | Ocean waves, coast foam, inland cutouts, Purelake caustics, harbors, terrain ridges, and pale crem macro texture remain distinct at their intended LODs. | Pass |
+| 11 | City/district scale | Every selected Blender landmark is fitted to its declared local district diameter; authored landmark cities no longer have overlapping procedural building fields. | Pass |
+| 12 | Human scale | Residents use 1.56–2.00 m calibrated heights, 2.08 m standard doors, and culture-specific Blender actors normalized to the same local meter scale. | Pass |
+| 13 | Collision safety | Pedestrian paths are generated from the exact procedural footprints and solid GLB landmark meshes, validate every route edge, retain 0.77 m body-plus-clearance, and apply collision-safe crowd separation. | Pass |
+| 14 | Bridge activity | A 30-carrier bridge crew runs beneath a 12 m Blender-authored deck; the protected activity corridor remains clear of district modules. | Pass |
+| 15 | Responsive and weather behavior | 390 × 844 framing contains the full continent and preserves mobile city detail; the aerial Highstorm camera, water, flora, crowds, and shelter paths remain storm-reactive. | Pass |
+
+The final acceptance matrix is **15/15**, including the Build Web Apps visual,
+responsive, interaction, accessibility, and implementation signoff. Desktop and
+mobile Lighthouse accessibility and best-practices scores are both 100. The
+automated suite contains 44 passing tests across 12 files.
+
 ## Visual fidelity
 
 1. **Atlas hierarchy:** the near-black top bar, slim brass rules, editorial serif place names, cyan live-state accents, and translucent slate panels all carry from concept to implementation.
@@ -22,8 +47,9 @@ renders at 1280 × 720 and 390 × 844.
    toward shelter.
 2. **Shattered Plains activity:** the street view has wet generated paving,
    plateau slabs, crem edges, chasms, rope bridges, scaffolds, tents, stores,
-   shelters, and a Blender-authored bridge run. Ten runners carry the bridge along
-   the plateau route and withdraw west as the storm closes.
+   shelters, and a Blender-authored bridge run. Thirty runners carry a physically
+   scaled 12-meter bridge along a protected plateau route and withdraw west as
+   the storm closes.
 3. **Purelake character:** the final view preserves a sparse shallow-water
    settlement with a visible textured lakebed, depth pools, drainage lines,
    translucent caustics, shoals, stilted domes, walkways, nets, rafts, and wading
@@ -32,7 +58,9 @@ renders at 1280 × 720 and 390 × 844.
    torsos, arms, legs, hats, cultural marbling, and occupation props. Routes include
    porters, merchants, scribes, guards, fishers, builders, farmers, sailors,
    surgeons, children, and pilgrims; gait, work gestures, storm lean, speed, and
-   shelter position animate from simulation time.
+   shelter position animate from simulation time. Heights are meter-calibrated,
+   routes clear rendered footprints, and a deterministic local-avoidance pass
+   prevents crowd overlap without pushing people through walls or over chasms.
 5. **Water system:** deep ocean water uses layered vertex waves, Fresnel color,
    crests, storm amplification, and animated coastal foam. Purelake and city
    harbors use separate shallow treatments rather than sharing a flat blue plane.
@@ -41,8 +69,9 @@ renders at 1280 × 720 and 390 × 844.
    labels, the legend, and the visibility toggle remain legible at broad zooms.
 7. **Honest scale:** the continent is calibrated from a roughly 4,000-mile
    east-to-west reference, while close views declare a separate 12-meters-per-unit
-   local district scale. Landmarks therefore behave like semantic map insets
-   instead of kilometer-high buildings.
+   local district scale. Landmarks fit their district diameter, people stay within
+   a 1.56–2.00 m range, doors are 2.08 m, and buildings no longer use unrelated
+   scale factors.
 8. **Performance-aware density:** only the selected place receives its full
    landmark, district, modules, population, and local activities. Street mode
    raises building and resident budgets; narrow screens reduce them while retaining
@@ -91,3 +120,10 @@ committed as targets for future asset expansion.
 - `detail-continent-frontiers.png`
 - `detail-mobile-purelake.png`
 - `detail-mobile-highstorm.png`
+- `fidelity-continent-final.png`
+- `fidelity-kharbranth-collision-final.png`
+- `fidelity-purelake-scale-final.png`
+- `fidelity-shattered-final.png`
+- `fidelity-mobile-final.png`
+- `fidelity-mobile-kharbranth-final.png`
+- `fidelity-highstorm-final.png`

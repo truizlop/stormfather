@@ -17,6 +17,9 @@ The accepted design concepts are preserved in [`docs/concepts`](docs/concepts). 
 - A moving east-to-west Highstorm with rain, lightning, settlement dimming, sheltering inhabitants, retracting flora, and an aerial follow camera
 - Animated articulated cultural populations with occupation props, bridge runs,
   fishing rafts, working harbor cargo, caravans, ships, and storm shelter behavior
+- Meter-calibrated inhabitants, doors, districts, and Blender landmarks, with
+  pedestrian navigation generated from rendered building footprints, chasm-safe
+  walkable areas, and local crowd separation
 - Storm-reactive deep seas, coastal foam, shallow Purelake caustics and drainage,
   shoals, wakes, and animated harbor basins
 - Location-specific close districts: Kharbranth terraces and docks, Shattered
@@ -34,7 +37,9 @@ The scene adapts population counts, architecture, modules, labels, landmarks,
 frontiers, and water quality to the current camera distance. Geographic mode is
 calibrated to an approximately 4,000-mile-wide Roshar; city and street views
 explicitly switch to a 12-meters-per-unit local district scale. Instancing keeps
-the busy “living miniature” views practical on mobile GPUs.
+the busy “living miniature” views practical on mobile GPUs. Detailed inhabitants
+remain within a calibrated 1.56–2.00 m range, while pathfinding preserves 0.77 m
+of body-plus-environment clearance.
 
 ## Controls
 
