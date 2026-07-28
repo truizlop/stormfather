@@ -21,6 +21,16 @@ const expectedRoots = [
   "Actor_Veden",
   "Actor_Aimian",
   "Actor_Reshi",
+  "Actor_Kharbranth_Porter",
+  "Actor_Kharbranth_Surgeon",
+  "Actor_Kharbranth_Scholar",
+  "Actor_Kharbranth_Dockworker",
+  "Actor_Kharbranth_Thaylen_Sailor",
+  "Actor_Kharbranth_Porter_HD",
+  "Actor_Kharbranth_Surgeon_HD",
+  "Actor_Kharbranth_Scholar_HD",
+  "Actor_Kharbranth_Dockworker_HD",
+  "Actor_Kharbranth_Thaylen_Sailor_HD",
   "Module_Storm_Awning",
   "Module_Stone_Arch",
   "Module_Market_Stall",
@@ -47,6 +57,9 @@ const expectedTextures = [
   "rosharan-cloth-albedo.jpg",
   "purelake-caustics.jpg",
   "roshar-crem-macro.jpg",
+  "kharbranth-plaster-realistic.jpg",
+  "kharbranth-stone-realistic.jpg",
+  "rosharan-cloth-realistic.jpg",
 ];
 
 try {

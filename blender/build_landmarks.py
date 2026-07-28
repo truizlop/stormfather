@@ -15,6 +15,7 @@ import os
 import random
 from pathlib import Path
 
+import bmesh
 import bpy
 from mathutils import Vector
 
@@ -2056,81 +2057,630 @@ def build_fidelity_modules() -> None:
 
 
 def build_actors() -> None:
-    skin_dark = material("SF_Skin_Azish", (0.22, 0.09, 0.045))
-    skin_brown = material("SF_Skin_Alethi", (0.38, 0.18, 0.09))
-    skin_tan = material("SF_Skin_Purelaker", (0.52, 0.30, 0.16))
-    skin_pale = material("SF_Skin_Shin", (0.72, 0.55, 0.43))
-    singer_red = material("SF_Singer_Red", (0.48, 0.045, 0.025))
-    singer_black = material("SF_Singer_Black", (0.025, 0.018, 0.017))
-    aimian_skin = material("SF_Skin_Aimian_Blue", (0.20, 0.42, 0.58))
-    hair_black = material("SF_Hair_Black", (0.012, 0.009, 0.008))
-    hair_white = material("SF_Hair_White", (0.72, 0.72, 0.68))
-    blue = material("SF_Alethi_Blue", (0.035, 0.12, 0.29))
-    plum = material("SF_Azish_Plum", (0.24, 0.055, 0.18))
-    cream = material("SF_Cloth_Cream", (0.62, 0.54, 0.39))
-    red = material("SF_Listener_Redcloth", (0.38, 0.025, 0.018))
-    grey = material("SF_Thaylen_Grey", (0.18, 0.22, 0.23))
+    # Skin and hair stay softly rough while generated textile grain is reused
+    # across role-specific dyes. This keeps the close actors material-rich
+    # without adding a separate large bitmap for every garment.
+    skin_dark = material("SF_Skin_Azish", (0.24, 0.085, 0.035), 0, 0.72)
+    skin_brown = material("SF_Skin_Alethi", (0.36, 0.16, 0.07), 0, 0.7)
+    skin_tan = material("SF_Skin_Purelaker", (0.44, 0.24, 0.12), 0, 0.7)
+    skin_pale = material("SF_Skin_Shin", (0.72, 0.54, 0.41), 0, 0.72)
+    singer_red = material("SF_Singer_Red", (0.5, 0.055, 0.028), 0, 0.72)
+    singer_black = material("SF_Singer_Black", (0.023, 0.016, 0.015), 0.05, 0.55)
+    aimian_skin = material("SF_Skin_Aimian_Blue", (0.20, 0.42, 0.58), 0, 0.66)
+    hair_black = material("SF_Hair_Black", (0.01, 0.008, 0.007), 0, 0.48)
+    hair_brown = material("SF_Hair_Brown", (0.09, 0.035, 0.018), 0, 0.52)
+    hair_white = material("SF_Hair_White", (0.72, 0.72, 0.68), 0, 0.58)
+    eye_white = material("SF_Eye_White", (0.78, 0.74, 0.65), 0, 0.4)
+    eye_dark = material("SF_Eye_Dark", (0.012, 0.015, 0.014), 0, 0.3)
+    mouth = material("SF_Mouth", (0.22, 0.045, 0.035), 0, 0.68)
+    leather = material("SF_Actor_Leather", (0.09, 0.045, 0.021), 0, 0.76)
 
-    def person_base(name, x, skin, cloth, height=1, broad=1):
+    def enrich_skin(
+        skin: bpy.types.Material,
+        base_color: tuple[float, float, float],
+    ) -> None:
+        """Give close-detail skin fine tonal breakup and soft subsurface depth."""
+        skin.use_nodes = True
+        nodes = skin.node_tree.nodes
+        links = skin.node_tree.links
+        bsdf = nodes.get("Principled BSDF")
+        if not bsdf:
+            return
+        coordinates = nodes.new("ShaderNodeTexCoord")
+        coordinates.name = f"{skin.name}_Coordinates"
+        tonal_noise = nodes.new("ShaderNodeTexNoise")
+        tonal_noise.name = f"{skin.name}_TonalVariation"
+        tonal_noise.inputs["Scale"].default_value = 8.5
+        tonal_noise.inputs["Detail"].default_value = 4
+        tonal_noise.inputs["Roughness"].default_value = 0.68
+        tonal_ramp = nodes.new("ShaderNodeValToRGB")
+        tonal_ramp.name = f"{skin.name}_Complexion"
+        tonal_ramp.color_ramp.elements[0].position = 0.22
+        tonal_ramp.color_ramp.elements[0].color = (
+            base_color[0] * 0.66,
+            base_color[1] * 0.64,
+            base_color[2] * 0.62,
+            1,
+        )
+        tonal_ramp.color_ramp.elements[1].position = 0.78
+        tonal_ramp.color_ramp.elements[1].color = (
+            min(base_color[0] * 1.22, 1),
+            min(base_color[1] * 1.18, 1),
+            min(base_color[2] * 1.13, 1),
+            1,
+        )
+        pore_noise = nodes.new("ShaderNodeTexNoise")
+        pore_noise.name = f"{skin.name}_Pores"
+        pore_noise.inputs["Scale"].default_value = 92
+        pore_noise.inputs["Detail"].default_value = 2.5
+        pore_noise.inputs["Roughness"].default_value = 0.72
+        pore_bump = nodes.new("ShaderNodeBump")
+        pore_bump.name = f"{skin.name}_PoreBump"
+        pore_bump.inputs["Strength"].default_value = 0.11
+        pore_bump.inputs["Distance"].default_value = 0.012
+        links.new(coordinates.outputs["Generated"], tonal_noise.inputs["Vector"])
+        links.new(tonal_noise.outputs["Fac"], tonal_ramp.inputs["Fac"])
+        links.new(tonal_ramp.outputs["Color"], bsdf.inputs["Base Color"])
+        links.new(coordinates.outputs["Generated"], pore_noise.inputs["Vector"])
+        links.new(pore_noise.outputs["Fac"], pore_bump.inputs["Height"])
+        links.new(pore_bump.outputs["Normal"], bsdf.inputs["Normal"])
+        bsdf.inputs["Roughness"].default_value = 0.58
+        bsdf.inputs["Subsurface Weight"].default_value = 0.08
+        bsdf.inputs["Subsurface Scale"].default_value = 0.12
+        bsdf.inputs["Specular IOR Level"].default_value = 0.28
+
+    for skin, base_color in (
+        (skin_dark, (0.24, 0.085, 0.035)),
+        (skin_brown, (0.36, 0.16, 0.07)),
+        (skin_tan, (0.44, 0.24, 0.12)),
+        (skin_pale, (0.72, 0.54, 0.41)),
+    ):
+        enrich_skin(skin, base_color)
+
+    def actor_cloth(name: str, color: tuple[float, float, float]):
+        cloth = textured_material(
+            name,
+            color,
+            "rosharan-cloth-realistic.jpg",
+            0,
+            0.78,
+            0.1,
+        )
+        nodes = cloth.node_tree.nodes
+        links = cloth.node_tree.links
+        texture = nodes.get(f"{name}_Texture")
+        bsdf = nodes.get("Principled BSDF")
+        if bsdf:
+            for base_color_link in list(bsdf.inputs["Base Color"].links):
+                links.remove(base_color_link)
+            bsdf.inputs["Base Color"].default_value = (*color, 1)
+        if texture and not texture.inputs["Vector"].is_linked:
+            coordinates = nodes.new("ShaderNodeTexCoord")
+            coordinates.name = f"{name}_Generated_Coordinates"
+            links.new(coordinates.outputs["Generated"], texture.inputs["Vector"])
+        return cloth
+
+    blue = actor_cloth("SF_Alethi_Tailored_Blue", (0.035, 0.12, 0.29))
+    plum = actor_cloth("SF_Azish_Plum", (0.24, 0.055, 0.18))
+    cream = actor_cloth("SF_Cloth_Cream", (0.64, 0.56, 0.42))
+    red = actor_cloth("SF_Listener_Redcloth", (0.38, 0.025, 0.018))
+    grey = actor_cloth("SF_Thaylen_Grey", (0.18, 0.22, 0.23))
+    teal = actor_cloth("SF_Purelaker_Teal", (0.045, 0.29, 0.3))
+    veden_red = actor_cloth("SF_Veden_Russet", (0.36, 0.055, 0.05))
+    reshi_green = actor_cloth("SF_Reshi_Wrap", (0.2, 0.32, 0.11))
+    porter_ochre = actor_cloth("SF_Kharbranth_Porter_Ochre", (0.36, 0.19, 0.065))
+    surgeon_ivory = actor_cloth("SF_Kharbranth_Surgeon_Ivory", (0.66, 0.61, 0.5))
+    scholar_teal = actor_cloth("SF_Kharbranth_Scholar_Teal", (0.055, 0.24, 0.27))
+    dock_rust = actor_cloth("SF_Kharbranth_Dock_Rust", (0.38, 0.11, 0.055))
+
+    def person_base(
+        name,
+        x,
+        skin,
+        cloth,
+        height,
+        broad=1,
+        feminine=False,
+        hair=hair_black,
+        sleeveless=False,
+        eye_scale=1,
+    ):
+        """Build a proportioned, facially readable, limb-addressable resident.
+
+        All coordinates are normalized against a two-unit body. Distinct limb
+        names let the Three.js close-detail pass add gait on top of route motion.
+        """
+
         actor = root(name, (x, 20, 0))
+        s = height / 2
+        shoulder = (0.32 if feminine else 0.35) * broad
+        hip = (0.24 if feminine else 0.26) * broad
+        arm_mat = skin if sleeveless else cloth
+
         for side in (-1, 1):
-            cyl(f"{name}_Leg_{side}", (side * 0.14 * broad, 0, 0.46 * height), 0.105 * broad, 0.72 * height, p["stone_dark"], actor, 8, 0.025)
-            cube(f"{name}_Boot_{side}", (side * 0.14 * broad, -0.055, 0.12 * height), (0.13 * broad, 0.18, 0.1 * height), p["stone_dark"], actor, 0.035)
-        cone(f"{name}_Torso", (0, 0, 1.06 * height), 0.34 * broad, 0.26 * broad, 0.72 * height, cloth, actor, 10)
+            label = "L" if side < 0 else "R"
+            leg_x = side * 0.115 * broad * s
+            cube(
+                f"{name}_Boot_{label}",
+                (leg_x, -0.055 * s, 0.075 * s),
+                (0.105 * broad * s, 0.17 * s, 0.075 * s),
+                leather,
+                actor,
+                0.028 * s,
+            )
+            cyl(
+                f"{name}_LowerLeg_{label}",
+                (leg_x, 0, 0.31 * s),
+                0.08 * broad * s,
+                0.46 * s,
+                leather,
+                actor,
+                12,
+                0.018 * s,
+            )
+            sphere(
+                f"{name}_Knee_{label}",
+                (leg_x, -0.01 * s, 0.55 * s),
+                (0.092 * broad * s, 0.085 * s, 0.09 * s),
+                cloth,
+                actor,
+                12,
+                7,
+            )
+            cyl(
+                f"{name}_UpperLeg_{label}",
+                (leg_x, 0, 0.76 * s),
+                0.095 * broad * s,
+                0.43 * s,
+                cloth,
+                actor,
+                12,
+                0.02 * s,
+            )
+
+        cone(
+            f"{name}_Pelvis",
+            (0, 0.005 * s, 0.96 * s),
+            hip * s,
+            (hip + 0.025) * s,
+            0.29 * s,
+            cloth,
+            actor,
+            16,
+            0.025 * s,
+        )
+        cone(
+            f"{name}_Torso",
+            (0, 0, 1.27 * s),
+            (0.23 if feminine else 0.26) * broad * s,
+            shoulder * s,
+            0.57 * s,
+            cloth,
+            actor,
+            18,
+            0.035 * s,
+        )
+        cube(
+            f"{name}_Collar",
+            (0, -0.19 * s, 1.48 * s),
+            (0.17 * broad * s, 0.025 * s, 0.07 * s),
+            p["brass"],
+            actor,
+            0.012 * s,
+        )
+
         for side in (-1, 1):
-            arm = cyl(f"{name}_Arm_{side}", (side * 0.37 * broad, 0, 1.08 * height), 0.085 * broad, 0.68 * height, cloth, actor, 8, 0.022)
-            arm.rotation_euler[1] = side * 0.12
-            sphere(f"{name}_Hand_{side}", (side * 0.41 * broad, 0, 0.78 * height), (0.1, 0.09, 0.11), skin, actor, 10, 6)
-        sphere(f"{name}_Head", (0, 0, 1.66 * height), (0.24 * broad, 0.22 * broad, 0.27 * height), skin, actor, 14, 8)
+            label = "L" if side < 0 else "R"
+            arm_x = side * shoulder * 1.05 * s
+            sphere(
+                f"{name}_Shoulder_{label}",
+                (arm_x, 0, 1.44 * s),
+                (0.11 * broad * s, 0.105 * s, 0.115 * s),
+                arm_mat,
+                actor,
+                14,
+                8,
+            )
+            upper_arm = cyl(
+                f"{name}_UpperArm_{label}",
+                (arm_x + side * 0.02 * s, 0, 1.28 * s),
+                0.075 * broad * s,
+                0.34 * s,
+                arm_mat,
+                actor,
+                12,
+                0.018 * s,
+            )
+            upper_arm.rotation_euler[1] = side * 0.055
+            sphere(
+                f"{name}_Elbow_{label}",
+                (arm_x + side * 0.03 * s, 0, 1.09 * s),
+                (0.078 * broad * s, 0.074 * s, 0.078 * s),
+                arm_mat,
+                actor,
+                12,
+                7,
+            )
+            lower_arm = cyl(
+                f"{name}_LowerArm_{label}",
+                (arm_x + side * 0.035 * s, -0.01 * s, 0.94 * s),
+                0.064 * broad * s,
+                0.31 * s,
+                arm_mat,
+                actor,
+                12,
+                0.016 * s,
+            )
+            lower_arm.rotation_euler[1] = side * 0.04
+            sphere(
+                f"{name}_Hand_{label}",
+                (arm_x + side * 0.04 * s, -0.015 * s, 0.765 * s),
+                (0.072 * broad * s, 0.055 * s, 0.095 * s),
+                skin,
+                actor,
+                14,
+                8,
+            )
+
+        cyl(
+            f"{name}_Neck",
+            (0, 0, 1.56 * s),
+            0.105 * broad * s,
+            0.18 * s,
+            skin,
+            actor,
+            14,
+            0.012 * s,
+        )
+        sphere(
+            f"{name}_Head",
+            (0, 0, 1.76 * s),
+            (0.19 * broad * s, 0.17 * s, 0.235 * s),
+            skin,
+            actor,
+            20,
+            12,
+        )
+        for side in (-1, 1):
+            label = "L" if side < 0 else "R"
+            sphere(
+                f"{name}_Ear_{label}",
+                (side * 0.19 * broad * s, 0, 1.75 * s),
+                (0.036 * s, 0.025 * s, 0.065 * s),
+                skin,
+                actor,
+                10,
+                6,
+            )
+            sphere(
+                f"{name}_EyeWhite_{label}",
+                (side * 0.072 * broad * s, -0.164 * s, 1.79 * s),
+                (
+                    0.038 * eye_scale * s,
+                    0.018 * s,
+                    0.028 * eye_scale * s,
+                ),
+                eye_white,
+                actor,
+                12,
+                7,
+            )
+            sphere(
+                f"{name}_Iris_{label}",
+                (side * 0.072 * broad * s, -0.181 * s, 1.79 * s),
+                (0.014 * eye_scale * s, 0.009 * s, 0.015 * eye_scale * s),
+                eye_dark,
+                actor,
+                10,
+                6,
+            )
+            brow = cube(
+                f"{name}_Brow_{label}",
+                (side * 0.074 * broad * s, -0.179 * s, 1.85 * s),
+                (0.052 * eye_scale * s, 0.009 * s, 0.012 * s),
+                hair,
+                actor,
+                0.006 * s,
+            )
+            brow.rotation_euler[2] = side * -0.09
+        sphere(
+            f"{name}_Nose",
+            (0, -0.188 * s, 1.715 * s),
+            (0.038 * s, 0.052 * s, 0.064 * s),
+            skin,
+            actor,
+            12,
+            7,
+        )
+        cube(
+            f"{name}_Mouth",
+            (0, -0.172 * s, 1.63 * s),
+            (0.062 * s, 0.01 * s, 0.009 * s),
+            mouth,
+            actor,
+            0.006 * s,
+        )
+        sphere(
+            f"{name}_HairCap",
+            (0, 0.018 * s, 1.89 * s),
+            (0.195 * broad * s, 0.178 * s, 0.15 * s),
+            hair,
+            actor,
+            18,
+            10,
+        )
         return actor
 
-    actor = person_base("Actor_Alethi", -22, skin_brown, blue, 1.08)
-    cone("Actor_Alethi_Hair", (0, 0.02, 1.92), 0.25, 0.1, 0.28, hair_black, actor, 12)
-    cube("Actor_Alethi_CoatTail", (0, 0.12, 0.82), (0.27, 0.07, 0.42), blue, actor)
-    actor = person_base("Actor_Azish", -15, skin_dark, plum)
-    cone("Actor_Azish_Robe", (0, 0, 0.65), 0.42, 0.28, 0.92, plum, actor, 12)
-    cyl("Actor_Azish_Cap", (0, 0, 1.84), 0.25, 0.16, p["ochre"], actor, 12)
-    actor = person_base("Actor_Shin", -8, skin_pale, cream, 0.94, 0.92)
-    cone("Actor_Shin_Hair", (0, 0.03, 1.73), 0.24, 0.14, 0.2, hair_black, actor, 12)
+    human_base_path = ROOT / "blender" / "vendor" / "human-base-meshes.blend"
+    requested_bases = ["SF_WebHuman_Male", "SF_WebHuman_Female"]
+    with bpy.data.libraries.load(str(human_base_path), link=False) as (
+        source_data,
+        target_data,
+    ):
+        target_data.objects = [
+            base_name
+            for base_name in requested_bases
+            if base_name in source_data.objects
+        ]
+    human_bases = dict(zip(requested_bases, target_data.objects))
+
+    def make_body_subset(
+        source_mesh: bpy.types.Mesh,
+        name: str,
+        minimum_z: float,
+        maximum_z: float,
+        expansion: float,
+        x_limit: float | None = None,
+        front_opening: float = 0,
+        hair_shell: bool = False,
+    ) -> bpy.types.Mesh:
+        """Copy a region of a CC0 anatomical mesh for fitted real-time clothing."""
+
+        mesh = source_mesh.copy()
+        mesh.name = f"{name}_Mesh"
+        editable = bmesh.new()
+        editable.from_mesh(mesh)
+        editable.faces.ensure_lookup_table()
+        to_delete = []
+        for face in editable.faces:
+            center = face.calc_center_median()
+            keep = minimum_z <= center.z <= maximum_z
+            if x_limit is not None:
+                keep = keep and abs(center.x) <= x_limit
+            if front_opening and center.y < -0.015 and abs(center.x) < front_opening:
+                keep = False
+            if hair_shell:
+                keep = keep and (
+                    center.y > -0.035
+                    or center.z > minimum_z + (maximum_z - minimum_z) * 0.72
+                )
+            if not keep:
+                to_delete.append(face)
+        bmesh.ops.delete(editable, geom=to_delete, context="FACES")
+        editable.normal_update()
+        if expansion:
+            for vertex in editable.verts:
+                vertex.co += vertex.normal * expansion
+        editable.to_mesh(mesh)
+        editable.free()
+        for polygon in mesh.polygons:
+            polygon.use_smooth = True
+        mesh.update()
+        return mesh
+
+    def anatomical_resident(
+        name: str,
+        x: float,
+        skin: bpy.types.Material,
+        sex: str = "male",
+        broad: float = 1,
+    ):
+        base_name = "SF_WebHuman_Female" if sex == "female" else "SF_WebHuman_Male"
+        source = human_bases[base_name]
+        minimum_z = min(vertex.co.z for vertex in source.data.vertices)
+        maximum_z = max(vertex.co.z for vertex in source.data.vertices)
+        source_height = maximum_z - minimum_z
+        scale = 2.063 / source_height
+        actor = root(name, (x, 20, 0))
+        actor["source_height"] = 2.063
+        body = bpy.data.objects.new(f"{name}_Anatomy", source.data.copy())
+        assets.objects.link(body)
+        body.parent = actor
+        body.location = (0, 0, -minimum_z * scale)
+        body.scale = (scale * broad, scale, scale)
+        body.data.materials.append(skin)
+        body.data.name = f"{name}_AnatomyMesh"
+        for polygon in body.data.polygons:
+            polygon.use_smooth = True
+        return {
+            "actor": actor,
+            "body": body,
+            "source": source,
+            "minimum_z": minimum_z,
+            "maximum_z": maximum_z,
+            "scale": scale,
+            "broad": broad,
+        }
+
+    def fitted_layer(
+        resident,
+        suffix: str,
+        lower_fraction: float,
+        upper_fraction: float,
+        layer_material: bpy.types.Material,
+        expansion: float = 0.012,
+        x_limit: float | None = None,
+        front_opening: float = 0,
+        hair_shell: bool = False,
+    ):
+        source = resident["source"]
+        minimum_z = resident["minimum_z"]
+        height = resident["maximum_z"] - minimum_z
+        lower = minimum_z + height * lower_fraction
+        upper = minimum_z + height * upper_fraction
+        mesh = make_body_subset(
+            source.data,
+            f"{resident['actor'].name}_{suffix}",
+            lower,
+            upper,
+            expansion,
+            x_limit,
+            front_opening,
+            hair_shell,
+        )
+        layer = bpy.data.objects.new(
+            f"{resident['actor'].name}_{suffix}",
+            mesh,
+        )
+        assets.objects.link(layer)
+        layer.parent = resident["actor"]
+        layer.location = resident["body"].location
+        scale = resident["scale"]
+        layer.scale = (scale * resident["broad"], scale, scale)
+        layer.data.materials.append(layer_material)
+        return layer
+
+    def high_detail_eyes(
+        actor: bpy.types.Object,
+        iris_material: bpy.types.Material = eye_dark,
+    ) -> None:
+        # The Blender Studio bases already carry realistic eyelids and sockets.
+        # Keep the added wet eye surface inside those lids instead of turning it
+        # into the oversized stylised eye used by the distant crowd kit.
+        for side in (-1, 1):
+            label = "L" if side < 0 else "R"
+            sphere(
+                f"{actor.name}_EyeWhite_{label}",
+                (side * 0.036, -0.153, 1.862),
+                (0.015, 0.007, 0.009),
+                eye_white,
+                actor,
+                14,
+                8,
+            )
+            sphere(
+                f"{actor.name}_Iris_{label}",
+                (side * 0.036, -0.159, 1.862),
+                (0.0055, 0.003, 0.0058),
+                iris_material,
+                actor,
+                12,
+                7,
+            )
+
+    # Culture kit. Heights remain exactly aligned with humanScale.ts source
+    # bounds, preserving physically calibrated residents after cloning.
+    actor = person_base("Actor_Alethi", -22, skin_brown, blue, 2.063, 1.06)
     for side in (-1, 1):
-        sphere(f"Actor_Shin_Eye_{side}", (side * 0.085, -0.205, 1.6), (0.04, 0.025, 0.045), hair_black, actor, 8, 6)
-    actor = person_base("Actor_Singer", -1, singer_red, red, 1.12, 1.13)
+        cube(
+            f"Actor_Alethi_CoatTail_{side}",
+            (side * 0.14, 0.1, 0.79),
+            (0.145, 0.085, 0.39),
+            blue,
+            actor,
+            0.025,
+        )
+        cube(
+            f"Actor_Alethi_ShoulderEmbroidery_{side}",
+            (side * 0.34, -0.09, 1.42),
+            (0.06, 0.025, 0.11),
+            p["brass"],
+            actor,
+            0.01,
+        )
+
+    actor = person_base("Actor_Azish", -15, skin_dark, plum, 1.91, 0.98)
+    cone("Actor_Azish_Robe", (0, 0.03, 0.67), 0.41, 0.27, 1.0, plum, actor, 18, 0.035)
+    cyl("Actor_Azish_Cap", (0, 0, 1.93), 0.22, 0.14, p["ochre"], actor, 16, 0.02)
+    cube("Actor_Azish_GoldSash", (0, -0.27, 1.0), (0.3, 0.03, 0.07), p["brass"], actor, 0.012)
+
+    actor = person_base("Actor_Shin", -8, skin_pale, cream, 1.811, 0.91, eye_scale=1.34)
+    cone("Actor_Shin_TunicSkirt", (0, 0.02, 0.72), 0.34, 0.24, 0.72, cream, actor, 16, 0.028)
+    cube("Actor_Shin_FieldSash", (0, -0.24, 0.98), (0.27, 0.03, 0.055), p["grass"], actor, 0.01)
+
+    actor = person_base("Actor_Singer", -1, singer_red, red, 2.139, 1.14)
     for side in (-1, 1):
-        plate = cube(f"Actor_Singer_CarapaceArm_{side}", (side * 0.47, 0, 1.13), (0.12, 0.15, 0.35), singer_black, actor)
-        plate.rotation_euler[1] = side * 0.12
-        cone(f"Actor_Singer_TemplePlate_{side}", (side * 0.25, 0, 1.88), 0.14, 0.025, 0.35, singer_black, actor, 6)
+        label = "L" if side < 0 else "R"
+        plate = cube(
+            f"Actor_Singer_CarapaceArm_{label}",
+            (side * 0.44, 0.01, 1.24),
+            (0.115, 0.14, 0.29),
+            singer_black,
+            actor,
+            0.04,
+        )
+        plate.rotation_euler[1] = side * 0.08
+        cone(
+            f"Actor_Singer_TemplePlate_{label}",
+            (side * 0.24, 0, 1.9),
+            0.13,
+            0.025,
+            0.34,
+            singer_black,
+            actor,
+            7,
+            0.02,
+        )
     for stripe in (-1, 0, 1):
-        cube(f"Actor_Singer_Marble_{stripe}", (stripe * 0.09, -0.225, 1.66 + stripe * 0.035), (0.025, 0.018, 0.18), singer_black, actor, 0.012).rotation_euler[2] = 0.28
-    actor = person_base("Actor_Thaylen", 6, skin_tan, grey)
-    cone("Actor_Thaylen_Hair", (0, 0.03, 1.82), 0.23, 0.1, 0.22, hair_white, actor, 12)
+        marble = cube(
+            f"Actor_Singer_Marble_{stripe}",
+            (stripe * 0.085, -0.19, 1.72 + stripe * 0.025),
+            (0.018, 0.014, 0.17),
+            singer_black,
+            actor,
+            0.008,
+        )
+        marble.rotation_euler[2] = 0.24
+
+    actor = person_base("Actor_Thaylen", 6, skin_tan, grey, 1.91, hair=hair_white)
     for side in (-1, 1):
-        brow = cube(f"Actor_Thaylen_Brow_{side}", (side * 0.18, -0.235, 1.7), (0.16, 0.018, 0.022), hair_white, actor, 0.008)
-        brow.rotation_euler[2] = side * 0.42
-    actor = person_base("Actor_Purelaker", 13, skin_tan, p["teal"], 0.98)
-    cone("Actor_Purelaker_ShoulderYoke", (0, -0.01, 1.3), 0.32, 0.25, 0.24, skin_tan, actor, 10)
-    cone("Actor_Purelaker_Wrap", (0, 0, 0.72), 0.4, 0.28, 0.82, p["teal"], actor, 10)
-    pole = cyl("Actor_Purelaker_FishingPole", (0.53, 0, 1.15), 0.025, 2.35, p["earth"], actor, 8, 0)
+        label = "L" if side < 0 else "R"
+        brow = cube(
+            f"Actor_Thaylen_LongBrow_{label}",
+            (side * 0.17, -0.19, 1.77),
+            (0.15, 0.012, 0.018),
+            hair_white,
+            actor,
+            0.008,
+        )
+        brow.rotation_euler[2] = side * 0.44
+    cube("Actor_Thaylen_SailorSash", (0, -0.28, 1.04), (0.3, 0.03, 0.07), p["teal"], actor, 0.012)
+
+    actor = person_base("Actor_Purelaker", 13, skin_tan, teal, 1.87, 1.0)
+    cone("Actor_Purelaker_ShoulderYoke", (0, -0.01, 1.3), 0.34, 0.26, 0.25, skin_tan, actor, 14, 0.02)
+    cone("Actor_Purelaker_Wrap", (0, 0, 0.69), 0.4, 0.27, 0.84, teal, actor, 16, 0.028)
+    pole = cyl("Actor_Purelaker_FishingPole", (0.5, 0, 1.08), 0.022, 2.25, p["earth"], actor, 10, 0)
     pole.rotation_euler[1] = -0.13
-    actor = person_base("Actor_Veden", 20, skin_brown, p["cloth_red"], 1.04)
-    cone("Actor_Veden_Hair", (0, 0.02, 1.88), 0.25, 0.09, 0.27, hair_black, actor, 12)
-    cube("Actor_Veden_Longcoat", (0, 0.1, 0.84), (0.3, 0.08, 0.48), p["cloth_red"], actor, 0.035)
-    cube("Actor_Veden_Sash", (0, -0.25, 1.12), (0.31, 0.025, 0.08), p["ochre"], actor, 0.015).rotation_euler[2] = -0.18
-    actor = person_base("Actor_Aimian", 27, aimian_skin, grey, 1.1, 0.92)
-    sphere("Actor_Aimian_Crown", (0, 0.02, 1.99), (0.21, 0.19, 0.18), hair_white, actor, 12, 7)
+
+    actor = person_base("Actor_Veden", 20, skin_brown, veden_red, 1.994, 1.03, hair=hair_brown)
+    for side in (-1, 1):
+        cube(
+            f"Actor_Veden_Longcoat_{side}",
+            (side * 0.14, 0.1, 0.78),
+            (0.15, 0.085, 0.42),
+            veden_red,
+            actor,
+            0.028,
+        )
+    sash = cube("Actor_Veden_Sash", (0, -0.27, 1.11), (0.31, 0.025, 0.07), p["ochre"], actor, 0.015)
+    sash.rotation_euler[2] = -0.18
+
+    actor = person_base("Actor_Aimian", 27, aimian_skin, grey, 2.148, 0.92, hair=hair_white)
     for mark in (-1, 0, 1):
         stripe = cube(
             f"Actor_Aimian_SkinMark_{mark}",
-            (mark * 0.075, -0.228, 1.82 + mark * 0.025),
-            (0.018, 0.014, 0.15),
+            (mark * 0.075, -0.205, 1.8 + mark * 0.025),
+            (0.016, 0.012, 0.14),
             p["cyan"],
             actor,
             0.008,
         )
         stripe.rotation_euler[2] = 0.22
-    cone("Actor_Aimian_Mantle", (0, 0.04, 1.34), 0.42, 0.3, 0.28, p["slate"], actor, 10, 0.025)
-    actor = person_base("Actor_Reshi", 34, skin_tan, p["grass"], 0.97, 1.02)
-    cone("Actor_Reshi_Wrap", (0, 0.04, 0.72), 0.42, 0.29, 0.82, p["grass"], actor, 10)
-    cone("Actor_Reshi_SunHat", (0, 0, 1.82), 0.5, 0.08, 0.18, p["ochre"], actor, 18, 0.02)
+    cone("Actor_Aimian_Mantle", (0, 0.04, 1.35), 0.42, 0.3, 0.28, p["slate"], actor, 14, 0.025)
+
+    actor = person_base("Actor_Reshi", 34, skin_tan, reshi_green, 1.891, 1.02, hair=hair_brown)
+    cone("Actor_Reshi_Wrap", (0, 0.04, 0.69), 0.42, 0.29, 0.86, reshi_green, actor, 16, 0.03)
+    cone("Actor_Reshi_SunHat", (0, 0, 1.94), 0.48, 0.08, 0.17, p["ochre"], actor, 20, 0.02)
     for shell in range(5):
         angle = -0.7 + shell * 0.34
         sphere(
@@ -2139,9 +2689,626 @@ def build_actors() -> None:
             (0.055, 0.035, 0.07),
             p["brass"],
             actor,
-            8,
-            5,
+            10,
+            6,
         )
+
+    # Kharbranth's close-detail cast mirrors the five accepted residents. Every
+    # body uses the Alethi source height (2.063) so role swapping does not alter
+    # physical scale; runtime variation is applied in meters after cloning.
+    actor = person_base(
+        "Actor_Kharbranth_Porter",
+        41,
+        skin_dark,
+        porter_ochre,
+        2.063,
+        1.12,
+        sleeveless=True,
+        hair=hair_brown,
+    )
+    cube(
+        "Actor_Kharbranth_Porter_Vest",
+        (0, -0.19, 1.24),
+        (0.29, 0.055, 0.34),
+        porter_ochre,
+        actor,
+        0.025,
+    )
+    cube(
+        "Actor_Kharbranth_Porter_Cargo",
+        (0, 0.31, 1.04),
+        (0.34, 0.23, 0.37),
+        p["wood"],
+        actor,
+        0.045,
+    )
+    for side in (-1, 1):
+        cube(
+            f"Actor_Kharbranth_Porter_CargoStrap_{side}",
+            (side * 0.19, -0.02, 1.12),
+            (0.035, 0.22, 0.48),
+            leather,
+            actor,
+            0.012,
+        )
+
+    actor = person_base(
+        "Actor_Kharbranth_Surgeon",
+        48,
+        skin_brown,
+        surgeon_ivory,
+        2.063,
+        0.94,
+        feminine=True,
+        hair=hair_black,
+    )
+    cone(
+        "Actor_Kharbranth_Surgeon_Gown",
+        (0, 0.02, 0.7),
+        0.41,
+        0.24,
+        0.9,
+        surgeon_ivory,
+        actor,
+        18,
+        0.032,
+    )
+    cone(
+        "Actor_Kharbranth_Surgeon_SafehandSleeve",
+        (-0.325, -0.01, 0.93),
+        0.095,
+        0.065,
+        0.42,
+        surgeon_ivory,
+        actor,
+        14,
+        0.018,
+    )
+    sphere(
+        "Actor_Kharbranth_Surgeon_HairKnot",
+        (0, 0.15, 1.96),
+        (0.11, 0.105, 0.12),
+        hair_black,
+        actor,
+        16,
+        9,
+    )
+    cube(
+        "Actor_Kharbranth_Surgeon_Satchel",
+        (0.36, 0.04, 0.93),
+        (0.18, 0.08, 0.22),
+        leather,
+        actor,
+        0.025,
+    )
+
+    actor = person_base(
+        "Actor_Kharbranth_Scholar",
+        55,
+        skin_tan,
+        scholar_teal,
+        2.063,
+        0.98,
+        hair=hair_black,
+    )
+    cone(
+        "Actor_Kharbranth_Scholar_Overrobe",
+        (0, 0.04, 0.72),
+        0.38,
+        0.25,
+        0.84,
+        scholar_teal,
+        actor,
+        18,
+        0.03,
+    )
+    cube(
+        "Actor_Kharbranth_Scholar_Ledger",
+        (0.35, -0.16, 0.98),
+        (0.16, 0.045, 0.22),
+        p["wood"],
+        actor,
+        0.018,
+    )
+    for scroll in range(3):
+        cyl(
+            f"Actor_Kharbranth_Scholar_Scroll_{scroll + 1}",
+            (-0.3 + scroll * 0.08, 0.16, 0.91),
+            0.03,
+            0.42,
+            cream,
+            actor,
+            10,
+            0.008,
+        )
+
+    actor = person_base(
+        "Actor_Kharbranth_Dockworker",
+        62,
+        skin_brown,
+        dock_rust,
+        2.063,
+        1.05,
+        hair=hair_brown,
+    )
+    cyl(
+        "Actor_Kharbranth_Dockworker_Cap",
+        (0, 0, 2.01),
+        0.21,
+        0.1,
+        dock_rust,
+        actor,
+        16,
+        0.018,
+    )
+    torus(
+        "Actor_Kharbranth_Dockworker_RopeCoil",
+        (0.34, 0.12, 0.94),
+        0.19,
+        0.035,
+        p["rope"],
+        actor,
+        (math.pi / 2, 0, 0),
+    )
+    cube(
+        "Actor_Kharbranth_Dockworker_Crate",
+        (-0.43, -0.02, 0.77),
+        (0.22, 0.2, 0.22),
+        p["wood"],
+        actor,
+        0.035,
+    )
+
+    actor = person_base(
+        "Actor_Kharbranth_Thaylen_Sailor",
+        69,
+        skin_tan,
+        grey,
+        2.063,
+        1.0,
+        hair=hair_white,
+    )
+    for side in (-1, 1):
+        label = "L" if side < 0 else "R"
+        brow = cube(
+            f"Actor_Kharbranth_Thaylen_Sailor_LongBrow_{label}",
+            (side * 0.18, -0.2, 1.83),
+            (0.17, 0.012, 0.018),
+            hair_white,
+            actor,
+            0.008,
+        )
+        brow.rotation_euler[2] = side * 0.48
+    cube(
+        "Actor_Kharbranth_Thaylen_Sailor_Sash",
+        (0, -0.27, 1.04),
+        (0.3, 0.03, 0.075),
+        p["teal"],
+        actor,
+        0.012,
+    )
+    cyl(
+        "Actor_Kharbranth_Thaylen_Sailor_BelayingPin",
+        (0.42, 0, 0.94),
+        0.025,
+        0.52,
+        p["wood"],
+        actor,
+        10,
+        0.008,
+    )
+
+    # High-detail Kharbranth cast. These bodies start from Blender Studio's
+    # CC0 realistic human bases, then receive web-trimmed fitted clothing,
+    # generated textile materials, hair, and the exact role props established
+    # by the accepted resident concept sheet.
+    porter_hd = anatomical_resident(
+        "Actor_Kharbranth_Porter_HD",
+        76,
+        skin_dark,
+        "male",
+        1.07,
+    )
+    porter_hd["actor"]["role"] = "porter"
+    fitted_layer(porter_hd, "Trousers", 0.04, 0.56, grey, 0.015)
+    fitted_layer(porter_hd, "Sandals", 0.0, 0.2, leather, 0.018)
+    fitted_layer(
+        porter_hd,
+        "SleevelessVest",
+        0.47,
+        0.84,
+        porter_ochre,
+        0.018,
+        0.27,
+    )
+    fitted_layer(
+        porter_hd,
+        "Hair",
+        0.84,
+        1.0,
+        hair_black,
+        0.008,
+        hair_shell=True,
+    )
+    porter_vest = cone(
+        "Actor_Kharbranth_Porter_HD_TailoredVest",
+        (0, 0.005, 1.34),
+        0.22,
+        0.275,
+        0.57,
+        porter_ochre,
+        porter_hd["actor"],
+        20,
+        0.025,
+    )
+    porter_vest.scale.y = 0.52
+    high_detail_eyes(porter_hd["actor"])
+    sphere(
+        "Actor_Kharbranth_Porter_HD_Beard",
+        (0, -0.148, 1.75),
+        (0.095, 0.035, 0.075),
+        hair_black,
+        porter_hd["actor"],
+        20,
+        11,
+    )
+    torus(
+        "Actor_Kharbranth_Porter_HD_RopeCoil",
+        (-0.39, 0, 1.38),
+        0.28,
+        0.045,
+        p["rope"],
+        porter_hd["actor"],
+        (math.pi / 2, 0, 0),
+    )
+    torus(
+        "Actor_Kharbranth_Porter_HD_RopeBelt",
+        (0, 0, 0.99),
+        0.31,
+        0.035,
+        p["rope"],
+        porter_hd["actor"],
+    )
+
+    surgeon_hd = anatomical_resident(
+        "Actor_Kharbranth_Surgeon_HD",
+        83,
+        skin_brown,
+        "female",
+        1.0,
+    )
+    surgeon_hd["actor"]["role"] = "surgeon"
+    fitted_layer(
+        surgeon_hd,
+        "Undergown",
+        0.04,
+        0.86,
+        surgeon_ivory,
+        0.016,
+    )
+    fitted_layer(
+        surgeon_hd,
+        "Hair",
+        0.84,
+        1.0,
+        hair_black,
+        0.008,
+        hair_shell=True,
+    )
+    surgeon_bodice = cone(
+        "Actor_Kharbranth_Surgeon_HD_CoatBodice",
+        (0, 0.005, 1.34),
+        0.22,
+        0.275,
+        0.58,
+        surgeon_ivory,
+        surgeon_hd["actor"],
+        20,
+        0.025,
+    )
+    surgeon_bodice.scale.y = 0.5
+    cube(
+        "Actor_Kharbranth_Surgeon_HD_InnerCollar",
+        (0, -0.22, 1.54),
+        (0.12, 0.025, 0.12),
+        scholar_teal,
+        surgeon_hd["actor"],
+        0.012,
+    )
+    high_detail_eyes(surgeon_hd["actor"])
+    surgeon_gown = cone(
+        "Actor_Kharbranth_Surgeon_HD_OuterGown",
+        (0, 0.035, 0.58),
+        0.36,
+        0.2,
+        0.84,
+        surgeon_ivory,
+        surgeon_hd["actor"],
+        22,
+        0.025,
+    )
+    surgeon_gown.scale.y = 0.62
+    safehand = cone(
+        "Actor_Kharbranth_Surgeon_HD_SafehandSleeve",
+        (-0.47, -0.005, 1.16),
+        0.13,
+        0.08,
+        0.58,
+        surgeon_ivory,
+        surgeon_hd["actor"],
+        18,
+        0.018,
+    )
+    safehand.rotation_euler[1] = -0.26
+    sphere(
+        "Actor_Kharbranth_Surgeon_HD_HairKnot",
+        (0, 0.12, 1.99),
+        (0.12, 0.11, 0.13),
+        hair_black,
+        surgeon_hd["actor"],
+        18,
+        10,
+    )
+    cube(
+        "Actor_Kharbranth_Surgeon_HD_MedicalSatchel",
+        (0.38, 0.04, 0.94),
+        (0.17, 0.075, 0.23),
+        leather,
+        surgeon_hd["actor"],
+        0.025,
+    )
+    for vial in range(4):
+        cyl(
+            f"Actor_Kharbranth_Surgeon_HD_Vial_{vial + 1}",
+            (0.31 + vial * 0.055, -0.055, 1.02),
+            0.017,
+            0.15,
+            p["cyan"] if vial % 2 else p["brass"],
+            surgeon_hd["actor"],
+            10,
+            0.004,
+        )
+
+    scholar_hd = anatomical_resident(
+        "Actor_Kharbranth_Scholar_HD",
+        90,
+        skin_tan,
+        "male",
+        0.98,
+    )
+    scholar_hd["actor"]["role"] = "scholar"
+    fitted_layer(scholar_hd, "Trousers", 0.03, 0.55, grey, 0.014)
+    fitted_layer(
+        scholar_hd,
+        "LongRobe",
+        0.16,
+        0.86,
+        scholar_teal,
+        0.018,
+    )
+    fitted_layer(
+        scholar_hd,
+        "OpenOvercoat",
+        0.42,
+        0.85,
+        cream,
+        0.028,
+        front_opening=0.075,
+    )
+    fitted_layer(
+        scholar_hd,
+        "Hair",
+        0.84,
+        1.0,
+        hair_black,
+        0.01,
+        hair_shell=True,
+    )
+    scholar_bodice = cone(
+        "Actor_Kharbranth_Scholar_HD_RobeBodice",
+        (0, 0.005, 1.34),
+        0.22,
+        0.285,
+        0.58,
+        scholar_teal,
+        scholar_hd["actor"],
+        20,
+        0.025,
+    )
+    scholar_bodice.scale.y = 0.52
+    for side in (-1, 1):
+        cube(
+            f"Actor_Kharbranth_Scholar_HD_CoatPanel_{side}",
+            (side * 0.105, -0.17, 0.94),
+            (0.085, 0.025, 0.46),
+            scholar_teal,
+            scholar_hd["actor"],
+            0.022,
+        )
+    high_detail_eyes(scholar_hd["actor"])
+    cube(
+        "Actor_Kharbranth_Scholar_HD_Ledger",
+        (0.41, -0.08, 1.12),
+        (0.19, 0.045, 0.28),
+        p["wood"],
+        scholar_hd["actor"],
+        0.025,
+    )
+    cube(
+        "Actor_Kharbranth_Scholar_HD_Satchel",
+        (-0.38, 0.07, 0.88),
+        (0.2, 0.08, 0.25),
+        leather,
+        scholar_hd["actor"],
+        0.025,
+    )
+    sash = cube(
+        "Actor_Kharbranth_Scholar_HD_Sash",
+        (0, -0.205, 1.02),
+        (0.34, 0.035, 0.065),
+        p["brass"],
+        scholar_hd["actor"],
+        0.012,
+    )
+    sash.rotation_euler[2] = -0.12
+
+    dockworker_hd = anatomical_resident(
+        "Actor_Kharbranth_Dockworker_HD",
+        97,
+        skin_brown,
+        "male",
+        1.02,
+    )
+    dockworker_hd["actor"]["role"] = "dockworker"
+    fitted_layer(dockworker_hd, "Trousers", 0.02, 0.56, grey, 0.015)
+    fitted_layer(dockworker_hd, "Shirt", 0.44, 0.84, cream, 0.015)
+    fitted_layer(
+        dockworker_hd,
+        "Vest",
+        0.49,
+        0.82,
+        dock_rust,
+        0.026,
+        0.3,
+    )
+    fitted_layer(
+        dockworker_hd,
+        "Hair",
+        0.84,
+        1.0,
+        hair_brown,
+        0.009,
+        hair_shell=True,
+    )
+    dockworker_shirt = cone(
+        "Actor_Kharbranth_Dockworker_HD_ShirtBodice",
+        (0, 0.005, 1.34),
+        0.22,
+        0.29,
+        0.58,
+        cream,
+        dockworker_hd["actor"],
+        20,
+        0.025,
+    )
+    dockworker_shirt.scale.y = 0.52
+    for side in (-1, 1):
+        cube(
+            f"Actor_Kharbranth_Dockworker_HD_VestPanel_{side}",
+            (side * 0.105, -0.17, 1.34),
+            (0.08, 0.025, 0.27),
+            dock_rust,
+            dockworker_hd["actor"],
+            0.022,
+        )
+    high_detail_eyes(dockworker_hd["actor"])
+    cyl(
+        "Actor_Kharbranth_Dockworker_HD_Cap",
+        (0, 0, 1.98),
+        0.19,
+        0.075,
+        dock_rust,
+        dockworker_hd["actor"],
+        20,
+        0.018,
+    )
+    cube(
+        "Actor_Kharbranth_Dockworker_HD_Cargo",
+        (0, 0.28, 1.25),
+        (0.38, 0.22, 0.38),
+        p["wood"],
+        dockworker_hd["actor"],
+        0.045,
+    )
+    for side in (-1, 1):
+        cube(
+            f"Actor_Kharbranth_Dockworker_HD_CargoStrap_{side}",
+            (side * 0.2, -0.01, 1.29),
+            (0.035, 0.22, 0.47),
+            leather,
+            dockworker_hd["actor"],
+            0.012,
+        )
+
+    sailor_hd = anatomical_resident(
+        "Actor_Kharbranth_Thaylen_Sailor_HD",
+        104,
+        skin_tan,
+        "male",
+        0.99,
+    )
+    sailor_hd["actor"]["role"] = "thaylen-sailor"
+    fitted_layer(sailor_hd, "Trousers", 0.03, 0.55, grey, 0.014)
+    fitted_layer(sailor_hd, "Shirt", 0.44, 0.84, cream, 0.015)
+    fitted_layer(
+        sailor_hd,
+        "Longcoat",
+        0.17,
+        0.88,
+        blue,
+        0.03,
+        front_opening=0.07,
+    )
+    fitted_layer(
+        sailor_hd,
+        "Hair",
+        0.83,
+        1.0,
+        hair_white,
+        0.009,
+        hair_shell=True,
+    )
+    sailor_bodice = cone(
+        "Actor_Kharbranth_Thaylen_Sailor_HD_CoatBodice",
+        (0, 0.005, 1.34),
+        0.22,
+        0.29,
+        0.58,
+        blue,
+        sailor_hd["actor"],
+        20,
+        0.025,
+    )
+    sailor_bodice.scale.y = 0.52
+    for side in (-1, 1):
+        cube(
+            f"Actor_Kharbranth_Thaylen_Sailor_HD_CoatPanel_{side}",
+            (side * 0.11, -0.17, 0.92),
+            (0.095, 0.03, 0.46),
+            blue,
+            sailor_hd["actor"],
+            0.022,
+        )
+    high_detail_eyes(sailor_hd["actor"])
+    cube(
+        "Actor_Kharbranth_Thaylen_Sailor_HD_Sash",
+        (0, -0.22, 1.0),
+        (0.34, 0.04, 0.08),
+        veden_red,
+        sailor_hd["actor"],
+        0.014,
+    )
+    for side in (-1, 1):
+        label = "L" if side < 0 else "R"
+        brow = cube(
+            f"Actor_Kharbranth_Thaylen_Sailor_HD_LongBrow_{label}",
+            (side * 0.12, -0.18, 1.84),
+            (0.14, 0.012, 0.018),
+            hair_white,
+            sailor_hd["actor"],
+            0.008,
+        )
+        brow.rotation_euler[2] = side * 0.44
+    cyl(
+        "Actor_Kharbranth_Thaylen_Sailor_HD_BelayingPin",
+        (0.39, 0.02, 0.92),
+        0.025,
+        0.56,
+        p["wood"],
+        sailor_hd["actor"],
+        12,
+        0.008,
+    )
 
 
 build_urithiru()

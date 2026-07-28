@@ -573,6 +573,27 @@ const detailedActorRoot: Record<Culture, string> = {
   reshi: "Actor_Reshi",
 };
 
+const kharbranthDetailedActorRoots = [
+  "Actor_Kharbranth_Porter_HD",
+  "Actor_Kharbranth_Surgeon_HD",
+  "Actor_Kharbranth_Scholar_HD",
+  "Actor_Kharbranth_Dockworker_HD",
+  "Actor_Kharbranth_Thaylen_Sailor_HD",
+] as const;
+
+function detailedActorRootName(
+  culture: Culture,
+  locationId: string,
+  index: number,
+) {
+  if (locationId === "kharbranth") {
+    return kharbranthDetailedActorRoots[
+      index % kharbranthDetailedActorRoots.length
+    ];
+  }
+  return detailedActorRoot[culture];
+}
+
 function DetailedResident({
   center,
   culture,
@@ -589,7 +610,9 @@ function DetailedResident({
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF(MODEL_URL);
   const resident = useMemo(() => {
-    const source = scene.getObjectByName(detailedActorRoot[culture]);
+    const source = scene.getObjectByName(
+      detailedActorRootName(culture, locationId, index),
+    );
     if (!source) return null;
     const copy = source.clone(true);
     copy.position.set(0, 0, 0);
@@ -602,7 +625,7 @@ function DetailedResident({
       }
     });
     return copy;
-  }, [culture, scene]);
+  }, [culture, index, locationId, scene]);
 
   useFrame(() => {
     if (!group.current) return;
