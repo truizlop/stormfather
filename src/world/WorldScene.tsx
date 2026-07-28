@@ -7,6 +7,7 @@ import { SettlementLights } from "./SettlementLights";
 import { SimulationClock } from "./SimulationClock";
 import { WorldLabels } from "./WorldLabels";
 import { WorldTraffic } from "./WorldTraffic";
+import { CityActivities } from "./actors/CityActivities";
 import { LivingPopulation } from "./actors/LivingPopulation";
 import { ReactiveFlora } from "./actors/ReactiveFlora";
 import { CountryFrontiers } from "./cartography/CountryFrontiers";
@@ -62,6 +63,7 @@ export function WorldScene() {
       <SettlementLights />
       <WorldTraffic />
       <ReactiveFlora />
+      <CityActivities />
       <LivingPopulation />
       <Highstorm />
       <WorldLabels />
