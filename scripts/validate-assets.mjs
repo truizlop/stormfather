@@ -19,6 +19,15 @@ const expectedRoots = [
   "Actor_Thaylen",
   "Actor_Purelaker",
 ];
+const expectedTextures = [
+  "crem-stone-albedo.jpg",
+  "shinovar-grass-albedo.jpg",
+  "highstorm-density.jpg",
+  "shattered-paving-albedo.jpg",
+  "kharbranth-plaster-albedo.jpg",
+  "rosharan-cloth-albedo.jpg",
+  "purelake-caustics.jpg",
+];
 
 try {
   const model = await stat(modelPath);
@@ -47,6 +56,15 @@ try {
 
   console.log(`✓ Roshar landmark kit: ${(model.size / 1024).toFixed(1)} KiB`);
   console.log(`✓ ${expectedRoots.length} expected landmark and actor roots`);
+  for (const textureName of expectedTextures) {
+    const texture = await stat(resolve("public/textures", textureName));
+    if (texture.size < 16 * 1024) {
+      throw new Error(
+        `Texture ${textureName} is unexpectedly small: ${texture.size} bytes`,
+      );
+    }
+  }
+  console.log(`✓ ${expectedTextures.length} generated runtime textures`);
 } catch (error) {
   console.error(`✗ Missing or invalid landmark kit at ${modelPath}`);
   console.error(error instanceof Error ? error.message : error);
