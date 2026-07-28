@@ -9,14 +9,18 @@ vi.mock("@react-three/fiber", () => ({
 }));
 
 vi.mock("@react-three/drei", () => ({
-  OrbitControls: () => null,
+  useProgress: () => ({ active: false, progress: 100 }),
+}));
+
+vi.mock("./world/WorldScene", () => ({
+  WorldScene: () => null,
 }));
 
 describe("App", () => {
   it("identifies the atlas while the WebGL scene loads", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: /roshar/i })).toBeInTheDocument();
+    expect(screen.getAllByText("Roshar")).not.toHaveLength(0);
     expect(screen.getByTestId("world-canvas")).toBeInTheDocument();
   });
 });
