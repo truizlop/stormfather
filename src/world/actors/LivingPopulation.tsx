@@ -400,12 +400,21 @@ function ArticulatedResidents({
           bumpMap={clothTexture}
           bumpScale={0.006}
           vertexColors
+          emissive="#171a1b"
+          emissiveIntensity={0.28}
+          toneMapped={false}
           roughness={0.84}
         />
       </instancedMesh>
       <instancedMesh ref={heads} args={[undefined, undefined, count]} castShadow>
         <sphereGeometry args={[1, 8, 6]} />
-        <meshStandardMaterial vertexColors roughness={0.88} />
+        <meshStandardMaterial
+          vertexColors
+          emissive="#2a1710"
+          emissiveIntensity={0.24}
+          toneMapped={false}
+          roughness={0.88}
+        />
       </instancedMesh>
       <instancedMesh
         ref={leftArms}
@@ -417,6 +426,9 @@ function ArticulatedResidents({
           bumpMap={clothTexture}
           bumpScale={0.006}
           vertexColors
+          emissive="#171a1b"
+          emissiveIntensity={0.28}
+          toneMapped={false}
           roughness={0.87}
         />
       </instancedMesh>
@@ -430,6 +442,9 @@ function ArticulatedResidents({
           bumpMap={clothTexture}
           bumpScale={0.006}
           vertexColors
+          emissive="#171a1b"
+          emissiveIntensity={0.28}
+          toneMapped={false}
           roughness={0.87}
         />
       </instancedMesh>
@@ -439,7 +454,13 @@ function ArticulatedResidents({
         castShadow
       >
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial vertexColors roughness={0.87} />
+        <meshStandardMaterial
+          vertexColors
+          emissive="#111619"
+          emissiveIntensity={0.22}
+          toneMapped={false}
+          roughness={0.87}
+        />
       </instancedMesh>
       <instancedMesh
         ref={rightLegs}
@@ -447,15 +468,33 @@ function ArticulatedResidents({
         castShadow
       >
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial vertexColors roughness={0.87} />
+        <meshStandardMaterial
+          vertexColors
+          emissive="#111619"
+          emissiveIntensity={0.22}
+          toneMapped={false}
+          roughness={0.87}
+        />
       </instancedMesh>
       <instancedMesh ref={props} args={[undefined, undefined, count]} castShadow>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial vertexColors roughness={0.8} />
+        <meshStandardMaterial
+          vertexColors
+          emissive="#201b14"
+          emissiveIntensity={0.18}
+          toneMapped={false}
+          roughness={0.8}
+        />
       </instancedMesh>
       <instancedMesh ref={hats} args={[undefined, undefined, count]} castShadow>
         <coneGeometry args={[1, 0.65, 9]} />
-        <meshStandardMaterial vertexColors roughness={0.86} />
+        <meshStandardMaterial
+          vertexColors
+          emissive="#201b14"
+          emissiveIntensity={0.18}
+          toneMapped={false}
+          roughness={0.86}
+        />
       </instancedMesh>
       <instancedMesh ref={marbling} args={[undefined, undefined, count]}>
         <boxGeometry args={[1, 1, 1]} />

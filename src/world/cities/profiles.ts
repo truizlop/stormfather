@@ -202,8 +202,12 @@ const overrides: Record<string, Partial<CityProfile>> = {
   },
   purelake: {
     id: "purelake",
-    density: 0.56,
+    density: 0.27,
     radius: 4.8,
+    height: [0.16, 0.31],
+    footprint: [0.28, 0.52],
+    palette: ["#c1ac80", "#9c835e", "#d0c19b", "#8e7656"],
+    roofPalette: ["#e0d8c2", "#c8bea6", "#aaa08c"],
   },
   shinovar: {
     id: "shinovar",

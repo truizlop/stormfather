@@ -113,10 +113,9 @@ function InstancedArchitecture({
   const bodies = useRef<THREE.InstancedMesh>(null);
   const roofs = useRef<THREE.InstancedMesh>(null);
   const windows = useRef<THREE.InstancedMesh>(null);
-  const [plasterSource, stoneSource, clothSource] = useTexture([
+  const [plasterSource, stoneSource] = useTexture([
     `${import.meta.env.BASE_URL}textures/kharbranth-plaster-albedo.jpg`,
     `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
-    `${import.meta.env.BASE_URL}textures/rosharan-cloth-albedo.jpg`,
   ]);
   const plaster = useMemo(
     () => configureTexture(plasterSource, 1.8),
@@ -125,10 +124,6 @@ function InstancedArchitecture({
   const stone = useMemo(
     () => configureTexture(stoneSource, 1.5),
     [stoneSource],
-  );
-  const cloth = useMemo(
-    () => configureTexture(clothSource, 2.3),
-    [clothSource],
   );
 
   useLayoutEffect(() => {
@@ -180,10 +175,6 @@ function InstancedArchitecture({
 
   const buildingTexture =
     locationId === "kharbranth" ? plaster : stone;
-  const roofTexture =
-    profile.activity === "warcamp" || profile.activity === "market"
-      ? cloth
-      : stone;
 
   return (
     <>
@@ -194,12 +185,23 @@ function InstancedArchitecture({
         receiveShadow
       >
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial
-          map={buildingTexture}
-          vertexColors
-          roughness={0.88}
-          metalness={0.02}
-        />
+        {locationId === "kharbranth" ? (
+          <meshStandardMaterial
+            map={buildingTexture}
+            bumpMap={buildingTexture}
+            bumpScale={0.012}
+            vertexColors
+            roughness={0.88}
+            metalness={0.02}
+          />
+        ) : (
+          <meshLambertMaterial
+            vertexColors
+            emissive="#c9aa7b"
+            emissiveIntensity={0.12}
+            toneMapped={false}
+          />
+        )}
       </instancedMesh>
       <instancedMesh
         ref={roofs}
@@ -208,11 +210,11 @@ function InstancedArchitecture({
         receiveShadow
       >
         <RoofGeometry style={profile.roof} />
-        <meshStandardMaterial
-          map={roofTexture}
+        <meshLambertMaterial
           vertexColors
-          roughness={0.82}
-          metalness={0.03}
+          emissive="#ad835b"
+          emissiveIntensity={0.11}
+          toneMapped={false}
         />
       </instancedMesh>
       <instancedMesh
