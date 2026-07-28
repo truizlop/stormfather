@@ -1,21 +1,26 @@
-const MAP_BOUNDS = {
-  minX: -54,
-  maxX: 52,
-  minZ: -25,
-  maxZ: 28,
-} as const;
+import { ROSHAR_MAP_BOUNDS } from "./cartography/geography";
 
 export function mapToWorld(point: { x: number; y: number }) {
   return {
-    x: MAP_BOUNDS.minX + point.x * (MAP_BOUNDS.maxX - MAP_BOUNDS.minX),
-    z: MAP_BOUNDS.minZ + point.y * (MAP_BOUNDS.maxZ - MAP_BOUNDS.minZ),
+    x:
+      ROSHAR_MAP_BOUNDS.minX +
+      point.x * (ROSHAR_MAP_BOUNDS.maxX - ROSHAR_MAP_BOUNDS.minX),
+    z:
+      ROSHAR_MAP_BOUNDS.minZ +
+      point.y * (ROSHAR_MAP_BOUNDS.maxZ - ROSHAR_MAP_BOUNDS.minZ),
   };
 }
 
 export function worldToMinimap(point: { x: number; z: number }) {
   return {
-    x: ((point.x - MAP_BOUNDS.minX) / (MAP_BOUNDS.maxX - MAP_BOUNDS.minX)) * 100,
-    y: ((point.z - MAP_BOUNDS.minZ) / (MAP_BOUNDS.maxZ - MAP_BOUNDS.minZ)) * 100,
+    x:
+      ((point.x - ROSHAR_MAP_BOUNDS.minX) /
+        (ROSHAR_MAP_BOUNDS.maxX - ROSHAR_MAP_BOUNDS.minX)) *
+      100,
+    y:
+      ((point.z - ROSHAR_MAP_BOUNDS.minZ) /
+        (ROSHAR_MAP_BOUNDS.maxZ - ROSHAR_MAP_BOUNDS.minZ)) *
+      100,
   };
 }
 

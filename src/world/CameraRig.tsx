@@ -36,7 +36,7 @@ export function CameraRig() {
       const distance = THREE.MathUtils.clamp(
         offset.length() * factor,
         5.8,
-        104,
+        165,
       );
       offset.setLength(distance);
       camera.position.copy(control.target).add(offset);
@@ -98,7 +98,7 @@ export function CameraRig() {
       enableDamping
       dampingFactor={0.075}
       minDistance={5.8}
-      maxDistance={104}
+      maxDistance={165}
       minPolarAngle={0.22}
       maxPolarAngle={Math.PI * 0.47}
       screenSpacePanning={false}

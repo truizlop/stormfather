@@ -13,7 +13,7 @@ describe("Roshar scale calibration", () => {
     expect(
       ROSHAR_COASTLINE_WIDTH_UNITS * MILES_PER_GEOGRAPHIC_UNIT,
     ).toBeCloseTo(ROSHAR_EAST_WEST_MILES);
-    expect(KM_PER_GEOGRAPHIC_UNIT).toBeCloseTo(67.06, 1);
+    expect(KM_PER_GEOGRAPHIC_UNIT).toBeCloseTo(62.94, 1);
   });
 
   it("separates map geography from internally consistent close detail", () => {

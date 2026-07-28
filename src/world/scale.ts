@@ -2,11 +2,11 @@ import type { DetailLevel } from "./types";
 
 /**
  * Isaac Stewart has described Roshar as roughly 4,000 miles east-to-west. The
- * authored coastline spans 96 world units, so geographic/map-space units stay
- * calibrated to that estimate.
+ * canonical mainland spans 102.272 world units, so geographic/map-space units
+ * stay calibrated to that estimate.
  */
 export const ROSHAR_EAST_WEST_MILES = 4_000;
-export const ROSHAR_COASTLINE_WIDTH_UNITS = 96;
+export const ROSHAR_COASTLINE_WIDTH_UNITS = 102.272;
 export const MILES_PER_GEOGRAPHIC_UNIT =
   ROSHAR_EAST_WEST_MILES / ROSHAR_COASTLINE_WIDTH_UNITS;
 export const KM_PER_GEOGRAPHIC_UNIT = MILES_PER_GEOGRAPHIC_UNIT * 1.609344;
@@ -31,7 +31,7 @@ export const scalePresentation: Record<DetailLevel, ScalePresentation> = {
     mode: "geographic",
     eyebrow: "Geographic scale",
     distance: "500 mi",
-    note: "1 world unit ≈ 41.7 mi",
+    note: "1 world unit ≈ 39.1 mi",
   },
   region: {
     mode: "geographic",

@@ -30,13 +30,13 @@ interface AtlasState {
 }
 
 export const useAtlasStore = create<AtlasState>((set) => ({
-  selectedId: "shattered-plains",
+  selectedId: "roshar",
   travelEpoch: 0,
   simulationTime: 12,
   isPlaying: true,
-  detailLevel: "city",
+  detailLevel: "continent",
   stormMode: false,
-  nightMode: true,
+  nightMode: false,
   menuOpen: false,
   searchOpen: false,
   locationPanelOpen: true,
