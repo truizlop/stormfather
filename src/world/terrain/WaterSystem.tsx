@@ -460,11 +460,125 @@ function AimianIslets() {
   );
 }
 
+const harborCoordinates: Record<
+  string,
+  { center: readonly [number, number]; scale: readonly [number, number] }
+> = {
+  kharbranth: {
+    center: [24.1, 21.05],
+    scale: [5.8, 3.05],
+  },
+  "thaylen-city": {
+    center: [19.6, 26.4],
+    scale: [6.4, 3.35],
+  },
+};
+
+function SelectedHarborSurface() {
+  const selectedId = useAtlasStore((state) => state.selectedId);
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const surface = useRef<THREE.Mesh>(null);
+  const material = useRef<THREE.MeshPhysicalMaterial>(null);
+  const causticsSource = useTexture(
+    `${import.meta.env.BASE_URL}textures/purelake-caustics.jpg`,
+  );
+  const caustics = useMemo(() => {
+    const copy = causticsSource.clone();
+    copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
+    copy.repeat.set(3.6, 2.1);
+    copy.colorSpace = THREE.SRGBColorSpace;
+    copy.needsUpdate = true;
+    return copy;
+  }, [causticsSource]);
+  const foamPoints = useMemo(
+    () =>
+      Array.from({ length: 81 }, (_, index) => {
+        const angle = (index / 80) * Math.PI * 2;
+        return [Math.cos(angle), 0.025, Math.sin(angle)] as [
+          number,
+          number,
+          number,
+        ];
+      }),
+    [],
+  );
+
+  useFrame(({ clock }) => {
+    const harbor = harborCoordinates[selectedId];
+    if (!surface.current || !material.current || !harbor) return;
+    const state = useAtlasStore.getState();
+    const proximity = stormProximity(
+      stormXAtTime(state.simulationTime),
+      harbor.center[0],
+    );
+    caustics.offset.set(clock.elapsedTime * 0.009, -clock.elapsedTime * 0.006);
+    surface.current.position.y =
+      1.285 +
+      Math.sin(clock.elapsedTime * (0.7 + proximity * 1.4)) *
+        (0.012 + proximity * 0.026);
+    surface.current.rotation.z =
+      Math.sin(clock.elapsedTime * 0.23) * 0.006 * (1 + proximity);
+    material.current.color.set(state.nightMode ? "#0b6672" : "#1595a0");
+    material.current.emissive.set(state.nightMode ? "#07333c" : "#0b4148");
+    material.current.opacity = 0.78 - proximity * 0.08;
+  });
+
+  const harbor = harborCoordinates[selectedId];
+  if (
+    !harbor ||
+    (detailLevel !== "city" && detailLevel !== "street")
+  ) {
+    return null;
+  }
+
+  return (
+    <group
+      name={`${selectedId} animated harbor`}
+      position={[harbor.center[0], 0, harbor.center[1]]}
+      scale={[harbor.scale[0], 1, harbor.scale[1]]}
+    >
+      <mesh
+        ref={surface}
+        rotation-x={-Math.PI / 2}
+        position-y={1.285}
+        renderOrder={3}
+        receiveShadow
+      >
+        <circleGeometry args={[1, 72]} />
+        <meshPhysicalMaterial
+          ref={material}
+          map={caustics}
+          color="#1595a0"
+          emissive="#0b4148"
+          emissiveIntensity={0.2}
+          roughness={0.26}
+          metalness={0.04}
+          clearcoat={0.42}
+          clearcoatRoughness={0.34}
+          transparent
+          opacity={0.78}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <Line
+        points={foamPoints}
+        color="#c0f4eb"
+        lineWidth={1.2}
+        transparent
+        opacity={0.48}
+        depthWrite={false}
+      />
+    </group>
+  );
+}
+
 export function WaterSystem() {
   return (
     <group name="Roshar water system">
       <OceanSurface />
       <CoastalFoam />
+      <SelectedHarborSurface />
       <PurelakeLakebed />
       <PurelakeSurface />
       <PurelakeShoals />
