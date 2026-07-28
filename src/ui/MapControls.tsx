@@ -1,4 +1,4 @@
-import { Crosshair, Home, Minus, Navigation, Plus } from "lucide-react";
+import { Crosshair, Home, Map, Minus, Navigation, Plus } from "lucide-react";
 import { useAtlasStore } from "../store/useAtlasStore";
 
 function zoom(factor: number) {
@@ -10,6 +10,8 @@ function zoom(factor: number) {
 export function MapControls() {
   const selectedId = useAtlasStore((state) => state.selectedId);
   const selectLocation = useAtlasStore((state) => state.selectLocation);
+  const frontiersVisible = useAtlasStore((state) => state.frontiersVisible);
+  const toggleFrontiers = useAtlasStore((state) => state.toggleFrontiers);
 
   return (
     <div className="map-controls" aria-label="Map controls">
@@ -23,6 +25,18 @@ export function MapControls() {
         </button>
       </div>
       <div className="orientation-stack">
+        <button
+          type="button"
+          aria-label={
+            frontiersVisible
+              ? "Hide country frontiers"
+              : "Show country frontiers"
+          }
+          aria-pressed={frontiersVisible}
+          onClick={toggleFrontiers}
+        >
+          <Map size={17} />
+        </button>
         <button
           type="button"
           aria-label="Reset north"

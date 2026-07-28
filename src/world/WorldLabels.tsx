@@ -13,6 +13,7 @@ export function WorldLabels() {
         .filter(
           (location) =>
             location.id !== "roshar" &&
+            location.kind !== "nation" &&
             (detailLevel === "continent" ||
               detailLevel === "region" ||
               location.id === selectedId),

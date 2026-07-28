@@ -12,6 +12,7 @@ interface AtlasState {
   menuOpen: boolean;
   searchOpen: boolean;
   locationPanelOpen: boolean;
+  frontiersVisible: boolean;
   toast: { title: string; message: string } | null;
   selectLocation: (id: string) => void;
   setSimulationTime: (time: number) => void;
@@ -23,6 +24,7 @@ interface AtlasState {
   toggleMenu: () => void;
   setSearchOpen: (open: boolean) => void;
   toggleLocationPanel: () => void;
+  toggleFrontiers: () => void;
   showToast: (title: string, message: string) => void;
   dismissToast: () => void;
 }
@@ -38,6 +40,7 @@ export const useAtlasStore = create<AtlasState>((set) => ({
   menuOpen: false,
   searchOpen: false,
   locationPanelOpen: true,
+  frontiersVisible: true,
   toast: null,
   selectLocation: (id) =>
     set((state) => ({
@@ -63,6 +66,8 @@ export const useAtlasStore = create<AtlasState>((set) => ({
   setSearchOpen: (searchOpen) => set({ searchOpen }),
   toggleLocationPanel: () =>
     set((state) => ({ locationPanelOpen: !state.locationPanelOpen })),
+  toggleFrontiers: () =>
+    set((state) => ({ frontiersVisible: !state.frontiersVisible })),
   showToast: (title, message) => set({ toast: { title, message } }),
   dismissToast: () => set({ toast: null }),
 }));

@@ -9,6 +9,7 @@ import { WorldLabels } from "./WorldLabels";
 import { WorldTraffic } from "./WorldTraffic";
 import { LivingPopulation } from "./actors/LivingPopulation";
 import { ReactiveFlora } from "./actors/ReactiveFlora";
+import { CountryFrontiers } from "./cartography/CountryFrontiers";
 import { RosharTerrain } from "./terrain/RosharTerrain";
 import { Highstorm } from "./weather/Highstorm";
 
@@ -55,6 +56,7 @@ export function WorldScene() {
         shadow-bias={-0.00012}
       />
       <RosharTerrain />
+      <CountryFrontiers />
       <CityClusters />
       <Landmarks />
       <SettlementLights />

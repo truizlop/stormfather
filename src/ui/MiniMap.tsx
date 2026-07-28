@@ -3,6 +3,10 @@ import { locationById, locations } from "../world/locations";
 import { worldToMinimap } from "../world/coordinates";
 import { rosharOutline } from "../world/terrain/rosharOutline";
 import { stormXAtTime } from "../world/weather/storm";
+import {
+  frontiers,
+  frontierStyle,
+} from "../world/cartography/frontiers";
 
 const outlinePoints = rosharOutline
   .map(([x, z]) => {
@@ -22,6 +26,7 @@ export function MiniMap() {
   const selectedId = useAtlasStore((state) => state.selectedId);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const simulationTime = useAtlasStore((state) => state.simulationTime);
+  const frontiersVisible = useAtlasStore((state) => state.frontiersVisible);
   const selected = locationById.get(selectedId) ?? locationById.get("roshar")!;
   const marker = worldToMinimap(selected.coordinates);
   const storm = worldToMinimap({
@@ -53,6 +58,33 @@ export function MiniMap() {
           strokeWidth="0.5"
         />
         <ellipse cx="39.5" cy="30" rx="4.7" ry="4" fill="#26737b" opacity="0.8" />
+        {frontiersVisible &&
+          frontiers.map((frontier) => {
+            const style = frontierStyle[frontier.kind];
+            const points = frontier.points
+              .map(([x, z]) => {
+                const point = worldToMinimap({ x, z });
+                return `${point.x},${point.y}`;
+              })
+              .join(" ");
+            return (
+              <polyline
+                key={frontier.id}
+                points={points}
+                fill="none"
+                stroke={style.color}
+                strokeWidth={frontier.kind === "disputed" ? 0.62 : 0.46}
+                strokeDasharray={
+                  frontier.kind === "national"
+                    ? undefined
+                    : frontier.kind === "disputed"
+                      ? "1.1 0.7"
+                      : "0.45 1"
+                }
+                opacity={style.opacity * 0.85}
+              />
+            );
+          })}
         {locations.slice(1).map((location) => {
           const point = worldToMinimap(location.coordinates);
           return (
