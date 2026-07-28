@@ -1,19 +1,42 @@
 import { useAtlasStore } from "../store/useAtlasStore";
 import { locationById, locations } from "../world/locations";
 import { worldToMinimap } from "../world/coordinates";
-import { rosharOutline } from "../world/terrain/rosharOutline";
 import { stormXAtTime } from "../world/weather/storm";
+import {
+  aimiaOutline,
+  inlandWaterPolygons,
+  islandPolygons,
+  mainlandOutline,
+  type GeographyPoint,
+} from "../world/cartography/geography";
 import {
   frontiers,
   frontierStyle,
 } from "../world/cartography/frontiers";
 
-const outlinePoints = rosharOutline
-  .map(([x, z]) => {
-    const point = worldToMinimap({ x, z });
-    return `${point.x},${point.y}`;
-  })
-  .join(" ");
+function minimapPoints(points: readonly GeographyPoint[]) {
+  return points
+    .map(([x, z]) => {
+      const point = worldToMinimap({ x, z });
+      return `${point.x},${point.y}`;
+    })
+    .join(" ");
+}
+
+const landPolygons = [
+  mainlandOutline,
+  aimiaOutline,
+  ...islandPolygons.map((island) => island.points),
+] as const;
+
+const mappedLandPolygons = landPolygons.map((polygon) =>
+  minimapPoints(polygon),
+);
+
+const mappedWaterPolygons = inlandWaterPolygons.map((water) => ({
+  id: water.id,
+  points: minimapPoints(water.points),
+}));
 
 const viewportSize = {
   continent: 76,
@@ -51,13 +74,25 @@ export function MiniMap() {
             </feMerge>
           </filter>
         </defs>
-        <polygon
-          points={outlinePoints}
-          fill="url(#map-land)"
-          stroke="#a58d62"
-          strokeWidth="0.5"
-        />
-        <ellipse cx="39.5" cy="30" rx="4.7" ry="4" fill="#26737b" opacity="0.8" />
+        {mappedLandPolygons.map((points, index) => (
+          <polygon
+            key={`land-${index}`}
+            points={points}
+            fill="url(#map-land)"
+            stroke="#a58d62"
+            strokeWidth={index < 2 ? 0.5 : 0.24}
+          />
+        ))}
+        {mappedWaterPolygons.map((water) => (
+          <polygon
+            key={water.id}
+            points={water.points}
+            fill={water.id === "purelake" ? "#267b82" : "#1c5966"}
+            stroke="#75b9b2"
+            strokeWidth="0.34"
+            opacity={water.id === "purelake" ? 0.9 : 0.72}
+          />
+        ))}
         {frontiersVisible &&
           frontiers.map((frontier) => {
             const style = frontierStyle[frontier.kind];

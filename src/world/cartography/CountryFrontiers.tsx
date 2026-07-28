@@ -1,5 +1,6 @@
 import { Html, Line } from "@react-three/drei";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import { terrainHeightAt } from "../terrain/terrainHeight";
 import { countryLabels, frontiers, frontierStyle } from "./frontiers";
 
 export function CountryFrontiers() {
@@ -20,7 +21,11 @@ export function CountryFrontiers() {
           <Line
             key={frontier.id}
             name={frontier.id}
-            points={frontier.points.map(([x, z]) => [x, 1.38, z])}
+            points={frontier.points.map(([x, z]) => [
+              x,
+              terrainHeightAt(x, z) + 0.18,
+              z,
+            ])}
             color={style.color}
             lineWidth={style.lineWidth * (isContinent ? 1 : 0.82)}
             transparent
@@ -39,7 +44,12 @@ export function CountryFrontiers() {
           return (
             <Html
               key={country.id}
-              position={[country.position[0], 1.62, country.position[1]]}
+              position={[
+                country.position[0],
+                terrainHeightAt(country.position[0], country.position[1]) +
+                  0.72,
+                country.position[1],
+              ]}
               center
               distanceFactor={isContinent ? 38 : 25}
               zIndexRange={[7, 0]}

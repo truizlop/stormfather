@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ROSHAR_MAP_BOUNDS } from "./geography";
 import { countryLabels, frontiers, frontierStyle } from "./frontiers";
 
 describe("Roshar country frontiers", () => {
@@ -10,10 +11,10 @@ describe("Roshar country frontiers", () => {
       expect(frontier.points.length).toBeGreaterThanOrEqual(4);
       expect(frontier.countries[0]).not.toBe(frontier.countries[1]);
       for (const [x, z] of frontier.points) {
-        expect(x).toBeGreaterThanOrEqual(-54);
-        expect(x).toBeLessThanOrEqual(52);
-        expect(z).toBeGreaterThanOrEqual(-25);
-        expect(z).toBeLessThanOrEqual(28);
+        expect(x).toBeGreaterThanOrEqual(ROSHAR_MAP_BOUNDS.minX);
+        expect(x).toBeLessThanOrEqual(ROSHAR_MAP_BOUNDS.maxX);
+        expect(z).toBeGreaterThanOrEqual(ROSHAR_MAP_BOUNDS.minZ);
+        expect(z).toBeLessThanOrEqual(ROSHAR_MAP_BOUNDS.maxZ);
       }
     }
   });

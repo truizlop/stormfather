@@ -1,208 +1,222 @@
+import {
+  countryLabelAnchors,
+  referencePixelToWorld,
+  type GeographyPoint,
+} from "./geography";
+
 export type FrontierKind = "national" | "disputed" | "porous";
 
 export interface Frontier {
   id: string;
   countries: readonly [string, string];
   kind: FrontierKind;
-  points: readonly (readonly [number, number])[];
+  points: readonly GeographyPoint[];
 }
 
 export interface CountryLabel {
   id: string;
   name: string;
-  position: readonly [number, number];
+  position: GeographyPoint;
   locationId?: string;
   emphasis?: "major" | "minor";
 }
 
+function referenceFrontier(
+  pixels: readonly (readonly [number, number])[],
+): readonly GeographyPoint[] {
+  return pixels.map(referencePixelToWorld);
+}
+
 /**
- * Stylized map-space frontiers derived from the broad adjacencies on the supplied
- * Roshar reference map. They intentionally communicate political geography rather
- * than claiming survey-grade precision: Rosharan control changes, and several
- * edges follow mountains, watersheds, or sparsely governed land.
+ * Political lines follow the dotted/red boundaries of the project-owner-supplied
+ * reference map. Borders that track a broad mountain watershed remain marked
+ * porous rather than pretending to be physical walls.
  */
 export const frontiers: readonly Frontier[] = [
   {
     id: "shinovar-iri",
     countries: ["Shinovar", "Iri"],
     kind: "porous",
-    points: [
-      [-27, -11],
-      [-26.2, -7],
-      [-27, -2],
-      [-27.6, 3],
-      [-29.6, 8],
-      [-32, 13.2],
-    ],
+    points: referenceFrontier([
+      [430, 355],
+      [420, 455],
+      [425, 555],
+      [440, 655],
+      [465, 750],
+    ]),
   },
   {
     id: "iri-babatharnam",
     countries: ["Iri", "Babatharnam"],
     kind: "national",
-    points: [
-      [-29, -5.6],
-      [-25, -3.2],
-      [-21, -2.8],
-      [-17.5, -1.3],
-    ],
+    points: referenceFrontier([
+      [475, 430],
+      [535, 445],
+      [600, 448],
+      [665, 458],
+      [720, 482],
+    ]),
   },
   {
     id: "babatharnam-azir",
     countries: ["Babatharnam", "Azir"],
     kind: "national",
-    points: [
-      [-18, -1],
-      [-18.4, 2.5],
-      [-16.8, 5.4],
-      [-15.5, 8],
-    ],
+    points: referenceFrontier([
+      [670, 500],
+      [680, 545],
+      [675, 585],
+      [660, 625],
+    ]),
   },
   {
     id: "azir-yezier",
     countries: ["Azir", "Yezier"],
     kind: "disputed",
-    points: [
-      [-18.7, 8.5],
-      [-15.3, 10.5],
-      [-12, 11],
-      [-9, 10.3],
-    ],
+    points: referenceFrontier([
+      [505, 675],
+      [545, 705],
+      [590, 725],
+      [640, 732],
+      [690, 725],
+    ]),
   },
   {
     id: "azir-emul",
     countries: ["Azir", "Emul"],
     kind: "national",
-    points: [
-      [-8.8, 9.8],
-      [-5.7, 9.2],
-      [-3, 10.5],
-      [0.2, 12.7],
-    ],
+    points: referenceFrontier([
+      [690, 725],
+      [730, 745],
+      [765, 780],
+      [800, 815],
+    ]),
   },
   {
     id: "tashikk-tukar",
     countries: ["Tashikk", "Tukar"],
     kind: "national",
-    points: [
-      [-16, 15.3],
-      [-12, 15],
-      [-8.5, 16.1],
-      [-5.5, 19.1],
-    ],
+    points: referenceFrontier([
+      [530, 810],
+      [575, 825],
+      [620, 840],
+      [665, 870],
+    ]),
   },
   {
     id: "emul-tukar",
     countries: ["Emul", "Tukar"],
     kind: "disputed",
-    points: [
-      [-5.3, 12],
-      [-4.6, 15.4],
-      [-3, 18.8],
-      [0.4, 21],
-    ],
+    points: referenceFrontier([
+      [735, 775],
+      [730, 820],
+      [745, 865],
+      [775, 905],
+    ]),
   },
   {
     id: "tu-bayla-jah-keved",
     countries: ["Tu Bayla", "Jah Keved"],
     kind: "national",
-    points: [
-      [2.5, -9.6],
-      [5.2, -7.3],
-      [8.5, -6.2],
-      [12.2, -5.4],
-      [17.2, -5.4],
-    ],
+    points: referenceFrontier([
+      [1055, 510],
+      [1065, 555],
+      [1070, 605],
+      [1080, 655],
+      [1095, 700],
+    ]),
   },
   {
     id: "jah-keved-azir",
     countries: ["Jah Keved", "Azir"],
     kind: "porous",
-    points: [
-      [2, -7.8],
-      [2.7, -3.2],
-      [3.6, 1],
-      [5.2, 5.7],
-      [7.8, 10.8],
-    ],
+    points: referenceFrontier([
+      [930, 600],
+      [920, 650],
+      [925, 700],
+      [945, 750],
+      [975, 800],
+    ]),
   },
   {
     id: "jah-keved-alethkar",
     countries: ["Jah Keved", "Alethkar"],
     kind: "national",
-    points: [
-      [18.4, -7],
-      [18.9, -3],
-      [20, 1.2],
-      [21.6, 5.2],
-      [24, 9.6],
-    ],
+    points: referenceFrontier([
+      [1345, 420],
+      [1330, 500],
+      [1310, 585],
+      [1290, 675],
+      [1305, 760],
+      [1340, 805],
+    ]),
   },
   {
     id: "jah-keved-herdaz",
     countries: ["Jah Keved", "Herdaz"],
     kind: "porous",
-    points: [
-      [16.5, -12.2],
-      [20.5, -11.6],
-      [24.5, -10.2],
-      [27, -8],
-    ],
+    points: referenceFrontier([
+      [1245, 410],
+      [1280, 405],
+      [1315, 415],
+      [1345, 430],
+    ]),
   },
   {
     id: "herdaz-alethkar",
     countries: ["Herdaz", "Alethkar"],
     kind: "disputed",
-    points: [
-      [27, -8],
-      [29.5, -6],
-      [31.4, -3.8],
-      [33, -0.8],
-    ],
+    points: referenceFrontier([
+      [1365, 360],
+      [1370, 390],
+      [1365, 420],
+      [1345, 450],
+    ]),
   },
   {
     id: "alethkar-unclaimed",
     countries: ["Alethkar", "Unclaimed Hills"],
     kind: "disputed",
-    points: [
-      [38.2, -6.8],
-      [37.8, -2.5],
-      [38.7, 1],
-      [40.4, 4.4],
-      [41, 8.5],
-    ],
+    points: referenceFrontier([
+      [1640, 455],
+      [1625, 525],
+      [1635, 600],
+      [1655, 670],
+      [1680, 740],
+    ]),
   },
   {
     id: "alethkar-frostlands",
     countries: ["Alethkar", "Frostlands"],
     kind: "national",
-    points: [
-      [24.5, 10],
-      [28.5, 11.8],
-      [33, 12.4],
-      [37.8, 13.2],
-    ],
+    points: referenceFrontier([
+      [1295, 805],
+      [1360, 820],
+      [1430, 825],
+      [1505, 820],
+      [1580, 815],
+    ]),
   },
   {
     id: "emul-marat",
     countries: ["Emul", "Marat"],
     kind: "national",
-    points: [
-      [1, 14],
-      [4.8, 15.2],
-      [7.8, 18],
-      [9.5, 21.5],
-    ],
+    points: referenceFrontier([
+      [870, 790],
+      [910, 820],
+      [950, 850],
+      [1000, 880],
+    ]),
   },
   {
     id: "marat-thaylenah",
     countries: ["Marat", "Thaylenah"],
     kind: "porous",
-    points: [
-      [9.5, 21.5],
-      [13.5, 21.2],
-      [17.5, 21.5],
-      [21, 22.7],
-    ],
+    points: referenceFrontier([
+      [1000, 880],
+      [1045, 900],
+      [1090, 920],
+      [1140, 940],
+    ]),
   },
 ] as const;
 
@@ -210,45 +224,80 @@ export const countryLabels: readonly CountryLabel[] = [
   {
     id: "shinovar",
     name: "Shinovar",
-    position: [-36, 2],
+    position: countryLabelAnchors.shinovar,
     locationId: "shinovar",
     emphasis: "major",
   },
-  { id: "iri", name: "Iri", position: [-29, -8], emphasis: "major" },
+  {
+    id: "iri",
+    name: "Iri",
+    position: countryLabelAnchors.iri,
+    emphasis: "major",
+  },
   {
     id: "azir",
     name: "Azir",
-    position: [-12, 7],
+    position: countryLabelAnchors.azir,
     locationId: "azir",
     emphasis: "major",
   },
-  { id: "tashikk", name: "Tashikk", position: [-13, 15], emphasis: "minor" },
-  { id: "tukar", name: "Tukar", position: [-4, 20], emphasis: "minor" },
-  { id: "emul", name: "Emul", position: [-2, 12.5], emphasis: "minor" },
-  { id: "tu-bayla", name: "Tu Bayla", position: [1, -8], emphasis: "minor" },
+  {
+    id: "tashikk",
+    name: "Tashikk",
+    position: countryLabelAnchors.tashikk,
+    emphasis: "minor",
+  },
+  {
+    id: "tukar",
+    name: "Tukar",
+    position: countryLabelAnchors.tukar,
+    emphasis: "minor",
+  },
+  {
+    id: "emul",
+    name: "Emul",
+    position: countryLabelAnchors.emul,
+    emphasis: "minor",
+  },
+  {
+    id: "tu-bayla",
+    name: "Tu Bayla",
+    position: countryLabelAnchors["tu-bayla"],
+    emphasis: "minor",
+  },
   {
     id: "jah-keved",
     name: "Jah Keved",
-    position: [10, -1.5],
+    position: countryLabelAnchors["jah-keved"],
     locationId: "jah-keved",
     emphasis: "major",
   },
   {
     id: "alethkar",
     name: "Alethkar",
-    position: [29, 1],
+    position: countryLabelAnchors.alethkar,
     locationId: "alethkar",
     emphasis: "major",
   },
-  { id: "herdaz", name: "Herdaz", position: [27, -12], emphasis: "minor" },
+  {
+    id: "herdaz",
+    name: "Herdaz",
+    position: countryLabelAnchors.herdaz,
+    emphasis: "minor",
+  },
   {
     id: "thaylenah",
     name: "Thaylenah",
-    position: [18, 23],
+    position: countryLabelAnchors.thaylenah,
     locationId: "thaylen-city",
     emphasis: "major",
   },
-  { id: "frostlands", name: "Frostlands", position: [31, 18], emphasis: "minor" },
+  {
+    id: "frostlands",
+    name: "Frostlands",
+    position: countryLabelAnchors.frostlands,
+    emphasis: "minor",
+  },
 ] as const;
 
 export const frontierStyle: Record<
