@@ -239,9 +239,10 @@ function createCoastSkirtGeometry() {
 
 function TerrainSurface() {
   const viewportWidth = useThree((state) => state.size.width);
-  const stone = useTexture(
+  const [stone, macroSource] = useTexture([
     `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
-  );
+    `${import.meta.env.BASE_URL}textures/roshar-crem-macro.jpg`,
+  ]);
   const mobile = viewportWidth < 720;
   const geometry = useMemo(
     () => createTerrainGeometry(mobile ? 190 : 320, mobile ? 100 : 168),
@@ -260,20 +261,31 @@ function TerrainSurface() {
     copy.needsUpdate = true;
     return copy;
   }, [mobile, stone]);
+  const macroMap = useMemo(() => {
+    const copy = macroSource.clone();
+    copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
+    copy.repeat.set(12, 6.25);
+    copy.anisotropy = mobile ? 2 : 8;
+    copy.colorSpace = THREE.SRGBColorSpace;
+    copy.needsUpdate = true;
+    return copy;
+  }, [macroSource, mobile]);
 
   useEffect(
     () => () => {
       geometry.dispose();
       alphaMap.dispose();
       bumpMap.dispose();
+      macroMap.dispose();
     },
-    [alphaMap, bumpMap, geometry],
+    [alphaMap, bumpMap, geometry, macroMap],
   );
 
   return (
     <mesh geometry={geometry} receiveShadow castShadow>
       <meshStandardMaterial
         vertexColors
+        map={macroMap}
         alphaMap={alphaMap}
         alphaTest={0.42}
         bumpMap={bumpMap}

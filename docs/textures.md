@@ -41,4 +41,13 @@ Prompt summary: a seamless grayscale optical mask of interlocking refracted ligh
 ribbons, broken wave loops, and ripple interference for Purelake lakebed caustics.
 It contains no literal fish, plants, rocks, or surface scenery.
 
+## `public/textures/roshar-crem-macro.jpg`
+
+Prompt summary: a seamless, straight-down, light neutral aerial material scan of
+storm-weathered stone and crem. Fine mineral strata, shallow erosion lines,
+micro-cracks, muted ochre deposits, and sparse blue-gray flecks supply close-range
+terrain detail while the deliberately pale values preserve the canonical biome
+colors beneath it. It contains no coastline, roads, rivers, structures, text, or
+official artwork.
+
 The textures are original visual assets for this non-commercial fan project. They are tinted, repeated, and combined with runtime procedural normals and lighting by Three.js.

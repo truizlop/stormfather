@@ -46,6 +46,7 @@ const expectedTextures = [
   "kharbranth-plaster-albedo.jpg",
   "rosharan-cloth-albedo.jpg",
   "purelake-caustics.jpg",
+  "roshar-crem-macro.jpg",
 ];
 
 try {
