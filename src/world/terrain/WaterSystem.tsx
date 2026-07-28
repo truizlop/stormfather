@@ -197,7 +197,7 @@ function OceanSurface() {
 
   return (
     <mesh rotation-x={-Math.PI / 2} position-y={-0.25} receiveShadow>
-      <planeGeometry args={[220, 140, segments[0], segments[1]]} />
+      <planeGeometry args={[280, 220, segments[0], segments[1]]} />
       <shaderMaterial
         ref={material}
         uniforms={uniforms}

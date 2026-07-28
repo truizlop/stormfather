@@ -8,8 +8,15 @@ import { detailFromDistance } from "./coordinates";
 import { locationById } from "./locations";
 import { stormXAtTime } from "./weather/storm";
 
+function updatePerspectiveFov(camera: THREE.Camera, fov: number) {
+  if (!(camera instanceof THREE.PerspectiveCamera)) return;
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
+}
+
 export function CameraRig() {
   const camera = useThree((state) => state.camera);
+  const viewportWidth = useThree((state) => state.size.width);
   const controls = useRef<MapControlsImpl>(null);
   const transition = useRef({
     progress: 1,
@@ -19,6 +26,13 @@ export function CameraRig() {
   const selectedId = useAtlasStore((state) => state.selectedId);
   const travelEpoch = useAtlasStore((state) => state.travelEpoch);
   const stormMode = useAtlasStore((state) => state.stormMode);
+
+  useEffect(() => {
+    updatePerspectiveFov(
+      camera,
+      viewportWidth < 720 && selectedId === "roshar" ? 72 : 42,
+    );
+  }, [camera, selectedId, viewportWidth]);
 
   useEffect(() => {
     if (!controls.current || stormMode) return;
@@ -73,6 +87,9 @@ export function CameraRig() {
       const eased = t * t * (3 - 2 * t);
       const destination = new THREE.Vector3(...location.camera.position);
       const target = new THREE.Vector3(...location.camera.target);
+      if (viewportWidth < 720 && location.id === "roshar") {
+        destination.set(target.x, target.y + 174, target.z + 48);
+      }
       camera.position.lerpVectors(
         transition.current.startPosition,
         destination,
@@ -98,7 +115,7 @@ export function CameraRig() {
       enableDamping
       dampingFactor={0.075}
       minDistance={5.8}
-      maxDistance={165}
+      maxDistance={viewportWidth < 720 ? 230 : 165}
       minPolarAngle={0.22}
       maxPolarAngle={Math.PI * 0.47}
       screenSpacePanning={false}

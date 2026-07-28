@@ -13,7 +13,7 @@ const locationData = [
     subtitle: "The storm-shaped continent",
     kind: "continent",
     coordinates: coordinateFor("roshar"),
-    camera: { position: [-2, 115, 90], target: [-2, 0, 0] },
+    camera: { position: [-2, 100, 78], target: [-2, 0, 0] },
     arrivalDetail: "continent",
     regionColor: "#59654d",
     accentColor: "#caaa6b",

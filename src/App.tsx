@@ -28,7 +28,7 @@ export function App() {
           position: [49, 14, 24],
           fov: 42,
           near: 0.1,
-          far: 220,
+          far: 450,
         }}
         gl={{
           antialias: true,

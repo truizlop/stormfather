@@ -1,4 +1,5 @@
 import { Stars } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { CameraRig } from "./CameraRig";
 import { CityClusters } from "./CityClusters";
@@ -16,13 +17,18 @@ import { Highstorm } from "./weather/Highstorm";
 
 export function WorldScene() {
   const nightMode = useAtlasStore((state) => state.nightMode);
+  const viewportWidth = useThree((state) => state.size.width);
 
   return (
     <>
       <color attach="background" args={[nightMode ? "#071218" : "#62717a"]} />
       <fog
         attach="fog"
-        args={[nightMode ? "#071218" : "#62717a", 88, 210]}
+        args={[
+          nightMode ? "#071218" : "#62717a",
+          viewportWidth < 720 ? 130 : 88,
+          viewportWidth < 720 ? 360 : 210,
+        ]}
       />
       {nightMode && (
         <Stars

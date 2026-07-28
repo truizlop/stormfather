@@ -223,8 +223,28 @@ input:focus-visible {
   position: absolute;
   top: 76px;
   left: 16px;
+  display: flex;
+  max-height: calc(100vh - 92px);
   width: 282px;
   padding: 11px;
+  flex-direction: column;
+}
+
+.travel-rail.is-collapsed {
+  width: 52px;
+  padding-inline: 8px;
+}
+
+.travel-rail.is-collapsed .panel-heading {
+  justify-content: center;
+  padding-inline: 0;
+  border-bottom: 0;
+}
+
+.travel-rail.is-collapsed .panel-heading h2,
+.travel-rail.is-collapsed .travel-list,
+.travel-rail.is-collapsed .storm-destination {
+  display: none;
 }
 
 .panel-heading,
@@ -268,8 +288,12 @@ input:focus-visible {
 
 .travel-list {
   display: grid;
+  min-height: 0;
   gap: 3px;
   padding-top: 9px;
+  overflow-y: auto;
+  scrollbar-color: rgba(202, 170, 107, 0.36) transparent;
+  scrollbar-width: thin;
 }
 
 .travel-row {
@@ -536,6 +560,12 @@ input:focus-visible {
   left: 16px;
   width: 220px;
   padding: 12px;
+}
+
+@media (min-width: 1121px) and (max-height: 780px) {
+  .legend {
+    left: 314px;
+  }
 }
 
 .legend-items {

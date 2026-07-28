@@ -1,19 +1,32 @@
-import { ChevronLeft, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { useState } from "react";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { travelLocations } from "../world/locations";
 import { locationIcons } from "./icons";
 
 export function TravelRail() {
+  const [collapsed, setCollapsed] = useState(false);
   const selectedId = useAtlasStore((state) => state.selectedId);
   const selectLocation = useAtlasStore((state) => state.selectLocation);
   const stormMode = useAtlasStore((state) => state.stormMode);
 
   return (
-    <aside className="travel-rail panel" aria-label="Travel destinations">
+    <aside
+      className={`travel-rail panel ${collapsed ? "is-collapsed" : ""}`}
+      aria-label="Travel destinations"
+    >
       <div className="panel-heading">
         <h2>Travel</h2>
-        <button type="button" aria-label="Collapse travel destinations">
-          <ChevronLeft size={17} />
+        <button
+          type="button"
+          aria-label={
+            collapsed
+              ? "Expand travel destinations"
+              : "Collapse travel destinations"
+          }
+          onClick={() => setCollapsed((value) => !value)}
+        >
+          {collapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
         </button>
       </div>
       <div className="travel-list">
