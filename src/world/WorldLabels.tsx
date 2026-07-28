@@ -1,6 +1,7 @@
 import { Html } from "@react-three/drei";
 import { easterEggs, locations } from "./locations";
 import { useAtlasStore } from "../store/useAtlasStore";
+import { localSurfaceY } from "./terrain/localSurface";
 
 export function WorldLabels() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
@@ -16,14 +17,18 @@ export function WorldLabels() {
             location.kind !== "nation" &&
             (detailLevel === "continent" ||
               detailLevel === "region" ||
-              location.id === selectedId),
+              (location.id === selectedId && detailLevel !== "street")),
         )
         .map((location) => (
           <Html
             key={location.id}
             position={[
               location.coordinates.x,
-              location.id === selectedId ? 3.5 : 2.1,
+              localSurfaceY(
+                location.id,
+                location.coordinates.x,
+                location.coordinates.z,
+              ) + (location.id === selectedId ? 2.25 : 0.9),
               location.coordinates.z,
             ]}
             center
@@ -44,7 +49,17 @@ export function WorldLabels() {
         easterEggs.map((egg) => (
           <Html
             key={egg.id}
-            position={[egg.coordinates.x, egg.height + 1.15, egg.coordinates.z]}
+            position={[
+              egg.coordinates.x,
+              localSurfaceY(
+                selectedId,
+                egg.coordinates.x,
+                egg.coordinates.z,
+              ) +
+                egg.height +
+                0.45,
+              egg.coordinates.z,
+            ]}
             center
             distanceFactor={12}
             zIndexRange={[30, 10]}

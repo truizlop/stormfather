@@ -4,9 +4,11 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import { localSurfaceY, PURELAKE_WATER_HEIGHT } from "../terrain/localSurface";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import {
   bridgeRunPose,
+  caravanPose,
   cargoLiftHeight,
   fishingRaftPose,
 } from "./activityMath";
@@ -40,14 +42,20 @@ function BridgeRun() {
   useFrame(() => {
     if (!group.current) return;
     const state = useAtlasStore.getState();
+    const shattered = locationById.get("shattered-plains")!;
+    const center = [
+      shattered.coordinates.x,
+      shattered.coordinates.z,
+    ] as const;
     const proximity = stormProximity(
       stormXAtTime(state.simulationTime),
-      39,
+      center[0],
     );
-    const pose = bridgeRunPose(state.simulationTime, proximity);
+    const pose = bridgeRunPose(state.simulationTime, proximity, center);
     group.current.position.set(
       pose.x,
-      1.94 + Math.sin(state.simulationTime * 0.82) * 0.008,
+      localSurfaceY("shattered-plains", pose.x, pose.z) +
+        Math.sin(state.simulationTime * 0.82) * 0.008,
       pose.z,
     );
     group.current.rotation.y = pose.heading;
@@ -87,7 +95,9 @@ function FishingRaft({
     );
     group.current.position.set(
       pose.x,
-      1.445 + Math.sin(state.simulationTime * 0.4 + index) * 0.007,
+      PURELAKE_WATER_HEIGHT +
+        0.035 +
+        Math.sin(state.simulationTime * 0.4 + index) * 0.007,
       pose.z,
     );
     group.current.rotation.y = pose.heading;
@@ -147,13 +157,12 @@ function HarborCargo({
   );
   const isKharbranth = locationId === "kharbranth";
   const position = useMemo(
-    () =>
-      [
-        center[0] + (isKharbranth ? -3.8 : 3.1),
-        isKharbranth ? 1.32 : 1.1,
-        center[1] + (isKharbranth ? 2.65 : 2.4),
-      ] as const,
-    [center, isKharbranth],
+    () => {
+      const x = center[0] + (isKharbranth ? -3.8 : 3.1);
+      const z = center[1] + (isKharbranth ? 2.65 : 2.4);
+      return [x, localSurfaceY(locationId, x, z), z] as const;
+    },
+    [center, isKharbranth, locationId],
   );
 
   useFrame(() => {
@@ -183,6 +192,46 @@ function HarborCargo({
   );
 }
 
+function ChullCaravan({
+  center,
+  locationId,
+}: {
+  center: readonly [number, number];
+  locationId: string;
+}) {
+  const group = useRef<THREE.Group>(null);
+  const { scene } = useGLTF(MODEL_URL);
+  const caravan = useMemo(
+    () => cloneModelRoot(scene, "Prop_Chull_Caravan"),
+    [scene],
+  );
+
+  useFrame(() => {
+    if (!group.current) return;
+    const state = useAtlasStore.getState();
+    const proximity = stormProximity(
+      stormXAtTime(state.simulationTime),
+      center[0],
+    );
+    const pose = caravanPose(state.simulationTime, proximity, center);
+    group.current.position.set(
+      pose.x,
+      localSurfaceY(locationId, pose.x, pose.z),
+      pose.z,
+    );
+    group.current.rotation.y = pose.heading;
+    group.current.rotation.z =
+      Math.sin(state.simulationTime * 1.6) * 0.014 * (1 - proximity);
+  });
+
+  if (!caravan) return null;
+  return (
+    <group ref={group} scale={0.105} name="working chull caravan">
+      <primitive object={caravan} />
+    </group>
+  );
+}
+
 export function CityActivities() {
   const selectedId = useAtlasStore((state) => state.selectedId);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
@@ -200,12 +249,24 @@ export function CityActivities() {
     location.coordinates.z,
   ] as const;
 
-  if (selectedId === "shattered-plains") return <BridgeRun />;
-  if (selectedId === "purelake") return <FishingActivity center={center} />;
-  if (selectedId === "kharbranth" || selectedId === "thaylen-city") {
-    return <HarborCargo center={center} locationId={selectedId} />;
-  }
-  return null;
+  const caravanLocations = new Set([
+    "azir",
+    "shinovar",
+    "kholinar",
+    "urithiru",
+  ]);
+  return (
+    <group name={`${location.name} daily activities`}>
+      {selectedId === "shattered-plains" && <BridgeRun />}
+      {selectedId === "purelake" && <FishingActivity center={center} />}
+      {(selectedId === "kharbranth" || selectedId === "thaylen-city") && (
+        <HarborCargo center={center} locationId={selectedId} />
+      )}
+      {caravanLocations.has(selectedId) && (
+        <ChullCaravan center={center} locationId={selectedId} />
+      )}
+    </group>
+  );
 }
 
 useGLTF.preload(MODEL_URL);

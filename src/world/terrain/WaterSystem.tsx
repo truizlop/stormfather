@@ -18,6 +18,7 @@ import {
   stormProximity,
   stormXAtTime,
 } from "../weather/storm";
+import { terrainHeightAt } from "./terrainHeight";
 
 const coastlinePolygons: readonly (readonly GeographyPoint[])[] = [
   mainlandOutline,
@@ -196,7 +197,7 @@ function OceanSurface() {
 
   return (
     <mesh rotation-x={-Math.PI / 2} position-y={-0.25} receiveShadow>
-      <planeGeometry args={[148, 90, segments[0], segments[1]]} />
+      <planeGeometry args={[220, 140, segments[0], segments[1]]} />
       <shaderMaterial
         ref={material}
         uniforms={uniforms}
@@ -525,15 +526,29 @@ function PurelakeSurface() {
 
 const harborCoordinates: Record<
   string,
-  { center: readonly [number, number]; scale: readonly [number, number] }
+  {
+    center: readonly [number, number];
+    scale: readonly [number, number];
+    surfaceY: number;
+  }
 > = {
   kharbranth: {
     center: [11.02, 22.29],
     scale: [5.8, 3.05],
+    surfaceY:
+      terrainHeightAt(
+        destinationAnchors.kharbranth[0],
+        destinationAnchors.kharbranth[1],
+      ) + 0.145,
   },
   "thaylen-city": {
     center: [9.56, 27.08],
     scale: [6.4, 3.35],
+    surfaceY:
+      terrainHeightAt(
+        destinationAnchors["thaylen-city"][0],
+        destinationAnchors["thaylen-city"][1],
+      ) + 0.12,
   },
 };
 
@@ -576,7 +591,7 @@ function SelectedHarborSurface() {
     );
     caustics.offset.set(clock.elapsedTime * 0.009, -clock.elapsedTime * 0.006);
     surface.current.position.y =
-      1.285 +
+      harbor.surfaceY +
       Math.sin(clock.elapsedTime * (0.7 + proximity * 1.4)) *
         (0.012 + proximity * 0.026);
     surface.current.rotation.z =
@@ -603,7 +618,7 @@ function SelectedHarborSurface() {
       <mesh
         ref={surface}
         rotation-x={-Math.PI / 2}
-        position-y={1.285}
+        position-y={harbor.surfaceY}
         renderOrder={3}
         receiveShadow
       >

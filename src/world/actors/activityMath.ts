@@ -13,6 +13,7 @@ function positiveModulo(value: number, divisor: number) {
 export function bridgeRunPose(
   simulationTime: number,
   stormProximity: number,
+  center: readonly [number, number],
 ): ActivityPose {
   const warning = THREE.MathUtils.smoothstep(stormProximity, 0.28, 0.9);
   const cycle = positiveModulo(
@@ -24,9 +25,9 @@ export function bridgeRunPose(
   const outbound = cycle <= 1;
 
   return {
-    x: THREE.MathUtils.lerp(37.05, 40.45, progress),
-    z: THREE.MathUtils.lerp(9.35, 10.2, progress),
-    heading: outbound ? Math.atan2(3.4, 0.85) : Math.atan2(-3.4, -0.85),
+    x: THREE.MathUtils.lerp(center[0] - 3.15, center[0] + 0.55, progress),
+    z: THREE.MathUtils.lerp(center[1] - 2.35, center[1] - 0.35, progress),
+    heading: outbound ? Math.atan2(3.7, 2) : Math.atan2(-3.7, -2),
   };
 }
 
@@ -54,4 +55,19 @@ export function cargoLiftHeight(
 ) {
   const activeHeight = 0.42 + (Math.sin(simulationTime * 0.34) + 1) * 0.22;
   return THREE.MathUtils.lerp(activeHeight, 0.18, stormProximity);
+}
+
+export function caravanPose(
+  simulationTime: number,
+  stormProximity: number,
+  center: readonly [number, number],
+): ActivityPose {
+  const warning = THREE.MathUtils.smoothstep(stormProximity, 0.32, 0.9);
+  const cycle = positiveModulo(simulationTime * 0.026, 1);
+  const route = THREE.MathUtils.lerp(cycle, 0.08, warning);
+  const x = center[0] - 3.2 + route * 6.4;
+  const z = center[1] + 2.35 + Math.sin(route * Math.PI * 2) * 0.48;
+  const dx = 6.4;
+  const dz = Math.cos(route * Math.PI * 2) * Math.PI * 0.96;
+  return { x, z, heading: Math.atan2(dx, dz) };
 }

@@ -5,6 +5,7 @@ import { useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import { localSurfaceY } from "../terrain/localSurface";
 import { cityProfile, type CityProfile } from "./profiles";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
@@ -32,13 +33,6 @@ function configureTexture(texture: THREE.Texture, repeat: number) {
   return copy;
 }
 
-function districtSurfaceY(locationId: string) {
-  if (locationId === "shattered-plains") return 1.91;
-  if (locationId === "purelake") return 1.37;
-  if (locationId === "aimia") return 0.52;
-  return 1.3;
-}
-
 function buildingSeeds(
   profile: CityProfile,
   locationId: string,
@@ -47,7 +41,6 @@ function buildingSeeds(
 ) {
   const [minHeight, maxHeight] = profile.height;
   const [minFootprint, maxFootprint] = profile.footprint;
-  const baseY = districtSurfaceY(locationId);
   return Array.from({ length: count }, (_, index): BuildingSeed => {
     const angle = index * 2.399963 + (locationId.length % 9) * 0.17;
     const normalized = ((index * 41 + locationId.length * 13) % 101) / 100;
@@ -64,18 +57,19 @@ function buildingSeeds(
       (((index * 29 + 5) % 31) / 30) * (maxHeight - minHeight);
     let x = center[0] + Math.cos(angle) * radius;
     let z = center[1] + Math.sin(angle) * radius * 0.72;
-    let y = baseY;
+    let y = localSurfaceY(locationId, x, z);
 
     if (locationId === "kharbranth") {
       const terrace = index % 7;
       z = center[1] - 2.65 + terrace * 0.82 + ((index % 3) - 1) * 0.08;
       x = center[0] + Math.cos(angle) * (1.1 + (index % 8) * 0.52);
-      y += terrace * 0.11;
+      y = localSurfaceY(locationId, x, z);
     } else if (locationId === "purelake") {
-      y += 0.1;
+      y += 0.025;
     } else if (locationId === "shattered-plains") {
       x = center[0] - 3.7 + (index % 8) * 0.52;
       z = center[1] - 2.4 + Math.floor(index / 8) * 0.56;
+      y = localSurfaceY(locationId, x, z);
     }
 
     return {
@@ -113,6 +107,9 @@ function InstancedArchitecture({
   const bodies = useRef<THREE.InstancedMesh>(null);
   const roofs = useRef<THREE.InstancedMesh>(null);
   const windows = useRef<THREE.InstancedMesh>(null);
+  const doors = useRef<THREE.InstancedMesh>(null);
+  const cornices = useRef<THREE.InstancedMesh>(null);
+  const balconies = useRef<THREE.InstancedMesh>(null);
   const [plasterSource, stoneSource] = useTexture([
     `${import.meta.env.BASE_URL}textures/kharbranth-plaster-albedo.jpg`,
     `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
@@ -127,7 +124,16 @@ function InstancedArchitecture({
   );
 
   useLayoutEffect(() => {
-    if (!bodies.current || !roofs.current || !windows.current) return;
+    if (
+      !bodies.current ||
+      !roofs.current ||
+      !windows.current ||
+      !doors.current ||
+      !cornices.current ||
+      !balconies.current
+    ) {
+      return;
+    }
     const dummy = new THREE.Object3D();
     const windowColor = new THREE.Color();
     seeds.forEach((seed, index) => {
@@ -155,19 +161,68 @@ function InstancedArchitecture({
       roofs.current!.setMatrixAt(index, dummy.matrix);
       roofs.current!.setColorAt(index, seed.roofColor);
 
+      for (const side of [-1, 1] as const) {
+        const lateral = side * seed.width * 0.23;
+        dummy.position.set(
+          seed.x +
+            Math.cos(seed.rotation) * lateral +
+            Math.sin(seed.rotation) * (seed.depth / 2 + 0.006),
+          seed.y + seed.height * 0.64,
+          seed.z -
+            Math.sin(seed.rotation) * lateral +
+            Math.cos(seed.rotation) * (seed.depth / 2 + 0.006),
+        );
+        dummy.rotation.set(0, seed.rotation, 0);
+        dummy.scale.set(seed.width * 0.14, seed.height * 0.15, 0.012);
+        dummy.updateMatrix();
+        const windowIndex = index * 2 + (side === -1 ? 0 : 1);
+        windows.current!.setMatrixAt(windowIndex, dummy.matrix);
+        windowColor.set(seed.lit ? "#ffd284" : "#153e46");
+        windows.current!.setColorAt(windowIndex, windowColor);
+      }
+
       dummy.position.set(
-        seed.x + Math.sin(seed.rotation) * (seed.depth / 2 + 0.006),
-        seed.y + seed.height * 0.62,
-        seed.z + Math.cos(seed.rotation) * (seed.depth / 2 + 0.006),
+        seed.x + Math.sin(seed.rotation) * (seed.depth / 2 + 0.009),
+        seed.y + seed.height * 0.22,
+        seed.z + Math.cos(seed.rotation) * (seed.depth / 2 + 0.009),
       );
       dummy.rotation.set(0, seed.rotation, 0);
-      dummy.scale.set(seed.width * 0.22, seed.height * 0.16, 0.012);
+      dummy.scale.set(seed.width * 0.24, seed.height * 0.38, 0.018);
       dummy.updateMatrix();
-      windows.current!.setMatrixAt(index, dummy.matrix);
-      windowColor.set(seed.lit ? "#ffd284" : "#153e46");
-      windows.current!.setColorAt(index, windowColor);
+      doors.current!.setMatrixAt(index, dummy.matrix);
+      doors.current!.setColorAt(index, seed.roofColor);
+
+      dummy.position.set(seed.x, seed.y + seed.height * 0.94, seed.z);
+      dummy.rotation.set(0, seed.rotation, 0);
+      dummy.scale.set(seed.width * 1.07, 0.035, seed.depth * 1.07);
+      dummy.updateMatrix();
+      cornices.current!.setMatrixAt(index, dummy.matrix);
+      cornices.current!.setColorAt(index, seed.roofColor);
+
+      const hasBalcony = index % 3 === 0 && profile.roof !== "ruin";
+      dummy.position.set(
+        seed.x + Math.sin(seed.rotation) * (seed.depth / 2 + 0.07),
+        seed.y + seed.height * 0.52,
+        seed.z + Math.cos(seed.rotation) * (seed.depth / 2 + 0.07),
+      );
+      dummy.rotation.set(0, seed.rotation, 0);
+      dummy.scale.set(
+        hasBalcony ? seed.width * 0.42 : 0.0001,
+        hasBalcony ? 0.028 : 0.0001,
+        hasBalcony ? 0.1 : 0.0001,
+      );
+      dummy.updateMatrix();
+      balconies.current!.setMatrixAt(index, dummy.matrix);
+      balconies.current!.setColorAt(index, seed.roofColor);
     });
-    for (const mesh of [bodies.current, roofs.current, windows.current]) {
+    for (const mesh of [
+      bodies.current,
+      roofs.current,
+      windows.current,
+      doors.current,
+      cornices.current,
+      balconies.current,
+    ]) {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
@@ -175,6 +230,18 @@ function InstancedArchitecture({
 
   const buildingTexture =
     locationId === "kharbranth" ? plaster : stone;
+
+  if (
+    [
+      "kharbranth",
+      "purelake",
+      "shattered-plains",
+      "urithiru",
+      "aimia",
+    ].includes(locationId)
+  ) {
+    return null;
+  }
 
   return (
     <>
@@ -185,23 +252,15 @@ function InstancedArchitecture({
         receiveShadow
       >
         <boxGeometry args={[1, 1, 1]} />
-        {locationId === "kharbranth" ? (
-          <meshStandardMaterial
-            map={buildingTexture}
-            bumpMap={buildingTexture}
-            bumpScale={0.012}
-            vertexColors
-            roughness={0.88}
-            metalness={0.02}
-          />
-        ) : (
-          <meshLambertMaterial
-            vertexColors
-            emissive="#c9aa7b"
-            emissiveIntensity={0.12}
-            toneMapped={false}
-          />
-        )}
+        <meshStandardMaterial
+          bumpMap={buildingTexture}
+          bumpScale={0.014}
+          vertexColors
+          emissive="#5a4432"
+          emissiveIntensity={0.1}
+          roughness={0.88}
+          metalness={0.02}
+        />
       </instancedMesh>
       <instancedMesh
         ref={roofs}
@@ -210,19 +269,59 @@ function InstancedArchitecture({
         receiveShadow
       >
         <RoofGeometry style={profile.roof} />
-        <meshLambertMaterial
+        <meshStandardMaterial
+          bumpMap={stone}
+          bumpScale={0.01}
           vertexColors
           emissive="#ad835b"
-          emissiveIntensity={0.11}
-          toneMapped={false}
+          emissiveIntensity={0.035}
+          roughness={0.86}
+          metalness={0.035}
         />
       </instancedMesh>
       <instancedMesh
         ref={windows}
-        args={[undefined, undefined, seeds.length]}
+        args={[undefined, undefined, seeds.length * 2]}
       >
         <boxGeometry args={[1, 1, 1]} />
         <meshBasicMaterial vertexColors toneMapped={false} />
+      </instancedMesh>
+      <instancedMesh
+        ref={doors}
+        args={[undefined, undefined, seeds.length]}
+        castShadow
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial
+          bumpMap={stone}
+          bumpScale={0.008}
+          vertexColors
+          roughness={0.82}
+        />
+      </instancedMesh>
+      <instancedMesh
+        ref={cornices}
+        args={[undefined, undefined, seeds.length]}
+        castShadow
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial
+          vertexColors
+          roughness={0.8}
+          metalness={0.05}
+        />
+      </instancedMesh>
+      <instancedMesh
+        ref={balconies}
+        args={[undefined, undefined, seeds.length]}
+        castShadow
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial
+          vertexColors
+          roughness={0.86}
+          metalness={0.04}
+        />
       </instancedMesh>
     </>
   );
@@ -244,7 +343,7 @@ function DistrictGround({
     () => configureTexture(pavingSource, 4.4),
     [pavingSource],
   );
-  const y = districtSurfaceY(locationId) - 0.012;
+  const y = localSurfaceY(locationId, center[0], center[1]) - 0.012;
 
   if (locationId === "kharbranth") {
     return (
@@ -343,7 +442,6 @@ function DistrictModules({
   locationId: string;
   count: number;
 }) {
-  const baseY = districtSurfaceY(locationId);
   return (
     <>
       {Array.from({ length: count }, (_, index) => {
@@ -352,11 +450,12 @@ function DistrictModules({
         const radius = 1.1 + ((index * 19) % 27) / 10;
         const x = center[0] + Math.cos(angle) * radius;
         const z = center[1] + Math.sin(angle) * radius * 0.68;
+        const y = localSurfaceY(locationId, x, z);
         return (
           <ModuleInstance
             key={`${moduleName}-${index}`}
             name={moduleName}
-            position={[x, baseY + 0.01, z]}
+            position={[x, y + 0.01, z]}
             rotation={-angle + Math.PI / 2}
             scale={locationId === "purelake" ? 0.12 : 0.14}
           />
@@ -380,13 +479,13 @@ export function CityDetail() {
     [location],
   );
   const mobileFactor = width < 720 ? 0.62 : 1;
-  const baseCount = detailLevel === "street" ? 86 : 58;
+  const baseCount = detailLevel === "street" ? 64 : 46;
   const buildingCount = Math.round(
     baseCount * profile.density * mobileFactor,
   );
   const moduleCount = Math.max(
     3,
-    Math.round((detailLevel === "street" ? 14 : 8) * mobileFactor),
+    Math.round((detailLevel === "street" ? 20 : 12) * mobileFactor),
   );
   const center = useMemo(
     () =>

@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import { localSurfaceY } from "../terrain/localSurface";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 
 export function ReactiveFlora() {
@@ -11,14 +12,15 @@ export function ReactiveFlora() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const location = locationById.get(selectedId);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const floraCount = detailLevel === "street" ? 38 : 54;
   const seeds = useMemo(
     () =>
-      Array.from({ length: 64 }, (_, index) => ({
+      Array.from({ length: floraCount }, (_, index) => ({
         angle: (index * 2.39996) % (Math.PI * 2),
         radius: 3.2 + ((index * 43) % 75) / 10,
-        scale: 0.45 + ((index * 31) % 55) / 100,
+        scale: 0.3 + ((index * 31) % 42) / 100,
       })),
-    [],
+    [floraCount],
   );
 
   useFrame(({ clock }) => {
@@ -39,7 +41,7 @@ export function ReactiveFlora() {
         location.coordinates.z +
         Math.sin(seed.angle) * seed.radius * 0.68;
       const idle = 1 + Math.sin(clock.elapsedTime * 0.7 + index) * 0.035;
-      dummy.position.set(x, 1.33, z);
+      dummy.position.set(x, localSurfaceY(location.id, x, z) + 0.05, z);
       dummy.rotation.set(0, seed.angle, 0);
       dummy.scale.set(
         seed.scale * idle,

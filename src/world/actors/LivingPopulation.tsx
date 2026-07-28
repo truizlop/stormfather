@@ -1,12 +1,15 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
+import { useGLTF, useTexture } from "@react-three/drei";
 import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import { localSurfaceY } from "../terrain/localSurface";
 import type { Culture } from "../types";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import { occupationsFor, type Occupation } from "./occupations";
+
+const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
 interface CulturePalette {
   cloth: readonly string[];
@@ -87,13 +90,6 @@ interface CrowdRefs {
   props: RefObject<THREE.InstancedMesh | null>;
   hats: RefObject<THREE.InstancedMesh | null>;
   marbling: RefObject<THREE.InstancedMesh | null>;
-}
-
-function surfaceY(locationId: string) {
-  if (locationId === "shattered-plains") return 1.93;
-  if (locationId === "purelake") return 1.39;
-  if (locationId === "aimia") return 0.56;
-  return 1.32;
 }
 
 function routePosition(
@@ -265,8 +261,6 @@ function ArticulatedResidents({
     const proximity = stormProximity(stormX, center[0]);
     const hurry = 1 + proximity * 2.8;
     const shelter = THREE.MathUtils.smoothstep(proximity, 0.34, 0.94);
-    const baseY = surfaceY(locationId);
-
     seeds.forEach((seed, index) => {
       const route = routePosition(
         locationId,
@@ -290,8 +284,7 @@ function ArticulatedResidents({
       const stature = seed.stature;
       const lean = shelter * 0.28;
       const feetY =
-        baseY +
-        (locationId === "kharbranth" ? (seed.lane % 7) * 0.11 : 0) +
+        localSurfaceY(locationId, x, z) +
         bob;
 
       setPart(
@@ -504,6 +497,124 @@ function ArticulatedResidents({
   );
 }
 
+const detailedActorRoot: Record<Culture, string> = {
+  alethi: "Actor_Alethi",
+  azish: "Actor_Azish",
+  shin: "Actor_Shin",
+  veden: "Actor_Veden",
+  singer: "Actor_Singer",
+  thaylen: "Actor_Thaylen",
+  purelaker: "Actor_Purelaker",
+  aimian: "Actor_Aimian",
+  reshi: "Actor_Reshi",
+};
+
+function DetailedResident({
+  center,
+  culture,
+  index,
+  locationId,
+}: {
+  center: readonly [number, number];
+  culture: Culture;
+  index: number;
+  locationId: string;
+}) {
+  const group = useRef<THREE.Group>(null);
+  const { scene } = useGLTF(MODEL_URL);
+  const resident = useMemo(() => {
+    const source = scene.getObjectByName(detailedActorRoot[culture]);
+    if (!source) return null;
+    const copy = source.clone(true);
+    copy.position.set(0, 0, 0);
+    copy.rotation.set(0, 0, 0);
+    copy.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
+    });
+    return copy;
+  }, [culture, scene]);
+
+  useFrame(() => {
+    if (!group.current) return;
+    const state = useAtlasStore.getState();
+    const proximity = stormProximity(
+      stormXAtTime(state.simulationTime),
+      center[0],
+    );
+    const speed = 0.055 + (index % 4) * 0.012;
+    const cycle = (state.simulationTime * speed + index * 0.173) % 2;
+    const progress = cycle < 1 ? cycle : 2 - cycle;
+    const lane = index % 5;
+    const routeLength = 2.2 + (index % 3) * 0.46;
+    let x = center[0] - routeLength / 2 + progress * routeLength;
+    let z = center[1] + 1.15 + (lane - 2) * 0.42;
+    if (locationId === "purelake") {
+      const angle = index * 1.3 + progress * Math.PI * 1.4;
+      x = center[0] + Math.cos(angle) * (1.05 + lane * 0.34);
+      z = center[1] + Math.sin(angle) * (0.72 + lane * 0.22);
+    } else if (locationId === "shattered-plains") {
+      x = center[0] - 3.35 + progress * 2.8;
+      z = center[1] - 1.95 + lane * 0.47;
+    } else if (locationId === "kharbranth") {
+      z = center[1] - 2.2 + lane * 0.78;
+    }
+
+    const shelter = THREE.MathUtils.smoothstep(proximity, 0.34, 0.94);
+    x = THREE.MathUtils.lerp(x, center[0] - 1.65, shelter);
+    z = THREE.MathUtils.lerp(
+      z,
+      center[1] + ((index % 4) - 1.5) * 0.18,
+      shelter,
+    );
+    const gait = Math.sin(state.simulationTime * 7.2 + index * 1.7);
+    group.current.position.set(
+      x,
+      localSurfaceY(locationId, x, z) + Math.abs(gait) * 0.006,
+      z,
+    );
+    group.current.rotation.y = cycle < 1 ? Math.PI / 2 : -Math.PI / 2;
+    group.current.rotation.z = shelter * -0.19 + gait * 0.018;
+  });
+
+  if (!resident) return null;
+  const scale = 0.092 + (index % 4) * 0.004;
+  return (
+    <group ref={group} scale={scale} name={`${culture} detailed resident`}>
+      <primitive object={resident} />
+    </group>
+  );
+}
+
+function DetailedResidents({
+  center,
+  culture,
+  count,
+  locationId,
+}: {
+  center: readonly [number, number];
+  culture: Culture;
+  count: number;
+  locationId: string;
+}) {
+  return (
+    <group name={`${culture} close-detail residents`}>
+      {Array.from({ length: count }, (_, index) => (
+        <DetailedResident
+          key={index}
+          center={center}
+          culture={culture}
+          index={index}
+          locationId={locationId}
+        />
+      ))}
+    </group>
+  );
+}
+
 export function LivingPopulation() {
   const selectedId = useAtlasStore((state) => state.selectedId);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
@@ -520,13 +631,35 @@ export function LivingPopulation() {
 
   const desktopCount = detailLevel === "street" ? 118 : 72;
   const count = Math.round(desktopCount * (viewportWidth < 720 ? 0.62 : 1));
+  const detailedCount =
+    detailLevel === "street"
+      ? viewportWidth < 720
+        ? 5
+        : 10
+      : viewportWidth < 720
+        ? 3
+        : 6;
+  const center = [
+    location.coordinates.x,
+    location.coordinates.z,
+  ] as const;
   return (
-    <ArticulatedResidents
-      key={`${location.id}-${count}`}
-      center={[location.coordinates.x, location.coordinates.z]}
-      culture={location.culture}
-      count={count}
-      locationId={location.id}
-    />
+    <>
+      <ArticulatedResidents
+        key={`${location.id}-${count}`}
+        center={center}
+        culture={location.culture}
+        count={count}
+        locationId={location.id}
+      />
+      <DetailedResidents
+        center={center}
+        culture={location.culture}
+        count={detailedCount}
+        locationId={location.id}
+      />
+    </>
   );
 }
+
+useGLTF.preload(MODEL_URL);

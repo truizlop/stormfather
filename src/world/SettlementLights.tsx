@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { locations } from "./locations";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { stormPhase, stormXAtTime } from "./weather/storm";
+import { localSurfaceY } from "./terrain/localSurface";
 
 export function SettlementLights() {
   const points = useRef<THREE.Points>(null);
@@ -17,11 +18,27 @@ export function SettlementLights() {
           const radius = 0.5 + ((index * 17) % 28) / 10;
           values.push(
             location.coordinates.x + Math.cos(angle) * radius,
-            1.48 + (index % 4) * 0.08,
+            localSurfaceY(
+              location.id,
+              location.coordinates.x + Math.cos(angle) * radius,
+              location.coordinates.z + Math.sin(angle) * radius * 0.65,
+            ) +
+              0.18 +
+              (index % 4) * 0.08,
             location.coordinates.z + Math.sin(angle) * radius * 0.65,
           );
         }
-        values.push(location.coordinates.x, 2 + locationIndex * 0.01, location.coordinates.z);
+        values.push(
+          location.coordinates.x,
+          localSurfaceY(
+            location.id,
+            location.coordinates.x,
+            location.coordinates.z,
+          ) +
+            0.52 +
+            locationIndex * 0.01,
+          location.coordinates.z,
+        );
       });
     return new Float32Array(values);
   }, []);
