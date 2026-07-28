@@ -60,12 +60,15 @@ function LandmarkInstance({
 export function Landmarks() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const selectedId = useAtlasStore((state) => state.selectedId);
-  if (detailLevel === "continent") return null;
+  if (detailLevel === "continent" || detailLevel === "region") return null;
 
   return (
     <group>
       {locations
-        .filter((location) => location.modelRoot)
+        .filter(
+          (location) =>
+            location.modelRoot && location.id === selectedId,
+        )
         .map((location) => {
           const elevation =
             location.id === "shinovar" || location.id === "purelake"

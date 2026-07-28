@@ -7,10 +7,10 @@ export function CountryFrontiers() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const selectedId = useAtlasStore((state) => state.selectedId);
 
-  if (!visible || detailLevel === "street") return null;
+  if (!visible || detailLevel === "city" || detailLevel === "street") return null;
 
   const isContinent = detailLevel === "continent";
-  const opacityScale = detailLevel === "city" ? 0.34 : isContinent ? 1 : 0.72;
+  const opacityScale = isContinent ? 1 : 0.72;
 
   return (
     <group name="Country frontiers">

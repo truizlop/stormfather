@@ -35,6 +35,22 @@ No online illustration is copied, traced, downloaded into the runtime, or used a
 a texture. All concept boards, textures, geometry, layouts, and shaders in this
 repository are original project assets.
 
+## Scale model
+
+Isaac Stewart has described Roshar as roughly 4,000 miles east-to-west:
+<https://wob.coppermind.net/adv_search/?query=How%20big%20is%20the%20Roshar%20supercontinent>.
+The authored coastline spans 96 geographic world units, which calibrates one map
+unit to about 41.7 miles / 67.1 kilometers. Continent and region modes use only
+that geographic scale; city landmarks are map symbols there and are not rendered
+as enormous physical structures.
+
+City and street modes explicitly switch to a selected local district scene. Local
+geometry uses 12 meters per detail unit so building stories, doors, props, and
+people can share credible proportions. This is semantic zoom like a map changing
+from a national map to a surveyed city inset: the selected coordinate remains
+correct, but the local district is not falsely claimed to occupy hundreds of
+kilometers. A persistent scale readout identifies both modes.
+
 ## Runtime translation
 
 1. **Kharbranth:** concentrate mass vertically; connect terraces with stairs and

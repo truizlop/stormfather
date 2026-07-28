@@ -5,6 +5,7 @@ import { MapControls } from "./MapControls";
 import { MiniMap } from "./MiniMap";
 import { MobileChrome } from "./MobileChrome";
 import { SearchPalette } from "./SearchPalette";
+import { ScaleReadout } from "./ScaleReadout";
 import { StormTimeline } from "./StormTimeline";
 import { Toast } from "./Toast";
 import { TopBar } from "./TopBar";
@@ -23,6 +24,7 @@ export function AtlasUI() {
         {stormMode && <StormTimeline />}
       </div>
       <MapControls />
+      {!stormMode && <ScaleReadout />}
       <MobileChrome />
       <SearchPalette />
       <Toast />
