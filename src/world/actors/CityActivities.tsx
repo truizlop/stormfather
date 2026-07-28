@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import { LOCAL_UNITS_PER_METER } from "../scale";
 import { localSurfaceY, PURELAKE_WATER_HEIGHT } from "../terrain/localSurface";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import {
@@ -65,7 +66,11 @@ function BridgeRun() {
 
   if (!bridgeCrew) return null;
   return (
-    <group ref={group} name="animated bridge run" scale={0.13}>
+    <group
+      ref={group}
+      name="animated bridge run"
+      scale={LOCAL_UNITS_PER_METER}
+    >
       <primitive object={bridgeCrew} />
     </group>
   );

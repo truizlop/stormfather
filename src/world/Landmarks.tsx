@@ -4,29 +4,19 @@ import * as THREE from "three";
 import { locations } from "./locations";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { landmarkSurfaceY } from "./terrain/localSurface";
+import { landmarkLocalScale } from "./cities/landmarkMetrics";
+import { cityProfile } from "./cities/profiles";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
-
-const landmarkScale: Record<string, number> = {
-  Landmark_Urithiru: 0.68,
-  Landmark_Kharbranth: 0.5,
-  Landmark_Kholinar: 0.58,
-  Landmark_Azimir: 0.6,
-  Landmark_Purelake: 0.62,
-  Landmark_Shinovar: 0.62,
-  Landmark_Akinah: 0.58,
-  Landmark_Shattered_Plains: 0.72,
-  Landmark_Oathgate: 0.58,
-};
 
 function LandmarkInstance({
   rootName,
   position,
-  selected,
+  scale,
 }: {
   rootName: string;
   position: [number, number, number];
-  selected: boolean;
+  scale: number;
 }) {
   const { scene } = useGLTF(MODEL_URL);
   const [stoneSource, plasterSource] = useTexture([
@@ -97,7 +87,6 @@ function LandmarkInstance({
 
   if (!clone) return null;
 
-  const scale = (landmarkScale[rootName] ?? 0.56) * (selected ? 1.08 : 1);
   return (
     <group position={position} scale={scale}>
       <primitive object={clone} />
@@ -126,6 +115,7 @@ export function Landmarks() {
             location.coordinates.x,
             location.coordinates.z,
           );
+          const profile = cityProfile(location.id, location.culture);
           return (
             <LandmarkInstance
               key={location.id}
@@ -135,7 +125,7 @@ export function Landmarks() {
                 elevation,
                 location.coordinates.z,
               ]}
-              selected={location.id === selectedId}
+              scale={landmarkLocalScale(location.modelRoot!, profile)}
             />
           );
         })}

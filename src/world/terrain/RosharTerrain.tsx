@@ -298,7 +298,7 @@ function TerrainSurface() {
 }
 
 function CoastSkirts() {
-  const geometry = useMemo(createCoastSkirtGeometry, []);
+  const geometry = useMemo(() => createCoastSkirtGeometry(), []);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <mesh geometry={geometry} receiveShadow castShadow>

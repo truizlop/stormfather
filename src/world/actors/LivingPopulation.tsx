@@ -4,10 +4,25 @@ import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import { metersToLocal } from "../scale";
 import { localSurfaceY } from "../terrain/localSurface";
 import type { Culture } from "../types";
 import { stormProximity, stormXAtTime } from "../weather/storm";
+import { createDistrictLayout } from "../cities/districtLayout";
+import { landmarkLocalScale } from "../cities/landmarkMetrics";
+import { cityProfile } from "../cities/profiles";
+import {
+  detailedActorLocalScale,
+  residentHeightMeters,
+} from "./humanScale";
 import { occupationsFor, type Occupation } from "./occupations";
+import {
+  createNavigationField,
+  landmarkNavigationObstacles,
+  resolveCrowdSeparation,
+  sampleNavigationRoute,
+  type NavigationField,
+} from "./pedestrianNavigation";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
@@ -69,11 +84,10 @@ const culturePalette: Record<Culture, CulturePalette> = {
 };
 
 interface ResidentSeed {
-  lane: number;
-  routeLength: number;
-  speed: number;
+  routeIndex: number;
+  speedMetersPerSecond: number;
   phase: number;
-  stature: number;
+  heightUnits: number;
   occupation: Occupation;
   cloth: THREE.Color;
   skin: THREE.Color;
@@ -92,55 +106,52 @@ interface CrowdRefs {
   marbling: RefObject<THREE.InstancedMesh | null>;
 }
 
-function routePosition(
-  locationId: string,
-  center: readonly [number, number],
-  seed: ResidentSeed,
-  elapsed: number,
-  hurry: number,
-) {
-  const cycle = (elapsed * seed.speed * hurry + seed.phase) % 2;
-  const pingPong = cycle < 1 ? cycle : 2 - cycle;
-  let x = center[0] - seed.routeLength / 2 + pingPong * seed.routeLength;
-  let z = center[1] + (seed.lane - 3.5) * 0.42;
-
-  if (locationId === "kharbranth") {
-    const terrace = seed.lane % 7;
-    z = center[1] - 2.55 + terrace * 0.82;
-    x = center[0] - seed.routeLength / 2 + pingPong * seed.routeLength;
-  } else if (locationId === "purelake") {
-    const angle = pingPong * Math.PI * 2 + seed.phase;
-    const radius = 1.2 + (seed.lane % 6) * 0.52;
-    x = center[0] + Math.cos(angle) * radius;
-    z = center[1] + Math.sin(angle) * radius * 0.68;
-  } else if (locationId === "shattered-plains") {
-    x = center[0] - 4.1 + pingPong * Math.min(4.6, seed.routeLength);
-    z = center[1] - 2.3 + (seed.lane % 7) * 0.58;
-  } else {
-    const bend = Math.sin(pingPong * Math.PI) * 0.5;
-    z += bend * ((seed.lane % 2) * 2 - 1);
-  }
-  return { x, z, forward: cycle < 1 };
-}
-
 function propScale(occupation: Occupation) {
   switch (occupation) {
     case "porter":
-      return [0.038, 0.032, 0.042] as const;
+      return [
+        metersToLocal(0.46),
+        metersToLocal(0.38),
+        metersToLocal(0.5),
+      ] as const;
     case "guard":
     case "fisher":
-      return [0.005, 0.105, 0.005] as const;
+      return [
+        metersToLocal(0.045),
+        metersToLocal(1.5),
+        metersToLocal(0.045),
+      ] as const;
     case "scribe":
-      return [0.028, 0.004, 0.038] as const;
+      return [
+        metersToLocal(0.34),
+        metersToLocal(0.045),
+        metersToLocal(0.46),
+      ] as const;
     case "builder":
-      return [0.016, 0.052, 0.009] as const;
+      return [
+        metersToLocal(0.18),
+        metersToLocal(0.62),
+        metersToLocal(0.1),
+      ] as const;
     case "merchant":
     case "sailor":
-      return [0.034, 0.027, 0.034] as const;
+      return [
+        metersToLocal(0.4),
+        metersToLocal(0.32),
+        metersToLocal(0.4),
+      ] as const;
     case "surgeon":
-      return [0.024, 0.012, 0.03] as const;
+      return [
+        metersToLocal(0.29),
+        metersToLocal(0.14),
+        metersToLocal(0.36),
+      ] as const;
     case "farmer":
-      return [0.007, 0.09, 0.007] as const;
+      return [
+        metersToLocal(0.07),
+        metersToLocal(1.28),
+        metersToLocal(0.07),
+      ] as const;
     default:
       return [0.0001, 0.0001, 0.0001] as const;
   }
@@ -166,11 +177,13 @@ function ArticulatedResidents({
   culture,
   count,
   locationId,
+  navigation,
 }: {
   center: readonly [number, number];
   culture: Culture;
   count: number;
   locationId: string;
+  navigation: NavigationField;
 }) {
   const torso = useRef<THREE.InstancedMesh>(null);
   const heads = useRef<THREE.InstancedMesh>(null);
@@ -201,11 +214,12 @@ function ArticulatedResidents({
   const seeds = useMemo<ResidentSeed[]>(
     () =>
       Array.from({ length: count }, (_, index) => ({
-        lane: (index * 5 + locationId.length) % 8,
-        routeLength: 1.6 + ((index * 37) % 45) / 10,
-        speed: 0.07 + ((index * 17) % 17) / 90,
+        routeIndex: (index * 5 + locationId.length) % 10,
+        speedMetersPerSecond: 1.05 + ((index * 17) % 31) / 50,
         phase: (index * 0.618 + locationId.length * 0.071) % 2,
-        stature: 0.82 + ((index * 29) % 34) / 100,
+        heightUnits: metersToLocal(
+          residentHeightMeters(culture, index, locationId.length),
+        ),
         occupation: occupations[index % occupations.length],
         cloth: new THREE.Color(palette.cloth[index % palette.cloth.length]),
         skin: new THREE.Color(palette.skin[(index * 3 + 1) % palette.skin.length]),
@@ -213,7 +227,7 @@ function ArticulatedResidents({
           palette.accent[(index * 5 + 2) % palette.accent.length],
         ),
       })),
-    [count, locationId, occupations, palette],
+    [count, culture, locationId, occupations, palette],
   );
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const refs = useMemo<CrowdRefs>(
@@ -254,34 +268,58 @@ function ArticulatedResidents({
   }, [palette.marbling, refs, seeds]);
 
   useFrame(() => {
-    if (Object.values(refs).some((ref) => !ref.current)) return;
+    if (
+      Object.values(refs).some((ref) => !ref.current) ||
+      navigation.routes.length === 0
+    ) {
+      return;
+    }
     const state = useAtlasStore.getState();
     const elapsed = state.simulationTime;
     const stormX = stormXAtTime(state.simulationTime);
     const proximity = stormProximity(stormX, center[0]);
     const hurry = 1 + proximity * 2.8;
     const shelter = THREE.MathUtils.smoothstep(proximity, 0.34, 0.94);
-    seeds.forEach((seed, index) => {
-      const route = routePosition(
-        locationId,
-        center,
-        seed,
-        elapsed,
-        hurry,
+    const motion = seeds.map((seed) => {
+      const route =
+        navigation.routes[seed.routeIndex % navigation.routes.length];
+      const routeSpeed =
+        metersToLocal(seed.speedMetersPerSecond) / route.length;
+      const cycle = (elapsed * routeSpeed * hurry + seed.phase) % 2;
+      const pingPong = cycle < 1 ? cycle : 2 - cycle;
+      const routeProgress = THREE.MathUtils.lerp(
+        pingPong,
+        0.035 + (seed.routeIndex % 3) * 0.012,
+        shelter,
       );
-      let x = route.x;
-      let z = route.z;
-      const shelterX = center[0] - 1.5 - (seed.lane % 3) * 0.18;
-      const shelterZ = center[1] + ((seed.lane % 5) - 2) * 0.2;
-      x = THREE.MathUtils.lerp(x, shelterX, shelter);
-      z = THREE.MathUtils.lerp(z, shelterZ, shelter);
-      const direction = route.forward ? 1 : -1;
-      const facing = direction > 0 ? Math.PI / 2 : -Math.PI / 2;
+      const routePose = sampleNavigationRoute(route, routeProgress);
+      return { routePose, cycle };
+    });
+    const separated = resolveCrowdSeparation(
+      motion.map(({ routePose }) => ({
+        x: routePose.x,
+        z: routePose.z,
+      })),
+      navigation,
+    );
+    seeds.forEach((seed, index) => {
+      const { routePose, cycle } = motion[index];
+      const x = separated[index].x;
+      const z = separated[index].z;
+      const facing =
+        routePose.heading + (cycle < 1 ? 0 : Math.PI);
+      const forwardX = Math.sin(facing);
+      const forwardZ = Math.cos(facing);
+      const rightX = Math.cos(facing);
+      const rightZ = -Math.sin(facing);
       const gait =
-        Math.sin(elapsed * (7 + seed.speed * 18) * hurry + seed.phase * 8) *
+        Math.sin(
+          elapsed * (6.5 + seed.speedMetersPerSecond * 2.2) * hurry +
+            seed.phase * 8,
+        ) *
         (seed.occupation === "scribe" || seed.occupation === "merchant" ? 0.35 : 1);
-      const bob = Math.abs(gait) * 0.0035;
-      const stature = seed.stature;
+      const humanHeight = seed.heightUnits;
+      const bob = Math.abs(gait) * humanHeight * 0.018;
       const lean = shelter * 0.28;
       const feetY =
         localSurfaceY(locationId, x, z) +
@@ -291,16 +329,16 @@ function ArticulatedResidents({
         torso.current!,
         dummy,
         index,
-        [x, feetY + 0.098 * stature, z],
-        [0.028 * stature, 0.044 * stature, 0.021 * stature],
+        [x, feetY + humanHeight * 0.6, z],
+        [humanHeight * 0.14, humanHeight * 0.2, humanHeight * 0.095],
         [lean, facing, 0],
       );
       setPart(
         heads.current!,
         dummy,
         index,
-        [x, feetY + 0.158 * stature, z],
-        [0.022 * stature, 0.025 * stature, 0.022 * stature],
+        [x, feetY + humanHeight * 0.89, z],
+        [humanHeight * 0.105, humanHeight * 0.11, humanHeight * 0.105],
         [lean, facing, 0],
       );
       for (const [side, mesh] of [
@@ -311,8 +349,12 @@ function ArticulatedResidents({
           mesh,
           dummy,
           index,
-          [x + side * 0.014 * stature, feetY + 0.035 * stature, z],
-          [0.009 * stature, 0.036 * stature, 0.01 * stature],
+          [
+            x + side * rightX * humanHeight * 0.064,
+            feetY + humanHeight * 0.21,
+            z + side * rightZ * humanHeight * 0.064,
+          ],
+          [humanHeight * 0.045, humanHeight * 0.21, humanHeight * 0.052],
           [side * gait * 0.46, facing, 0],
         );
       }
@@ -330,8 +372,12 @@ function ArticulatedResidents({
           mesh,
           dummy,
           index,
-          [x + side * 0.039 * stature, feetY + 0.103 * stature, z],
-          [0.0075 * stature, 0.035 * stature, 0.008 * stature],
+          [
+            x + side * rightX * humanHeight * 0.18,
+            feetY + humanHeight * 0.6,
+            z + side * rightZ * humanHeight * 0.18,
+          ],
+          [humanHeight * 0.035, humanHeight * 0.19, humanHeight * 0.042],
           [workGesture + lean, facing, side * 0.12],
         );
       }
@@ -341,13 +387,17 @@ function ArticulatedResidents({
         seed.occupation === "guard" ||
         seed.occupation === "fisher" ||
         seed.occupation === "farmer"
-          ? feetY + 0.09
-          : feetY + 0.105;
+          ? feetY + humanHeight * 0.48
+          : feetY + humanHeight * 0.56;
       setPart(
         props.current!,
         dummy,
         index,
-        [x + 0.045 * direction, propY, z - 0.01],
+        [
+          x + forwardX * humanHeight * 0.24,
+          propY,
+          z + forwardZ * humanHeight * 0.24,
+        ],
         pScale,
         [seed.occupation === "builder" ? gait * 0.7 : 0, facing, 0],
       );
@@ -361,9 +411,13 @@ function ArticulatedResidents({
         hats.current!,
         dummy,
         index,
-        [x, feetY + 0.184 * stature, z],
+        [x, feetY + humanHeight * 1.01, z],
         hasHat
-          ? [0.032 * stature, 0.018 * stature, 0.032 * stature]
+          ? [
+              humanHeight * 0.17,
+              humanHeight * 0.085,
+              humanHeight * 0.17,
+            ]
           : [0.0001, 0.0001, 0.0001],
         [0, facing, 0],
       );
@@ -372,9 +426,17 @@ function ArticulatedResidents({
         marbling.current!,
         dummy,
         index,
-        [x, feetY + 0.101 * stature, z - 0.022 * stature],
+        [
+          x - forwardX * humanHeight * 0.1,
+          feetY + humanHeight * 0.6,
+          z - forwardZ * humanHeight * 0.1,
+        ],
         palette.marbling
-          ? [0.006, 0.038 * stature, 0.022 * stature]
+          ? [
+              humanHeight * 0.025,
+              humanHeight * 0.18,
+              humanHeight * 0.095,
+            ]
           : [0.0001, 0.0001, 0.0001],
         [lean, facing, (index % 3 - 1) * 0.2],
       );
@@ -384,6 +446,8 @@ function ArticulatedResidents({
       if (ref.current) ref.current.instanceMatrix.needsUpdate = true;
     });
   });
+
+  if (navigation.routes.length === 0) return null;
 
   return (
     <group name={`${culture} articulated residents`}>
@@ -514,11 +578,13 @@ function DetailedResident({
   culture,
   index,
   locationId,
+  navigation,
 }: {
   center: readonly [number, number];
   culture: Culture;
   index: number;
   locationId: string;
+  navigation: NavigationField;
 }) {
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF(MODEL_URL);
@@ -545,43 +611,36 @@ function DetailedResident({
       stormXAtTime(state.simulationTime),
       center[0],
     );
-    const speed = 0.055 + (index % 4) * 0.012;
-    const cycle = (state.simulationTime * speed + index * 0.173) % 2;
+    const route =
+      navigation.routes[(index * 3 + 2) % navigation.routes.length];
+    if (!route) return;
+    const walkingSpeed = 1.08 + (index % 4) * 0.12;
+    const routeSpeed = metersToLocal(walkingSpeed) / route.length;
+    const hurry = 1 + proximity * 2.8;
+    const cycle =
+      (state.simulationTime * routeSpeed * hurry + index * 0.173) % 2;
     const progress = cycle < 1 ? cycle : 2 - cycle;
-    const lane = index % 5;
-    const routeLength = 2.2 + (index % 3) * 0.46;
-    let x = center[0] - routeLength / 2 + progress * routeLength;
-    let z = center[1] + 1.15 + (lane - 2) * 0.42;
-    if (locationId === "purelake") {
-      const angle = index * 1.3 + progress * Math.PI * 1.4;
-      x = center[0] + Math.cos(angle) * (1.05 + lane * 0.34);
-      z = center[1] + Math.sin(angle) * (0.72 + lane * 0.22);
-    } else if (locationId === "shattered-plains") {
-      x = center[0] - 3.35 + progress * 2.8;
-      z = center[1] - 1.95 + lane * 0.47;
-    } else if (locationId === "kharbranth") {
-      z = center[1] - 2.2 + lane * 0.78;
-    }
-
     const shelter = THREE.MathUtils.smoothstep(proximity, 0.34, 0.94);
-    x = THREE.MathUtils.lerp(x, center[0] - 1.65, shelter);
-    z = THREE.MathUtils.lerp(
-      z,
-      center[1] + ((index % 4) - 1.5) * 0.18,
+    const routeProgress = THREE.MathUtils.lerp(
+      progress,
+      0.04 + (index % 3) * 0.015,
       shelter,
     );
+    const routePose = sampleNavigationRoute(route, routeProgress);
     const gait = Math.sin(state.simulationTime * 7.2 + index * 1.7);
     group.current.position.set(
-      x,
-      localSurfaceY(locationId, x, z) + Math.abs(gait) * 0.006,
-      z,
+      routePose.x,
+      localSurfaceY(locationId, routePose.x, routePose.z) +
+        Math.abs(gait) * 0.003,
+      routePose.z,
     );
-    group.current.rotation.y = cycle < 1 ? Math.PI / 2 : -Math.PI / 2;
+    group.current.rotation.y =
+      routePose.heading + (cycle < 1 ? 0 : Math.PI);
     group.current.rotation.z = shelter * -0.19 + gait * 0.018;
   });
 
   if (!resident) return null;
-  const scale = 0.092 + (index % 4) * 0.004;
+  const scale = detailedActorLocalScale(culture, index, locationId.length);
   return (
     <group ref={group} scale={scale} name={`${culture} detailed resident`}>
       <primitive object={resident} />
@@ -594,11 +653,13 @@ function DetailedResidents({
   culture,
   count,
   locationId,
+  navigation,
 }: {
   center: readonly [number, number];
   culture: Culture;
   count: number;
   locationId: string;
+  navigation: NavigationField;
 }) {
   return (
     <group name={`${culture} close-detail residents`}>
@@ -609,6 +670,7 @@ function DetailedResidents({
           culture={culture}
           index={index}
           locationId={locationId}
+          navigation={navigation}
         />
       ))}
     </group>
@@ -619,15 +681,82 @@ export function LivingPopulation() {
   const selectedId = useAtlasStore((state) => state.selectedId);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const viewportWidth = useThree((state) => state.size.width);
+  const { scene } = useGLTF(MODEL_URL);
   const location = locationById.get(selectedId);
-  if (
-    !location ||
-    location.id === "roshar" ||
-    detailLevel === "continent" ||
-    detailLevel === "region"
-  ) {
-    return null;
-  }
+  const fallbackLocation = location ?? locationById.get("kholinar")!;
+  const closeDetail =
+    Boolean(location) &&
+    fallbackLocation.id !== "roshar" &&
+    (detailLevel === "city" || detailLevel === "street");
+  const center = useMemo(
+    () =>
+      [
+        fallbackLocation.coordinates.x,
+        fallbackLocation.coordinates.z,
+      ] as const,
+    [fallbackLocation],
+  );
+  const profile = useMemo(
+    () => cityProfile(fallbackLocation.id, fallbackLocation.culture),
+    [fallbackLocation],
+  );
+  const layout = useMemo(
+    () =>
+      closeDetail
+        ? createDistrictLayout(
+            profile,
+            fallbackLocation.id,
+            center,
+            detailLevel,
+            viewportWidth,
+          )
+        : { buildings: [], modules: [] },
+    [
+      center,
+      closeDetail,
+      detailLevel,
+      fallbackLocation.id,
+      profile,
+      viewportWidth,
+    ],
+  );
+  const landmarkObstacles = useMemo(() => {
+    if (
+      !closeDetail ||
+      !fallbackLocation.modelRoot ||
+      (fallbackLocation.id === "shattered-plains" &&
+        detailLevel === "street")
+    ) {
+      return [];
+    }
+    return landmarkNavigationObstacles(
+      scene,
+      fallbackLocation.modelRoot,
+      center,
+      landmarkLocalScale(fallbackLocation.modelRoot, profile),
+    );
+  }, [
+    center,
+    closeDetail,
+    detailLevel,
+    fallbackLocation.id,
+    fallbackLocation.modelRoot,
+    profile,
+    scene,
+  ]);
+  const navigation = useMemo(
+    () =>
+      createNavigationField(
+        fallbackLocation.id,
+        profile,
+        center,
+        layout,
+        landmarkObstacles,
+      ),
+    [center, fallbackLocation.id, landmarkObstacles, layout, profile],
+  );
+
+  if (!closeDetail || !location || navigation.routes.length === 0) return null;
 
   const desktopCount = detailLevel === "street" ? 118 : 72;
   const count = Math.round(desktopCount * (viewportWidth < 720 ? 0.62 : 1));
@@ -639,10 +768,6 @@ export function LivingPopulation() {
       : viewportWidth < 720
         ? 3
         : 6;
-  const center = [
-    location.coordinates.x,
-    location.coordinates.z,
-  ] as const;
   return (
     <>
       <ArticulatedResidents
@@ -651,12 +776,14 @@ export function LivingPopulation() {
         culture={location.culture}
         count={count}
         locationId={location.id}
+        navigation={navigation}
       />
       <DetailedResidents
         center={center}
         culture={location.culture}
         count={detailedCount}
         locationId={location.id}
+        navigation={navigation}
       />
     </>
   );

@@ -5,23 +5,24 @@ import { useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import {
+  STANDARD_DOOR_HEIGHT_METERS,
+  STANDARD_DOOR_WIDTH_METERS,
+  metersToLocal,
+} from "../scale";
 import { localSurfaceY } from "../terrain/localSurface";
+import {
+  createDistrictLayout,
+  type BuildingSeed,
+  type ModuleSeed,
+} from "./districtLayout";
+import {
+  KHARBRANTH_LANDMARK_SCALE,
+  kharbranthRoadOffset,
+} from "./landmarkMetrics";
 import { cityProfile, type CityProfile } from "./profiles";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
-
-interface BuildingSeed {
-  x: number;
-  y: number;
-  z: number;
-  width: number;
-  depth: number;
-  height: number;
-  rotation: number;
-  color: THREE.Color;
-  roofColor: THREE.Color;
-  lit: boolean;
-}
 
 function configureTexture(texture: THREE.Texture, repeat: number) {
   const copy = texture.clone();
@@ -31,62 +32,6 @@ function configureTexture(texture: THREE.Texture, repeat: number) {
   copy.anisotropy = 8;
   copy.needsUpdate = true;
   return copy;
-}
-
-function buildingSeeds(
-  profile: CityProfile,
-  locationId: string,
-  center: readonly [number, number],
-  count: number,
-) {
-  const [minHeight, maxHeight] = profile.height;
-  const [minFootprint, maxFootprint] = profile.footprint;
-  return Array.from({ length: count }, (_, index): BuildingSeed => {
-    const angle = index * 2.399963 + (locationId.length % 9) * 0.17;
-    const normalized = ((index * 41 + locationId.length * 13) % 101) / 100;
-    const radius =
-      0.72 + Math.sqrt(normalized) * (profile.radius - 0.72);
-    const width =
-      minFootprint +
-      (((index * 17 + 3) % 23) / 22) * (maxFootprint - minFootprint);
-    const depth =
-      minFootprint +
-      (((index * 11 + 7) % 19) / 18) * (maxFootprint - minFootprint);
-    const height =
-      minHeight +
-      (((index * 29 + 5) % 31) / 30) * (maxHeight - minHeight);
-    let x = center[0] + Math.cos(angle) * radius;
-    let z = center[1] + Math.sin(angle) * radius * 0.72;
-    let y = localSurfaceY(locationId, x, z);
-
-    if (locationId === "kharbranth") {
-      const terrace = index % 7;
-      z = center[1] - 2.65 + terrace * 0.82 + ((index % 3) - 1) * 0.08;
-      x = center[0] + Math.cos(angle) * (1.1 + (index % 8) * 0.52);
-      y = localSurfaceY(locationId, x, z);
-    } else if (locationId === "purelake") {
-      y += 0.025;
-    } else if (locationId === "shattered-plains") {
-      x = center[0] - 3.7 + (index % 8) * 0.52;
-      z = center[1] - 2.4 + Math.floor(index / 8) * 0.56;
-      y = localSurfaceY(locationId, x, z);
-    }
-
-    return {
-      x,
-      y,
-      z,
-      width,
-      depth,
-      height,
-      rotation: angle + ((index % 5) - 2) * 0.06,
-      color: new THREE.Color(profile.palette[index % profile.palette.length]),
-      roofColor: new THREE.Color(
-        profile.roofPalette[(index * 3 + 1) % profile.roofPalette.length],
-      ),
-      lit: index % 4 === 0 || index % 9 === 0,
-    };
-  });
 }
 
 function RoofGeometry({ style }: { style: CityProfile["roof"] }) {
@@ -142,7 +87,7 @@ function InstancedArchitecture({
       dummy.scale.set(seed.width, seed.height, seed.depth);
       dummy.updateMatrix();
       bodies.current!.setMatrixAt(index, dummy.matrix);
-      bodies.current!.setColorAt(index, seed.color);
+      bodies.current!.setColorAt(index, new THREE.Color(seed.color));
 
       const roofHeight =
         profile.roof === "flat" || profile.roof === "ruin"
@@ -159,8 +104,13 @@ function InstancedArchitecture({
       );
       dummy.updateMatrix();
       roofs.current!.setMatrixAt(index, dummy.matrix);
-      roofs.current!.setColorAt(index, seed.roofColor);
+      roofs.current!.setColorAt(index, new THREE.Color(seed.roofColor));
 
+      const windowWidth = Math.min(metersToLocal(0.9), seed.width * 0.22);
+      const windowHeight = Math.min(
+        metersToLocal(1.15),
+        seed.height * 0.18,
+      );
       for (const side of [-1, 1] as const) {
         const lateral = side * seed.width * 0.23;
         dummy.position.set(
@@ -173,7 +123,7 @@ function InstancedArchitecture({
             Math.cos(seed.rotation) * (seed.depth / 2 + 0.006),
         );
         dummy.rotation.set(0, seed.rotation, 0);
-        dummy.scale.set(seed.width * 0.14, seed.height * 0.15, 0.012);
+        dummy.scale.set(windowWidth, windowHeight, 0.012);
         dummy.updateMatrix();
         const windowIndex = index * 2 + (side === -1 ? 0 : 1);
         windows.current!.setMatrixAt(windowIndex, dummy.matrix);
@@ -181,23 +131,31 @@ function InstancedArchitecture({
         windows.current!.setColorAt(windowIndex, windowColor);
       }
 
+      const doorHeight = Math.min(
+        metersToLocal(STANDARD_DOOR_HEIGHT_METERS),
+        seed.height * 0.72,
+      );
+      const doorWidth = Math.min(
+        metersToLocal(STANDARD_DOOR_WIDTH_METERS),
+        seed.width * 0.42,
+      );
       dummy.position.set(
         seed.x + Math.sin(seed.rotation) * (seed.depth / 2 + 0.009),
-        seed.y + seed.height * 0.22,
+        seed.y + doorHeight / 2,
         seed.z + Math.cos(seed.rotation) * (seed.depth / 2 + 0.009),
       );
       dummy.rotation.set(0, seed.rotation, 0);
-      dummy.scale.set(seed.width * 0.24, seed.height * 0.38, 0.018);
+      dummy.scale.set(doorWidth, doorHeight, 0.018);
       dummy.updateMatrix();
       doors.current!.setMatrixAt(index, dummy.matrix);
-      doors.current!.setColorAt(index, seed.roofColor);
+      doors.current!.setColorAt(index, new THREE.Color(seed.roofColor));
 
       dummy.position.set(seed.x, seed.y + seed.height * 0.94, seed.z);
       dummy.rotation.set(0, seed.rotation, 0);
       dummy.scale.set(seed.width * 1.07, 0.035, seed.depth * 1.07);
       dummy.updateMatrix();
       cornices.current!.setMatrixAt(index, dummy.matrix);
-      cornices.current!.setColorAt(index, seed.roofColor);
+      cornices.current!.setColorAt(index, new THREE.Color(seed.roofColor));
 
       const hasBalcony = index % 3 === 0 && profile.roof !== "ruin";
       dummy.position.set(
@@ -209,11 +167,11 @@ function InstancedArchitecture({
       dummy.scale.set(
         hasBalcony ? seed.width * 0.42 : 0.0001,
         hasBalcony ? 0.028 : 0.0001,
-        hasBalcony ? 0.1 : 0.0001,
+        hasBalcony ? metersToLocal(1.15) : 0.0001,
       );
       dummy.updateMatrix();
       balconies.current!.setMatrixAt(index, dummy.matrix);
-      balconies.current!.setColorAt(index, seed.roofColor);
+      balconies.current!.setColorAt(index, new THREE.Color(seed.roofColor));
     });
     for (const mesh of [
       bodies.current,
@@ -232,6 +190,7 @@ function InstancedArchitecture({
     locationId === "kharbranth" ? plaster : stone;
 
   if (
+    seeds.length === 0 ||
     [
       "kharbranth",
       "purelake",
@@ -370,10 +329,9 @@ function DistrictGround({
             >
               <cylinderGeometry args={[1, 1.08, 0.34, plateau.sides]} />
               <meshStandardMaterial
-                map={paving}
                 bumpMap={paving}
                 bumpScale={0.024}
-                color={index === 1 ? "#6f6a5b" : "#5d5a50"}
+                color={index === 1 ? "#827b69" : "#736d60"}
                 roughness={0.91}
                 metalness={0.025}
               />
@@ -411,25 +369,34 @@ function DistrictGround({
   if (locationId === "kharbranth") {
     return (
       <group name="Kharbranth stepped streets">
-        {Array.from({ length: 7 }, (_, terrace) => (
-          <mesh
-            key={terrace}
-            position={[
-              center[0],
-              y + terrace * 0.11,
-              center[1] - 2.65 + terrace * 0.82,
-            ]}
-            receiveShadow
-          >
-            <boxGeometry args={[profile.radius * 1.42, 0.028, 0.46]} />
-            <meshStandardMaterial
-              map={paving}
-              color={terrace % 2 === 0 ? "#846d5d" : "#75645a"}
-              roughness={0.9}
-              metalness={0.02}
-            />
-          </mesh>
-        ))}
+        {Array.from({ length: 6 }, (_, terrace) => {
+          const roadZ = center[1] + kharbranthRoadOffset(terrace);
+          return (
+            <mesh
+              key={terrace}
+              position={[
+                center[0],
+                localSurfaceY(locationId, center[0], roadZ) - 0.012,
+                roadZ,
+              ]}
+              receiveShadow
+            >
+              <boxGeometry
+                args={[
+                  (5.6 - terrace * 0.56) * KHARBRANTH_LANDMARK_SCALE,
+                  0.028,
+                  0.22,
+                ]}
+              />
+              <meshStandardMaterial
+                map={paving}
+                color={terrace % 2 === 0 ? "#846d5d" : "#75645a"}
+                roughness={0.9}
+                metalness={0.02}
+              />
+            </mesh>
+          );
+        })}
       </group>
     );
   }
@@ -491,35 +458,21 @@ function ModuleInstance({
 }
 
 function DistrictModules({
-  profile,
-  center,
-  locationId,
-  count,
+  seeds,
 }: {
-  profile: CityProfile;
-  center: readonly [number, number];
-  locationId: string;
-  count: number;
+  seeds: readonly ModuleSeed[];
 }) {
   return (
     <>
-      {Array.from({ length: count }, (_, index) => {
-        const moduleName = profile.modules[index % profile.modules.length];
-        const angle = index * 2.39996 + 0.6;
-        const radius = 1.1 + ((index * 19) % 27) / 10;
-        const x = center[0] + Math.cos(angle) * radius;
-        const z = center[1] + Math.sin(angle) * radius * 0.68;
-        const y = localSurfaceY(locationId, x, z);
-        return (
-          <ModuleInstance
-            key={`${moduleName}-${index}`}
-            name={moduleName}
-            position={[x, y + 0.01, z]}
-            rotation={-angle + Math.PI / 2}
-            scale={locationId === "purelake" ? 0.12 : 0.14}
-          />
-        );
-      })}
+      {seeds.map((seed, index) => (
+        <ModuleInstance
+          key={`${seed.name}-${index}`}
+          name={seed.name}
+          position={[seed.x, seed.y + 0.01, seed.z]}
+          rotation={seed.rotation}
+          scale={seed.scale}
+        />
+      ))}
     </>
   );
 }
@@ -537,15 +490,6 @@ export function CityDetail() {
         : cityProfile("kholinar", "alethi"),
     [location],
   );
-  const mobileFactor = width < 720 ? 0.62 : 1;
-  const baseCount = detailLevel === "street" ? 64 : 46;
-  const buildingCount = Math.round(
-    baseCount * profile.density * mobileFactor,
-  );
-  const moduleCount = Math.max(
-    3,
-    Math.round((detailLevel === "street" ? 20 : 12) * mobileFactor),
-  );
   const center = useMemo(
     () =>
       [
@@ -554,12 +498,18 @@ export function CityDetail() {
       ] as const,
     [location],
   );
-  const seeds = useMemo(
+  const layout = useMemo(
     () =>
       location
-        ? buildingSeeds(profile, location.id, center, buildingCount)
-        : [],
-    [buildingCount, center, location, profile],
+        ? createDistrictLayout(
+            profile,
+            location.id,
+            center,
+            detailLevel,
+            width,
+          )
+        : { buildings: [], modules: [] },
+    [center, detailLevel, location, profile, width],
   );
 
   if (
@@ -580,16 +530,11 @@ export function CityDetail() {
         street={detailLevel === "street"}
       />
       <InstancedArchitecture
-        seeds={seeds}
+        seeds={layout.buildings}
         profile={profile}
         locationId={location.id}
       />
-      <DistrictModules
-        profile={profile}
-        center={center}
-        locationId={location.id}
-        count={moduleCount}
-      />
+      <DistrictModules seeds={layout.modules} />
     </group>
   );
 }

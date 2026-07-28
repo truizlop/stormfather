@@ -1066,12 +1066,15 @@ def build_detail_modules() -> None:
         rail.rotation_euler[1] = math.pi / 2
 
     run = root("Prop_Bridge_Run", (41, 20, 0))
-    cube("BridgeRun_Deck", (0, 0, 1.18), (2.4, 0.72, 0.11), p["wood"], run, 0.035)
-    for slat in range(12):
+    # This prop is authored in physical meters: a twelve-meter portable bridge,
+    # a 2.8 m deck, and roughly 1.75 m carriers. Runtime converts it with the
+    # same 1 local unit = 12 m calibration as every other close-detail actor.
+    cube("BridgeRun_Deck", (0, 0, 2.05), (6, 1.35, 0.12), p["wood"], run, 0.035)
+    for slat in range(24):
         cube(
             f"BridgeRun_Slat_{slat + 1:02d}",
-            (-2.15 + slat * 0.39, 0, 1.32),
-            (0.16, 0.8, 0.045),
+            (-5.75 + slat * 0.5, 0, 2.2),
+            (0.21, 1.43, 0.045),
             p["stone_light"] if slat % 4 == 0 else p["wood"],
             run,
             0.018,
@@ -1084,14 +1087,14 @@ def build_detail_modules() -> None:
     for runner in range(30):
         column = runner % 6
         row = runner // 6
-        x = -1.9 + column * 0.76
-        y = -0.56 + row * 0.28
+        x = -4.6 + column * 1.84
+        y = -1 + row * 0.5
         for side in (-1, 1):
             leg = cyl(
                 f"BridgeRun_Runner_{runner + 1}_Leg_{side}",
-                (x + side * 0.11, y, 0.38),
-                0.07,
-                0.62,
+                (x + side * 0.12, y, 0.48),
+                0.075,
+                0.78,
                 p["stone_dark"],
                 run,
                 8,
@@ -1100,18 +1103,29 @@ def build_detail_modules() -> None:
             leg.rotation_euler[1] = side * (0.25 if runner % 2 else -0.25)
         cone(
             f"BridgeRun_Runner_{runner + 1}_Torso",
-            (x, y, 0.92),
-            0.22,
-            0.16,
-            0.55,
+            (x, y, 1.14),
+            0.24,
+            0.17,
+            0.66,
             bridge_cloth,
             run,
             8,
             0.02,
         )
+        for side in (-1, 1):
+            cyl(
+                f"BridgeRun_Runner_{runner + 1}_Arm_{side}",
+                (x + side * 0.28, y, 1.55),
+                0.065,
+                0.58,
+                bridge_cloth,
+                run,
+                8,
+                0.012,
+            )
         sphere(
             f"BridgeRun_Runner_{runner + 1}_Head",
-            (x, y, 1.32),
+            (x, y, 1.68),
             (0.15, 0.14, 0.17),
             bridge_skin,
             run,

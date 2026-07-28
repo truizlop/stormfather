@@ -18,6 +18,32 @@ export const KM_PER_GEOGRAPHIC_UNIT = MILES_PER_GEOGRAPHIC_UNIT * 1.609344;
  * that close-detail modules occupy their map-space footprint.
  */
 export const METERS_PER_LOCAL_UNIT = 12;
+export const LOCAL_UNITS_PER_METER = 1 / METERS_PER_LOCAL_UNIT;
+
+/**
+ * Local-detail geometry is authored against these real-world dimensions.
+ * Keeping them here prevents characters, doors, props, and navigation clearance
+ * from drifting onto unrelated visual scales.
+ */
+export const REFERENCE_HUMAN_HEIGHT_METERS = 1.76;
+export const REFERENCE_HUMAN_HEIGHT_LOCAL_UNITS =
+  REFERENCE_HUMAN_HEIGHT_METERS * LOCAL_UNITS_PER_METER;
+export const PEDESTRIAN_RADIUS_METERS = 0.31;
+export const PEDESTRIAN_RADIUS_LOCAL_UNITS =
+  PEDESTRIAN_RADIUS_METERS * LOCAL_UNITS_PER_METER;
+export const PEDESTRIAN_CLEARANCE_METERS = 0.46;
+export const PEDESTRIAN_CLEARANCE_LOCAL_UNITS =
+  PEDESTRIAN_CLEARANCE_METERS * LOCAL_UNITS_PER_METER;
+export const STANDARD_DOOR_HEIGHT_METERS = 2.08;
+export const STANDARD_DOOR_WIDTH_METERS = 0.92;
+
+export function metersToLocal(meters: number) {
+  return meters * LOCAL_UNITS_PER_METER;
+}
+
+export function localToMeters(localUnits: number) {
+  return localUnits * METERS_PER_LOCAL_UNIT;
+}
 
 export interface ScalePresentation {
   mode: "geographic" | "local";
@@ -49,6 +75,6 @@ export const scalePresentation: Record<DetailLevel, ScalePresentation> = {
     mode: "local",
     eyebrow: "Local street",
     distance: "10 m",
-    note: "People and buildings share meter scale",
+    note: "1 local unit = 12 m · 1:1 human clearance",
   },
 };

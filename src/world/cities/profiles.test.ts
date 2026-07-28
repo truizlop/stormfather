@@ -1,4 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { localToMeters } from "../scale";
+import {
+  createDistrictLayout,
+  moduleMetrics,
+  usesProceduralArchitecture,
+} from "./districtLayout";
+import {
+  landmarkLocalScale,
+  landmarkPlanDimensions,
+} from "./landmarkMetrics";
 import { cityProfile } from "./profiles";
 
 describe("city architecture profiles", () => {
@@ -19,5 +29,44 @@ describe("city architecture profiles", () => {
   it("assigns the bridge kit to the Shattered Plains", () => {
     const profile = cityProfile("shattered-plains", "singer");
     expect(profile.modules).toContain("Module_Rope_Bridge");
+  });
+
+  it("fits Blender landmarks to the same diameter as their local district", () => {
+    const profile = cityProfile("kharbranth", "alethi");
+    const plan = landmarkPlanDimensions("Landmark_Kharbranth")!;
+    const scale = landmarkLocalScale("Landmark_Kharbranth", profile);
+    expect(Math.max(...plan) * scale).toBeCloseTo(profile.radius * 2);
+  });
+
+  it("does not stack procedural buildings through authored landmark cities", () => {
+    expect(usesProceduralArchitecture("kharbranth")).toBe(false);
+    const profile = cityProfile("kharbranth", "alethi");
+    const layout = createDistrictLayout(
+      profile,
+      "kharbranth",
+      [10, 18],
+      "street",
+      1280,
+    );
+    expect(layout.buildings).toHaveLength(0);
+    expect(layout.modules.length).toBeGreaterThan(0);
+  });
+
+  it("keeps procedural buildings and authored modules on architectural scale", () => {
+    const profile = cityProfile("thaylen-city", "thaylen");
+    const layout = createDistrictLayout(
+      profile,
+      "thaylen-city",
+      [9, 24],
+      "street",
+      1280,
+    );
+    expect(Math.min(...layout.buildings.map((seed) => localToMeters(seed.height)))).toBeGreaterThan(
+      3,
+    );
+    for (const module of layout.modules) {
+      const metric = moduleMetrics[module.name];
+      expect(localToMeters(metric.height * module.scale)).toBeGreaterThan(2.4);
+    }
   });
 });

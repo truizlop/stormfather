@@ -1,5 +1,9 @@
 import { terrainHeightAt } from "./terrainHeight";
 import { destinationAnchors } from "../cartography/geography";
+import {
+  KHARBRANTH_LANDMARK_SCALE,
+  kharbranthRoadElevation,
+} from "../cities/landmarkMetrics";
 
 export const PURELAKE_WATER_HEIGHT = 0.11;
 
@@ -15,11 +19,15 @@ export function localSurfaceY(
   if (locationId === "purelake") return PURELAKE_WATER_HEIGHT;
   if (locationId === "kharbranth") {
     const [centerX, centerZ] = destinationAnchors.kharbranth;
+    const localZ = (z - centerZ) / KHARBRANTH_LANDMARK_SCALE;
     const tier = Math.max(
       0,
-      Math.min(6, Math.round((z - (centerZ - 2.55)) / 0.82)),
+      Math.min(5, Math.round((localZ + 2.52) / 1.02)),
     );
-    return terrainHeightAt(centerX, centerZ) + 0.22 + tier * 0.28;
+    return (
+      terrainHeightAt(centerX, centerZ) +
+      kharbranthRoadElevation(tier)
+    );
   }
   return terrainHeightAt(x, z) + 0.025;
 }
