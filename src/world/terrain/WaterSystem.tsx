@@ -1,14 +1,48 @@
 import { Line, useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import {
+  aimiaOutline,
+  destinationAnchors,
+  inlandWaterPolygons,
+  islandPolygons,
+  mainlandOutline,
+  pointInPolygon,
+  polygonBounds,
+  type GeographyPoint,
+} from "../cartography/geography";
 import {
   preStormDrainage,
   stormProximity,
   stormXAtTime,
 } from "../weather/storm";
-import { rosharOutline } from "./rosharOutline";
+
+const coastlinePolygons: readonly (readonly GeographyPoint[])[] = [
+  mainlandOutline,
+  aimiaOutline,
+  ...islandPolygons.map((island) => island.points),
+];
+const purelakePolygon = inlandWaterPolygons.find(
+  (water) => water.id === "purelake",
+)!.points;
+const purelakeCenter = destinationAnchors.purelake;
+
+function polygonShapeGeometry(
+  points: readonly GeographyPoint[],
+  center: GeographyPoint,
+) {
+  const shape = new THREE.Shape();
+  points.forEach(([x, z], index) => {
+    const localX = x - center[0];
+    const localY = -(z - center[1]);
+    if (index === 0) shape.moveTo(localX, localY);
+    else shape.lineTo(localX, localY);
+  });
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
+}
 
 const oceanVertexShader = /* glsl */ `
   uniform float uTime;
@@ -177,19 +211,24 @@ function CoastalFoam() {
   const points = useRef<THREE.Points>(null);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const positions = useMemo(() => {
-    const density = 8;
     const values: number[] = [];
-    rosharOutline.forEach((point, index) => {
-      const next = rosharOutline[(index + 1) % rosharOutline.length];
-      for (let step = 0; step < density; step += 1) {
-        const t = step / density;
-        const jitter = (((index * 37 + step * 19) % 17) - 8) * 0.012;
-        values.push(
-          THREE.MathUtils.lerp(point[0], next[0], t) + jitter,
-          0.1 + ((index + step) % 4) * 0.018,
-          THREE.MathUtils.lerp(point[1], next[1], t) - jitter,
-        );
-      }
+    coastlinePolygons.forEach((polygon, polygonIndex) => {
+      polygon.forEach((point, index) => {
+        const next = polygon[(index + 1) % polygon.length];
+        const length = Math.hypot(next[0] - point[0], next[1] - point[1]);
+        const density = Math.max(1, Math.min(5, Math.ceil(length / 0.22)));
+        for (let step = 0; step < density; step += 1) {
+          const t = step / density;
+          const jitter =
+            (((index * 37 + step * 19 + polygonIndex * 13) % 17) - 8) *
+            0.01;
+          values.push(
+            THREE.MathUtils.lerp(point[0], next[0], t) + jitter,
+            0.075 + ((index + step) % 4) * 0.012,
+            THREE.MathUtils.lerp(point[1], next[1], t) - jitter,
+          );
+        }
+      });
     });
     return new Float32Array(values);
   }, []);
@@ -203,14 +242,17 @@ function CoastalFoam() {
   if (detailLevel === "street") return null;
   return (
     <>
-      <Line
-        points={rosharOutline.map(([x, z]) => [x, 0.12, z])}
-        color="#74d7d5"
-        lineWidth={detailLevel === "continent" ? 0.72 : 1.12}
-        transparent
-        opacity={detailLevel === "continent" ? 0.24 : 0.38}
-        depthWrite={false}
-      />
+      {[mainlandOutline, aimiaOutline].map((polygon, index) => (
+        <Line
+          key={index}
+          points={polygon.map(([x, z]) => [x, 0.08, z])}
+          color="#74d7d5"
+          lineWidth={detailLevel === "continent" ? 0.72 : 1.12}
+          transparent
+          opacity={detailLevel === "continent" ? 0.28 : 0.42}
+          depthWrite={false}
+        />
+      ))}
       <points ref={points} renderOrder={2}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
@@ -233,7 +275,34 @@ function PurelakeShoals() {
   const close =
     selectedId === "purelake" &&
     (detailLevel === "city" || detailLevel === "street");
-  const count = close ? 46 : 13;
+  const count = close ? 46 : 18;
+  const shoals = useMemo(() => {
+    const bounds = polygonBounds(purelakePolygon);
+    const points: Array<{
+      x: number;
+      z: number;
+      sx: number;
+      sz: number;
+      rotation: number;
+    }> = [];
+    for (let index = 0; index < count * 18 && points.length < count; index += 1) {
+      const x =
+        bounds.minX +
+        (((index * 73 + 19) % 997) / 997) * (bounds.maxX - bounds.minX);
+      const z =
+        bounds.minZ +
+        (((index * 181 + 43) % 991) / 991) * (bounds.maxZ - bounds.minZ);
+      if (!pointInPolygon([x, z], purelakePolygon)) continue;
+      points.push({
+        x,
+        z,
+        sx: 0.18 + ((index * 17) % 13) / 20,
+        sz: 0.12 + ((index * 11) % 9) / 28,
+        rotation: (index * 0.77) % Math.PI,
+      });
+    }
+    return points;
+  }, [count]);
   const stone = useTexture(
     `${import.meta.env.BASE_URL}textures/shattered-paving-albedo.jpg`,
   );
@@ -248,20 +317,18 @@ function PurelakeShoals() {
 
   return (
     <group>
-      {Array.from({ length: count }, (_, index) => {
-        const angle = index * 2.39996;
-        const radius = 0.8 + ((index * 41) % 38) / 10;
-        const x = -12 + Math.cos(angle) * radius * 1.18;
-        const z = -9 + Math.sin(angle) * radius * 0.72;
-        const sx = 0.18 + ((index * 17) % 13) / 20;
-        const sz = 0.12 + ((index * 11) % 9) / 28;
+      {shoals.map((shoal, index) => {
         return (
           <mesh
             key={index}
             rotation-x={-Math.PI / 2}
-            rotation-z={(index * 0.77) % Math.PI}
-            position={[x, 1.335 + (index % 3) * 0.008, z]}
-            scale={[sx, sz, 1]}
+            rotation-z={shoal.rotation}
+            position={[
+              shoal.x,
+              0.14 + (index % 3) * 0.008,
+              shoal.z,
+            ]}
+            scale={[shoal.sx, shoal.sz, 1]}
             receiveShadow
           >
             <circleGeometry args={[1, 18]} />
@@ -279,27 +346,47 @@ function PurelakeShoals() {
 }
 
 function PurelakeLakebed() {
+  const geometry = useMemo(
+    () => polygonShapeGeometry(purelakePolygon, purelakeCenter),
+    [],
+  );
   const texture = useTexture(
     `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
   );
   const configured = useMemo(() => {
     const copy = texture.clone();
     copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
-    copy.repeat.set(4.6, 3.1);
+    copy.repeat.set(6.8, 3.2);
     copy.colorSpace = THREE.SRGBColorSpace;
     copy.needsUpdate = true;
     return copy;
   }, [texture]);
+  const pools = useMemo(() => {
+    const bounds = polygonBounds(purelakePolygon);
+    const values: GeographyPoint[] = [];
+    for (let index = 0; index < 240 && values.length < 19; index += 1) {
+      const point: GeographyPoint = [
+        bounds.minX +
+          (((index * 67 + 31) % 251) / 251) * (bounds.maxX - bounds.minX),
+        bounds.minZ +
+          (((index * 113 + 17) % 257) / 257) * (bounds.maxZ - bounds.minZ),
+      ];
+      if (pointInPolygon(point, purelakePolygon)) values.push(point);
+    }
+    return values;
+  }, []);
 
   return (
-    <group name="Purelake lakebed">
+    <group
+      name="Purelake lakebed"
+      position={[purelakeCenter[0], 0, purelakeCenter[1]]}
+    >
       <mesh
+        geometry={geometry}
         rotation-x={-Math.PI / 2}
-        position={[-12, 1.245, -9]}
-        scale={[5.82, 3.84, 1]}
+        position-y={-0.11}
         receiveShadow
       >
-        <circleGeometry args={[1, 96]} />
         <meshStandardMaterial
           map={configured}
           color="#a9986f"
@@ -307,9 +394,7 @@ function PurelakeLakebed() {
           metalness={0}
         />
       </mesh>
-      {Array.from({ length: 17 }, (_, index) => {
-        const angle = index * 2.39996 + 0.4;
-        const radius = 0.7 + ((index * 31) % 34) / 10;
+      {pools.map((point, index) => {
         const sx = 0.32 + ((index * 7) % 9) / 18;
         const sz = 0.18 + ((index * 13) % 7) / 22;
         return (
@@ -317,9 +402,9 @@ function PurelakeLakebed() {
             key={`pool-${index}`}
             rotation-x={-Math.PI / 2}
             position={[
-              -12 + Math.cos(angle) * radius * 1.15,
-              1.26,
-              -9 + Math.sin(angle) * radius * 0.72,
+              point[0] - purelakeCenter[0],
+              -0.085,
+              point[1] - purelakeCenter[1],
             ]}
             scale={[sx, sz, 1]}
           >
@@ -333,13 +418,13 @@ function PurelakeLakebed() {
         );
       })}
       {Array.from({ length: 11 }, (_, index) => {
-        const angle = -0.42 + index * 0.078;
-        const length = 2.2 + (index % 4) * 0.58;
+        const angle = -0.48 + index * 0.09;
+        const length = 2.8 + (index % 4) * 0.72;
         return (
           <mesh
             key={`drain-${index}`}
             rotation={[-Math.PI / 2, 0, angle]}
-            position={[-12.5 + index * 0.12, 1.275, -9.25 + index * 0.08]}
+            position={[-1.4 + index * 0.26, -0.07, -0.8 + index * 0.1]}
           >
             <planeGeometry args={[0.055 + (index % 3) * 0.014, length]} />
             <meshBasicMaterial
@@ -358,6 +443,19 @@ function PurelakeLakebed() {
 function PurelakeSurface() {
   const group = useRef<THREE.Group>(null);
   const material = useRef<THREE.ShaderMaterial>(null);
+  const geometry = useMemo(
+    () => polygonShapeGeometry(purelakePolygon, purelakeCenter),
+    [],
+  );
+  const shoreline = useMemo(
+    () =>
+      purelakePolygon.map(([x, z]) => [
+        x - purelakeCenter[0],
+        0.045,
+        z - purelakeCenter[1],
+      ]) as Array<[number, number, number]>,
+    [],
+  );
   const caustics = useTexture(
     `${import.meta.env.BASE_URL}textures/purelake-caustics.jpg`,
   );
@@ -383,20 +481,26 @@ function PurelakeSurface() {
     if (!material.current || !group.current) return;
     const state = useAtlasStore.getState();
     const stormX = stormXAtTime(state.simulationTime);
-    const proximity = stormProximity(stormX, -12);
-    const drain = preStormDrainage(stormX, -12);
+    const proximity = stormProximity(stormX, purelakeCenter[0]);
+    const drain = preStormDrainage(stormX, purelakeCenter[0]);
     material.current.uniforms.uTime.value = clock.elapsedTime;
     material.current.uniforms.uStorm.value = proximity;
     material.current.uniforms.uDrain.value = drain;
     material.current.uniforms.uNight.value = state.nightMode ? 1 : 0;
-    group.current.scale.set(1 - drain * 0.12, 1 - drain * 0.09, 1);
-    group.current.position.y = 1.305 - drain * 0.045;
+    group.current.scale.set(1 - drain * 0.1, 1, 1 - drain * 0.08);
+    group.current.position.y = 0.08 - drain * 0.045;
   });
 
   return (
-    <group ref={group} position={[-12, 1.305, -9]}>
-      <mesh rotation-x={-Math.PI / 2} scale={[5.7, 3.75, 1]} renderOrder={3}>
-        <circleGeometry args={[1, 96]} />
+    <group
+      ref={group}
+      position={[purelakeCenter[0], 0.08, purelakeCenter[1]]}
+    >
+      <mesh
+        geometry={geometry}
+        rotation-x={-Math.PI / 2}
+        renderOrder={3}
+      >
         <shaderMaterial
           ref={material}
           uniforms={uniforms}
@@ -408,10 +512,7 @@ function PurelakeSurface() {
         />
       </mesh>
       <Line
-        points={Array.from({ length: 97 }, (_, index) => {
-          const angle = (index / 96) * Math.PI * 2;
-          return [Math.cos(angle) * 5.69, 0.045, Math.sin(angle) * 3.74];
-        })}
+        points={shoreline}
         color="#83e2d3"
         lineWidth={1.1}
         transparent
@@ -422,54 +523,16 @@ function PurelakeSurface() {
   );
 }
 
-function AimianIslets() {
-  const mesh = useRef<THREE.InstancedMesh>(null);
-  const transforms = useMemo(
-    () =>
-      [
-        [-48, 12, 4.4, 2.9],
-        [-52, 8, 2.1, 1.4],
-        [-47, 17, 1.4, 0.85],
-      ] as const,
-    [],
-  );
-
-  useLayoutEffect(() => {
-    if (!mesh.current) return;
-    const dummy = new THREE.Object3D();
-    transforms.forEach(([x, z, sx, sz], index) => {
-      dummy.position.set(x, 0.1, z);
-      dummy.rotation.x = -Math.PI / 2;
-      dummy.scale.set(sx, sz, 1);
-      dummy.updateMatrix();
-      mesh.current!.setMatrixAt(index, dummy.matrix);
-    });
-    mesh.current.instanceMatrix.needsUpdate = true;
-  }, [transforms]);
-
-  return (
-    <instancedMesh
-      ref={mesh}
-      args={[undefined, undefined, transforms.length]}
-      castShadow
-      receiveShadow
-    >
-      <circleGeometry args={[1, 24]} />
-      <meshStandardMaterial color="#394749" roughness={0.95} />
-    </instancedMesh>
-  );
-}
-
 const harborCoordinates: Record<
   string,
   { center: readonly [number, number]; scale: readonly [number, number] }
 > = {
   kharbranth: {
-    center: [24.1, 21.05],
+    center: [11.02, 22.29],
     scale: [5.8, 3.05],
   },
   "thaylen-city": {
-    center: [19.6, 26.4],
+    center: [9.56, 27.08],
     scale: [6.4, 3.35],
   },
 };
@@ -582,7 +645,6 @@ export function WaterSystem() {
       <PurelakeLakebed />
       <PurelakeSurface />
       <PurelakeShoals />
-      <AimianIslets />
     </group>
   );
 }
