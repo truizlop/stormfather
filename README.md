@@ -15,11 +15,26 @@ The accepted design concepts are preserved in [`docs/concepts`](docs/concepts). 
 - Smooth travel from a full-continent view to region, city, and street detail
 - Alethkar, Azir, the Shattered Plains, Urithiru, Shinovar, Jah Keved, the Purelake, Aimia, Kharbranth, Kholinar, and Thaylen City
 - A moving east-to-west Highstorm with rain, lightning, settlement dimming, sheltering inhabitants, retracting flora, and an aerial follow camera
-- Animated cultural populations, caravans, ships, settlement lights, roads, mountain chains, and ten hidden discoveries
-- A responsive brass-and-slate interface with search, minimap, LOD controls, day/night lighting, and a compact mobile travel sheet
+- Animated articulated cultural populations with occupation props, bridge runs,
+  fishing rafts, working harbor cargo, caravans, ships, and storm shelter behavior
+- Storm-reactive deep seas, coastal foam, shallow Purelake caustics and drainage,
+  shoals, wakes, and animated harbor basins
+- Location-specific close districts: Kharbranth terraces and docks, Shattered
+  Plains warcamp infrastructure, Purelake walkways and nets, Azish domes, Shin
+  farms, Aimian ruins, and more
+- Solid national, dashed disputed, and porous country frontiers shared by the 3D
+  terrain and minimap, with a visibility control and broad-zoom country labels
+- A responsive brass-and-slate interface with search, minimap, semantic scale
+  bars, LOD controls, day/night lighting, and a compact mobile travel sheet
+- Settlement lights, roads, mountain chains, culturally distinct materials, and
+  ten hidden discoveries
 - An original Blender-authored landmark and inhabitant kit, plus original generated tiling materials
 
-The scene adapts its population counts, labels, landmarks, and procedural detail to the current camera distance. Instancing keeps the busy “living miniature” views practical on mobile GPUs.
+The scene adapts population counts, architecture, modules, labels, landmarks,
+frontiers, and water quality to the current camera distance. Geographic mode is
+calibrated to an approximately 4,000-mile-wide Roshar; city and street views
+explicitly switch to a 12-meters-per-unit local district scale. Instancing keeps
+the busy “living miniature” views practical on mobile GPUs.
 
 ## Controls
 
@@ -28,6 +43,7 @@ The scene adapts its population counts, labels, landmarks, and procedural detail
 - Select **Highstorm** to move with the stormwall over Roshar.
 - The top detail controls and map zoom buttons move between continent, region, city, and street scales.
 - Select a small cyan discovery marker to reveal an easter egg.
+- Use the map-layer button to show or hide political frontiers.
 
 ## Development
 
