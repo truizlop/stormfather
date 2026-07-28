@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  preStormDrainage,
   STORM_CYCLE_SECONDS,
   STORM_EAST_EDGE,
   STORM_WEST_EDGE,
@@ -28,5 +29,12 @@ describe("Highstorm simulation", () => {
   it("returns a normalized local reaction strength", () => {
     expect(stormProximity(0, 0)).toBe(1);
     expect(stormProximity(20, 0)).toBe(0);
+  });
+
+  it("drains shallow water only as the storm approaches or passes nearby", () => {
+    expect(preStormDrainage(48, -12)).toBe(0);
+    expect(preStormDrainage(-4, -12)).toBeGreaterThan(0);
+    expect(preStormDrainage(-12, -12)).toBe(1);
+    expect(preStormDrainage(-36, -12)).toBe(0);
   });
 });

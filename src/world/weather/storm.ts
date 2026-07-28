@@ -19,6 +19,14 @@ export function stormProximity(stormX: number, entityX: number) {
   return Math.max(0, 1 - distance / 11);
 }
 
+export function preStormDrainage(stormX: number, entityX: number) {
+  const proximity = stormProximity(stormX, entityX);
+  const delta = stormX - entityX;
+  const warning =
+    delta > 0 ? 1 - Math.min(1, Math.max(0, (delta - 1.5) / 9)) : 0;
+  return Math.max(proximity, warning * 0.72);
+}
+
 export function stormPhase(stormX: number, entityX: number): StormPhase {
   const delta = stormX - entityX;
   if (delta > 11) return "calm";

@@ -9,6 +9,7 @@ import {
   rosharOutline,
   shinovarOutline,
 } from "./rosharOutline";
+import { WaterSystem } from "./WaterSystem";
 
 function shapeFromOutline(points: readonly (readonly number[])[]) {
   const shape = new THREE.Shape();
@@ -83,52 +84,6 @@ function ContinentMesh() {
           roughness={0.98}
         />
       </mesh>
-    </>
-  );
-}
-
-function SeasAndLakes() {
-  return (
-    <>
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.24} receiveShadow>
-        <planeGeometry args={[148, 90, 1, 1]} />
-        <meshPhysicalMaterial
-          color="#082d40"
-          roughness={0.28}
-          metalness={0.26}
-          clearcoat={0.32}
-          clearcoatRoughness={0.35}
-        />
-      </mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[-12, 1.2, -9]}>
-        <circleGeometry args={[5.2, 48]} />
-        <meshPhysicalMaterial
-          color="#1b8291"
-          emissive="#073a43"
-          emissiveIntensity={0.35}
-          roughness={0.18}
-          metalness={0.18}
-          transparent
-          opacity={0.88}
-        />
-      </mesh>
-      {[
-        [-48, 12, 4.4, 2.9],
-        [-52, 8, 2.1, 1.4],
-        [-47, 17, 1.4, 0.85],
-      ].map(([x, z, sx, sz], index) => (
-        <mesh
-          key={index}
-          rotation-x={-Math.PI / 2}
-          position={[x, 0.1, z]}
-          scale={[sx, sz, 1]}
-          castShadow
-          receiveShadow
-        >
-          <circleGeometry args={[1, 20]} />
-          <meshStandardMaterial color="#394749" roughness={0.95} />
-        </mesh>
-      ))}
     </>
   );
 }
@@ -236,7 +191,7 @@ function ReshiIsles() {
 export function RosharTerrain() {
   return (
     <group>
-      <SeasAndLakes />
+      <WaterSystem />
       <ContinentMesh />
       <MountainRanges />
       <ReshiIsles />
