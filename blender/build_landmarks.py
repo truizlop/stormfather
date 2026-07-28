@@ -120,6 +120,18 @@ p = {
     "rope": material("SF_Braided_Rope", (0.41, 0.30, 0.16), 0, 0.96),
     "cloth_blue": material("SF_Cloth_Indigo", (0.035, 0.12, 0.24), 0, 0.88),
     "cloth_red": material("SF_Cloth_Maroon", (0.31, 0.055, 0.065), 0, 0.9),
+    "plaster_blue": material("SF_Painted_Plaster_Blue", (0.18, 0.42, 0.48), 0, 0.82),
+    "plaster_rose": material("SF_Painted_Plaster_Rose", (0.55, 0.25, 0.22), 0, 0.86),
+    "tile": material("SF_Glazed_Tile", (0.08, 0.42, 0.46), 0.12, 0.32),
+    "copper": material("SF_Patinated_Copper", (0.16, 0.38, 0.34), 0.62, 0.42),
+    "glass_dark": material(
+        "SF_Dark_Stormglass",
+        (0.025, 0.12, 0.15),
+        0.32,
+        0.2,
+        (0.02, 0.28, 0.32),
+        0.85,
+    ),
 }
 
 
@@ -1103,6 +1115,247 @@ def build_detail_modules() -> None:
         )
 
 
+def build_fidelity_modules() -> None:
+    """Human-scale modules used to break up procedural city repetition."""
+
+    house = root("Module_Terraced_House", (-24, 26, 0))
+    cube("TerracedHouse_Foundation", (0, 0, 0.16), (1.12, 0.82, 0.16), p["stone_dark"], house, 0.06)
+    cube("TerracedHouse_Body", (0, 0, 0.94), (1.02, 0.72, 0.68), p["plaster_rose"], house, 0.09)
+    cube("TerracedHouse_Cornice", (0, 0, 1.63), (1.12, 0.8, 0.09), p["ivory"], house, 0.04)
+    roof = cube("TerracedHouse_Roof", (0, 0.02, 1.82), (1.16, 0.86, 0.16), p["teal"], house, 0.05)
+    roof.rotation_euler[0] = math.radians(4)
+    cube("TerracedHouse_Door", (0, -0.731, 0.62), (0.22, 0.025, 0.42), p["wood"], house, 0.025)
+    for floor in range(2):
+        for side in (-1, 1):
+            x = side * 0.58
+            z = 0.72 + floor * 0.58
+            cube(f"TerracedHouse_Window_{floor}_{side}", (x, -0.738, z), (0.18, 0.022, 0.19), p["glass_dark"], house, 0.018)
+            for shutter_side in (-1, 1):
+                cube(
+                    f"TerracedHouse_Shutter_{floor}_{side}_{shutter_side}",
+                    (x + shutter_side * 0.235, -0.752, z),
+                    (0.055, 0.025, 0.21),
+                    p["slate"],
+                    house,
+                    0.012,
+                )
+    cube("TerracedHouse_Balcony", (0, -0.92, 1.2), (0.72, 0.28, 0.055), p["wood"], house, 0.025)
+    for rail in range(7):
+        cyl(
+            f"TerracedHouse_Baluster_{rail + 1}",
+            (-0.62 + rail * 0.205, -1.14, 1.46),
+            0.022,
+            0.5,
+            p["brass"],
+            house,
+            8,
+            0,
+        )
+    balcony_rail = cyl("TerracedHouse_BalconyRail", (0, -1.14, 1.7), 0.026, 1.45, p["brass"], house, 8, 0)
+    balcony_rail.rotation_euler[1] = math.pi / 2
+    cyl("TerracedHouse_Drain", (1.02, -0.66, 0.92), 0.03, 1.42, p["copper"], house, 8, 0)
+
+    shelter = root("Module_Windbreak_House", (-17, 26, 0))
+    cube("WindbreakHouse_Base", (0, 0.12, 0.18), (1.35, 0.98, 0.18), p["stone_dark"], shelter, 0.07)
+    cube("WindbreakHouse_Core", (0, 0.25, 0.93), (1.05, 0.72, 0.64), p["stone"], shelter, 0.1)
+    windwall = cube("WindbreakHouse_Wall", (0, -0.62, 1.1), (1.42, 0.16, 1.04), p["stone_light"], shelter, 0.08)
+    windwall.rotation_euler[0] = math.radians(-9)
+    for side in (-1, 1):
+        buttress = cube(
+            f"WindbreakHouse_Buttress_{side}",
+            (side * 1.16, -0.48, 0.72),
+            (0.18, 0.42, 0.72),
+            p["stone_dark"],
+            shelter,
+            0.06,
+        )
+        buttress.rotation_euler[1] = side * math.radians(7)
+    cube("WindbreakHouse_ShelteredDoor", (0, 0.98, 0.68), (0.25, 0.035, 0.46), p["wood"], shelter, 0.025)
+    for side in (-1, 1):
+        cube(f"WindbreakHouse_Window_{side}", (side * 0.58, 0.978, 1.12), (0.18, 0.025, 0.2), p["cyan"], shelter, 0.016)
+    cube("WindbreakHouse_Roof", (0, 0.18, 1.72), (1.16, 0.82, 0.14), p["slate"], shelter, 0.05)
+    for slot in range(5):
+        cube(
+            f"WindbreakHouse_StormSlot_{slot + 1}",
+            (-0.72 + slot * 0.36, -0.79, 1.18),
+            (0.075, 0.025, 0.18),
+            p["glass_dark"],
+            shelter,
+            0.012,
+        )
+
+    arcade = root("Module_Azish_Arcade", (-10, 26, 0))
+    cube("AzishArcade_Platform", (0, 0, 0.12), (1.65, 0.82, 0.12), p["ochre"], arcade, 0.06)
+    for column in range(6):
+        x = -1.32 + column * 0.528
+        cyl(f"AzishArcade_Column_{column + 1}", (x, -0.62, 0.92), 0.09, 1.52, p["ivory"], arcade, 10, 0.022)
+        cyl(f"AzishArcade_Capital_{column + 1}", (x, -0.62, 1.68), 0.16, 0.12, p["brass"], arcade, 10, 0.015)
+    cube("AzishArcade_Lintel", (0, -0.62, 1.82), (1.58, 0.2, 0.15), p["ivory"], arcade, 0.05)
+    cube("AzishArcade_Hall", (0, 0.22, 1.0), (1.48, 0.62, 0.78), p["stone_light"], arcade, 0.08)
+    sphere("AzishArcade_Dome", (0, 0.22, 1.9), (0.94, 0.82, 0.48), p["tile"], arcade, 20, 10)
+    cyl("AzishArcade_Finial", (0, 0.22, 2.42), 0.1, 0.52, p["brass"], arcade, 10, 0.02)
+    for tile in range(9):
+        cube(
+            f"AzishArcade_Tile_{tile + 1}",
+            (-1.28 + tile * 0.32, -0.835, 0.16),
+            (0.13, 0.018, 0.13),
+            p["tile"] if tile % 2 else p["ivory"],
+            arcade,
+            0.01,
+        )
+
+    farm = root("Module_Shin_Farmstead", (-3, 26, 0))
+    cube("ShinFarmstead_House", (-0.45, 0.15, 0.72), (0.88, 0.68, 0.62), p["earth"], farm, 0.15)
+    farm_roof = cone("ShinFarmstead_Roof", (-0.45, 0.15, 1.58), 1.18, 0.1, 0.68, p["terracotta"], farm, 4, 0.035)
+    farm_roof.rotation_euler[2] = math.pi / 4
+    for beam_index, x in enumerate((-0.92, -0.45, 0.02)):
+        cube(f"ShinFarmstead_Timber_{beam_index + 1}", (x, -0.545, 0.78), (0.045, 0.035, 0.56), p["wood"], farm, 0.015)
+    cube("ShinFarmstead_Door", (-0.45, -0.55, 0.54), (0.2, 0.035, 0.38), p["wood"], farm, 0.03)
+    for row in range(5):
+        cube(f"ShinFarmstead_Crop_{row + 1}", (1.02, -0.65 + row * 0.34, 0.16), (0.65, 0.08, 0.06), p["grass"], farm, 0.02)
+    cyl("ShinFarmstead_TreeTrunk", (1.35, 0.82, 0.9), 0.12, 1.8, p["earth"], farm, 10, 0.02)
+    sphere("ShinFarmstead_TreeCrown", (1.35, 0.82, 2.05), (0.72, 0.68, 0.84), p["leaf"], farm, 16, 9)
+    for fence_index in range(7):
+        cyl(
+            f"ShinFarmstead_FencePost_{fence_index + 1}",
+            (-1.55 + fence_index * 0.52, 1.18, 0.38),
+            0.035,
+            0.72,
+            p["wood"],
+            farm,
+            8,
+            0,
+        )
+
+    jetty = root("Module_Purelake_Jetty", (4, 26, 0))
+    for plank in range(13):
+        x = -1.65 + plank * 0.275
+        cube(
+            f"PurelakeJetty_Plank_{plank + 1:02d}",
+            (x, 0, 0.42 + (plank % 3) * 0.012),
+            (0.12, 0.42, 0.035),
+            p["wood"],
+            jetty,
+            0.018,
+        )
+        if plank % 3 == 0:
+            for side in (-1, 1):
+                cyl(f"PurelakeJetty_Stilt_{plank + 1}_{side}", (x, side * 0.32, 0.18), 0.035, 0.72, p["wood"], jetty, 8, 0)
+    cube("PurelakeJetty_HutFloor", (1.7, 0, 0.55), (0.72, 0.62, 0.1), p["stone"], jetty, 0.04)
+    for side_x in (-1, 1):
+        for side_y in (-1, 1):
+            cyl("PurelakeJetty_HutStilt", (1.7 + side_x * 0.48, side_y * 0.4, 0.28), 0.045, 0.84, p["wood"], jetty, 8, 0)
+    sphere("PurelakeJetty_RockbudHut", (1.7, 0, 1.12), (0.86, 0.76, 0.6), p["ivory"], jetty, 18, 9)
+    for post in (-1, 1):
+        cyl(f"PurelakeJetty_NetPost_{post}", (-0.55 + post * 0.45, -0.62, 1.0), 0.025, 1.35, p["wood"], jetty, 8, 0)
+    for line in range(7):
+        cube(f"PurelakeJetty_NetLine_{line + 1}", (-0.94 + line * 0.13, -0.62, 0.98), (0.008, 0.018, 0.46), p["rope"], jetty, 0)
+
+    scaffold = root("Module_Warcamp_Scaffold", (11, 26, 0))
+    cube("WarcampScaffold_Paving", (0, 0, 0.08), (1.65, 1.08, 0.08), p["wet_stone"], scaffold, 0.04)
+    for x in (-1.25, -0.42, 0.42, 1.25):
+        for y in (-0.78, 0.78):
+            cyl("WarcampScaffold_Post", (x, y, 1.05), 0.045, 2.1, p["wood"], scaffold, 8, 0)
+    for level in (0.72, 1.45, 2.08):
+        for y in (-0.78, 0.78):
+            beam = cyl("WarcampScaffold_LongBeam", (0, y, level), 0.038, 2.8, p["wood"], scaffold, 8, 0)
+            beam.rotation_euler[1] = math.pi / 2
+        cube("WarcampScaffold_Deck", (0, 0, level), (1.35, 0.82, 0.045), p["wood"], scaffold, 0.02)
+    tent = cone("WarcampScaffold_StormTent", (-0.65, 0, 0.58), 0.52, 0.07, 0.92, p["cloth_blue"], scaffold, 4, 0.02)
+    tent.rotation_euler[2] = math.pi / 4
+    for crate_index in range(8):
+        cube(
+            f"WarcampScaffold_Crate_{crate_index + 1}",
+            (0.62 + (crate_index % 3) * 0.28, -0.55 + (crate_index // 3) * 0.3, 0.25 + (crate_index % 2) * 0.2),
+            (0.12, 0.12, 0.12),
+            p["wood"],
+            scaffold,
+            0.018,
+        )
+    for bridge_part in range(7):
+        cube(
+            f"WarcampScaffold_BridgePart_{bridge_part + 1}",
+            (-0.98 + bridge_part * 0.32, 0.5, 0.28 + bridge_part * 0.025),
+            (0.14, 0.42, 0.035),
+            p["wood"],
+            scaffold,
+            0.015,
+        )
+
+    ruin = root("Module_Aimian_Ruin", (18, 26, 0))
+    cyl("AimianRuin_Platform", (0, 0, 0.14), 1.55, 0.28, p["stone_dark"], ruin, 16, 0.06)
+    torus("AimianRuin_BrokenRing", (0, 0, 0.36), 1.05, 0.09, p["slate"], ruin)
+    for index, angle in enumerate((0.15, 1.7, 3.0, 4.45, 5.55)):
+        height = 0.75 + (index % 3) * 0.45
+        x, y = math.cos(angle) * 1.08, math.sin(angle) * 1.08
+        cyl(f"AimianRuin_Column_{index + 1}", (x, y, 0.3 + height / 2), 0.12, height, p["stone_light"], ruin, 8, 0.035)
+        if index % 2 == 0:
+            cone(f"AimianRuin_Spike_{index + 1}", (x, y, 0.55 + height), 0.18, 0.018, 0.9, p["stone_light"], ruin, 6, 0.025)
+    for seam in range(6):
+        angle = seam * math.pi / 3
+        ray = cube(
+            f"AimianRuin_StormlightSeam_{seam + 1}",
+            (math.cos(angle) * 0.56, math.sin(angle) * 0.56, 0.34),
+            (0.48, 0.025, 0.018),
+            p["cyan"],
+            ruin,
+            0.008,
+        )
+        ray.rotation_euler[2] = angle
+
+    gallery = root("Module_Urithiru_Gallery", (25, 26, 0))
+    for tier in range(4):
+        cube(
+            f"UrithiruGallery_Stratum_{tier + 1}",
+            (0, tier * 0.38, 0.22 + tier * 0.36),
+            (1.55 - tier * 0.12, 0.64, 0.16),
+            p["stone_light"] if tier % 2 else p["stone"],
+            gallery,
+            0.055,
+        )
+        cube(
+            f"UrithiruGallery_ShadowBand_{tier + 1}",
+            (0, -0.27 + tier * 0.38, 0.34 + tier * 0.36),
+            (1.42 - tier * 0.12, 0.06, 0.035),
+            p["stone_dark"],
+            gallery,
+            0.012,
+        )
+    for side in (-1, 1):
+        cube(f"UrithiruGallery_Buttress_{side}", (side * 1.28, 0.42, 0.88), (0.16, 0.42, 0.88), p["stone_dark"], gallery, 0.05)
+    for lamp in range(5):
+        x = -1.05 + lamp * 0.525
+        cyl(f"UrithiruGallery_LampStem_{lamp + 1}", (x, -0.36, 1.32), 0.025, 0.42, p["brass"], gallery, 8, 0)
+        sphere(f"UrithiruGallery_Lamp_{lamp + 1}", (x, -0.36, 1.57), (0.08, 0.08, 0.11), p["cyan"], gallery, 10, 6)
+
+    warehouse = root("Module_Thaylen_Warehouse", (32, 26, 0))
+    cube("ThaylenWarehouse_Base", (0, 0, 0.16), (1.4, 0.9, 0.16), p["stone_dark"], warehouse, 0.06)
+    cube("ThaylenWarehouse_Body", (0, 0, 0.94), (1.3, 0.82, 0.68), p["plaster_blue"], warehouse, 0.08)
+    roof = cone("ThaylenWarehouse_Roof", (0, 0, 1.82), 1.72, 0.2, 0.66, p["slate"], warehouse, 4, 0.04)
+    roof.rotation_euler[2] = math.pi / 4
+    cube("ThaylenWarehouse_CargoDoor", (0, -0.835, 0.68), (0.48, 0.025, 0.5), p["wood"], warehouse, 0.025)
+    for brace in (-0.85, 0, 0.85):
+        cube("ThaylenWarehouse_Brace", (brace, -0.855, 1.06), (0.055, 0.025, 0.58), p["brass"], warehouse, 0.015)
+    for barrel in range(5):
+        cyl(f"ThaylenWarehouse_Barrel_{barrel + 1}", (-1.0 + barrel * 0.5, -1.06, 0.3), 0.16, 0.46, p["wood"], warehouse, 12, 0.02)
+
+    caravan = root("Prop_Chull_Caravan", (39, 26, 0))
+    sphere("ChullCaravan_Shell", (-0.45, 0, 0.72), (0.82, 0.55, 0.5), p["slate"], caravan, 16, 9)
+    sphere("ChullCaravan_Body", (-0.62, 0, 0.46), (0.68, 0.38, 0.28), p["stone"], caravan, 14, 8)
+    for leg_index in range(6):
+        x = -1.05 + (leg_index % 3) * 0.48
+        y = -0.34 if leg_index < 3 else 0.34
+        leg = cyl(f"ChullCaravan_Leg_{leg_index + 1}", (x, y, 0.22), 0.055, 0.48, p["stone_dark"], caravan, 8, 0.015)
+        leg.rotation_euler[1] = (-0.24 if leg_index % 2 else 0.24)
+    cube("ChullCaravan_Wagon", (1.1, 0, 0.48), (0.95, 0.62, 0.28), p["wood"], caravan, 0.06)
+    for side in (-1, 1):
+        for x in (0.55, 1.65):
+            torus("ChullCaravan_Wheel", (x, side * 0.66, 0.34), 0.28, 0.055, p["wood"], caravan, (math.pi / 2, 0, 0))
+    cube("ChullCaravan_Canopy", (1.1, 0, 1.12), (0.92, 0.58, 0.08), p["cloth_red"], caravan, 0.03)
+    for side in (-1, 1):
+        cube("ChullCaravan_Harness", (0.2, side * 0.28, 0.46), (0.58, 0.025, 0.025), p["rope"], caravan, 0)
+
+
 def build_actors() -> None:
     skin_dark = material("SF_Skin_Azish", (0.22, 0.09, 0.045))
     skin_brown = material("SF_Skin_Alethi", (0.38, 0.18, 0.09))
@@ -1110,6 +1363,7 @@ def build_actors() -> None:
     skin_pale = material("SF_Skin_Shin", (0.72, 0.55, 0.43))
     singer_red = material("SF_Singer_Red", (0.48, 0.045, 0.025))
     singer_black = material("SF_Singer_Black", (0.025, 0.018, 0.017))
+    aimian_skin = material("SF_Skin_Aimian_Blue", (0.20, 0.42, 0.58))
     hair_black = material("SF_Hair_Black", (0.012, 0.009, 0.008))
     hair_white = material("SF_Hair_White", (0.72, 0.72, 0.68))
     blue = material("SF_Alethi_Blue", (0.035, 0.12, 0.29))
@@ -1158,6 +1412,37 @@ def build_actors() -> None:
     cone("Actor_Purelaker_Wrap", (0, 0, 0.72), 0.4, 0.28, 0.82, p["teal"], actor, 10)
     pole = cyl("Actor_Purelaker_FishingPole", (0.53, 0, 1.15), 0.025, 2.35, p["earth"], actor, 8, 0)
     pole.rotation_euler[1] = -0.13
+    actor = person_base("Actor_Veden", 20, skin_brown, p["cloth_red"], 1.04)
+    cone("Actor_Veden_Hair", (0, 0.02, 1.88), 0.25, 0.09, 0.27, hair_black, actor, 12)
+    cube("Actor_Veden_Longcoat", (0, 0.1, 0.84), (0.3, 0.08, 0.48), p["cloth_red"], actor, 0.035)
+    cube("Actor_Veden_Sash", (0, -0.25, 1.12), (0.31, 0.025, 0.08), p["ochre"], actor, 0.015).rotation_euler[2] = -0.18
+    actor = person_base("Actor_Aimian", 27, aimian_skin, grey, 1.1, 0.92)
+    sphere("Actor_Aimian_Crown", (0, 0.02, 1.99), (0.21, 0.19, 0.18), hair_white, actor, 12, 7)
+    for mark in (-1, 0, 1):
+        stripe = cube(
+            f"Actor_Aimian_SkinMark_{mark}",
+            (mark * 0.075, -0.228, 1.82 + mark * 0.025),
+            (0.018, 0.014, 0.15),
+            p["cyan"],
+            actor,
+            0.008,
+        )
+        stripe.rotation_euler[2] = 0.22
+    cone("Actor_Aimian_Mantle", (0, 0.04, 1.34), 0.42, 0.3, 0.28, p["slate"], actor, 10, 0.025)
+    actor = person_base("Actor_Reshi", 34, skin_tan, p["grass"], 0.97, 1.02)
+    cone("Actor_Reshi_Wrap", (0, 0.04, 0.72), 0.42, 0.29, 0.82, p["grass"], actor, 10)
+    cone("Actor_Reshi_SunHat", (0, 0, 1.82), 0.5, 0.08, 0.18, p["ochre"], actor, 18, 0.02)
+    for shell in range(5):
+        angle = -0.7 + shell * 0.34
+        sphere(
+            f"Actor_Reshi_Shell_{shell + 1}",
+            (math.sin(angle) * 0.31, -0.29, 1.28 + math.cos(angle) * 0.12),
+            (0.055, 0.035, 0.07),
+            p["brass"],
+            actor,
+            8,
+            5,
+        )
 
 
 build_urithiru()
@@ -1170,6 +1455,7 @@ build_shinovar()
 build_akinah()
 build_shattered_plains()
 build_detail_modules()
+build_fidelity_modules()
 build_actors()
 
 

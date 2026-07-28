@@ -3,6 +3,7 @@ dist/
 .DS_Store
 *.log
 __pycache__/
+*.blend1
 coverage/
 playwright-report/
 test-results/
