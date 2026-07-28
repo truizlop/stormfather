@@ -9,6 +9,7 @@ import {
   inlandWaterPolygons,
   islandPolygons,
   mainlandOutline,
+  riverPaths,
   type GeographyPoint,
 } from "../cartography/geography";
 import { locations } from "../locations";
@@ -375,6 +376,70 @@ function CartographicLines() {
   );
 }
 
+function RiverNetwork() {
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const tributaries = useMemo(
+    () =>
+      riverPaths.flatMap((river, riverIndex) =>
+        river.points.slice(1, -1).map((point, pointIndex) => {
+          const previous = river.points[pointIndex];
+          const following = river.points[pointIndex + 2];
+          const tangentX = following[0] - previous[0];
+          const tangentZ = following[1] - previous[1];
+          const length = Math.hypot(tangentX, tangentZ) || 1;
+          const side = (riverIndex + pointIndex) % 2 === 0 ? 1 : -1;
+          const reach = 1.4 + ((riverIndex * 5 + pointIndex * 3) % 5) * 0.3;
+          const source: GeographyPoint = [
+            point[0] + (-tangentZ / length) * reach * side - tangentX * 0.08,
+            point[1] + (tangentX / length) * reach * side - tangentZ * 0.08,
+          ];
+          return [source, point] as const;
+        }),
+      ),
+    [],
+  );
+
+  if (detailLevel === "city" || detailLevel === "street") return null;
+  return (
+    <group name="Canonical river network">
+      {riverPaths.map((river) => (
+        <Line
+          key={river.id}
+          points={river.points.map(([x, z]) => [
+            x,
+            terrainHeightAt(x, z) + 0.1,
+            z,
+          ])}
+          color="#2d8790"
+          lineWidth={
+            (detailLevel === "continent" ? 0.86 : 1.28) +
+            river.width * 1.8
+          }
+          transparent
+          opacity={detailLevel === "continent" ? 0.72 : 0.84}
+          depthWrite={false}
+          renderOrder={3}
+        />
+      ))}
+      {tributaries.map((tributary, index) => (
+        <Line
+          key={index}
+          points={tributary.map(([x, z]) => [
+            x,
+            terrainHeightAt(x, z) + 0.09,
+            z,
+          ])}
+          color="#397d83"
+          lineWidth={detailLevel === "continent" ? 0.42 : 0.68}
+          transparent
+          opacity={0.56}
+          depthWrite={false}
+        />
+      ))}
+    </group>
+  );
+}
+
 export function RosharTerrain() {
   return (
     <group>
@@ -382,6 +447,7 @@ export function RosharTerrain() {
       <TerrainSurface />
       <CoastSkirts />
       <GeographicCoastlines />
+      <RiverNetwork />
       <CartographicLines />
     </group>
   );

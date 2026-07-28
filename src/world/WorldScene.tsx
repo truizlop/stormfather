@@ -22,7 +22,7 @@ export function WorldScene() {
       <color attach="background" args={[nightMode ? "#071218" : "#62717a"]} />
       <fog
         attach="fog"
-        args={[nightMode ? "#071218" : "#62717a", 48, 126]}
+        args={[nightMode ? "#071218" : "#62717a", 88, 210]}
       />
       {nightMode && (
         <Stars
@@ -36,24 +36,24 @@ export function WorldScene() {
         />
       )}
       <ambientLight
-        intensity={nightMode ? 0.72 : 1.4}
+        intensity={nightMode ? 0.48 : 0.82}
         color={nightMode ? "#7ea0b0" : "#cfe2ea"}
       />
       <hemisphereLight
-        intensity={nightMode ? 0.8 : 1.6}
+        intensity={nightMode ? 0.56 : 0.92}
         color={nightMode ? "#8cb1c4" : "#cde9f2"}
         groundColor="#18221d"
       />
       <directionalLight
         position={nightMode ? [-32, 48, 36] : [-38, 52, 22]}
-        intensity={nightMode ? 2.6 : 4.2}
+        intensity={nightMode ? 2.15 : 2.85}
         color={nightMode ? "#f1c581" : "#fff1ca"}
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-48}
-        shadow-camera-right={48}
-        shadow-camera-top={42}
-        shadow-camera-bottom={-42}
+        shadow-camera-left={-64}
+        shadow-camera-right={64}
+        shadow-camera-top={48}
+        shadow-camera-bottom={-48}
         shadow-bias={-0.00012}
       />
       <RosharTerrain />
