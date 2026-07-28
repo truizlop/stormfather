@@ -1078,9 +1078,14 @@ def build_detail_modules() -> None:
         )
     bridge_skin = material("SF_Bridgeman_Skin", (0.32, 0.14, 0.07))
     bridge_cloth = material("SF_Bridgeman_Cloth", (0.26, 0.16, 0.09))
-    for runner in range(10):
-        x = -1.8 + (runner % 5) * 0.9
-        y = -0.92 if runner < 5 else 0.92
+    # A historical Sadeas bridge crew numbered roughly 35–40. Thirty visible
+    # carriers keep that mass legible at web scale while leaving space for the
+    # bridge captain and reserve men represented by the surrounding crowd system.
+    for runner in range(30):
+        column = runner % 6
+        row = runner // 6
+        x = -1.9 + column * 0.76
+        y = -0.56 + row * 0.28
         for side in (-1, 1):
             leg = cyl(
                 f"BridgeRun_Runner_{runner + 1}_Leg_{side}",
