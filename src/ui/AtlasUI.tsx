@@ -13,6 +13,7 @@ import { TravelRail } from "./TravelRail";
 
 export function AtlasUI() {
   const stormMode = useAtlasStore((state) => state.stormMode);
+  const menuOpen = useAtlasStore((state) => state.menuOpen);
   return (
     <div className={`atlas-ui ${stormMode ? "is-storm-mode" : ""}`}>
       <TopBar />
@@ -24,7 +25,7 @@ export function AtlasUI() {
         {stormMode && <StormTimeline />}
       </div>
       <MapControls />
-      {!stormMode && <ScaleReadout />}
+      {!stormMode && !menuOpen && <ScaleReadout />}
       <MobileChrome />
       <SearchPalette />
       <Toast />

@@ -262,24 +262,24 @@ export const frontierStyle: Record<
   }
 > = {
   national: {
-    color: "#d2b26f",
-    opacity: 0.82,
+    color: "#e2c57f",
+    opacity: 0.92,
     dashSize: 0,
     gapSize: 0,
-    lineWidth: 1.05,
+    lineWidth: 1.42,
   },
   disputed: {
-    color: "#e18b63",
-    opacity: 0.9,
+    color: "#f19a70",
+    opacity: 0.95,
     dashSize: 0.55,
     gapSize: 0.24,
-    lineWidth: 1.22,
+    lineWidth: 1.58,
   },
   porous: {
-    color: "#a8b77a",
-    opacity: 0.7,
+    color: "#bdcb89",
+    opacity: 0.82,
     dashSize: 0.22,
     gapSize: 0.42,
-    lineWidth: 0.92,
+    lineWidth: 1.18,
   },
 };
