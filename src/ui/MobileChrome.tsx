@@ -12,6 +12,7 @@ export function MobileChrome() {
   const isPlaying = useAtlasStore((state) => state.isPlaying);
   const togglePlaying = useAtlasStore((state) => state.togglePlaying);
   const stormMode = useAtlasStore((state) => state.stormMode);
+  const menuOpen = useAtlasStore((state) => state.menuOpen);
   const selected =
     locationById.get(selectedId) ?? locationById.get("shattered-plains")!;
   const phase = stormPhase(
@@ -20,7 +21,7 @@ export function MobileChrome() {
   );
 
   return (
-    <div className="mobile-chrome">
+    <div className={`mobile-chrome ${menuOpen ? "is-menu-open" : ""}`}>
       <section className="mobile-location-strip panel">
         <div>
           <h2>{stormMode ? "Highstorm" : selected.name}</h2>
@@ -46,7 +47,7 @@ export function MobileChrome() {
             <CloudLightning />
             <span>Highstorm</span>
           </button>
-          {travelLocations.slice(3).map((location) => {
+          {travelLocations.map((location) => {
             const Icon = locationIcons[location.id];
             return (
               <button

@@ -35,6 +35,9 @@ function LandmarkInstance({
     copy.position.set(0, 0, 0);
     copy.rotation.set(0, 0, 0);
     copy.traverse((object) => {
+      if (object.name === "Shinovar_Grass_Valley") {
+        object.visible = false;
+      }
       const mesh = object as THREE.Mesh;
       if (mesh.isMesh) {
         mesh.castShadow = true;
@@ -63,14 +66,26 @@ export function Landmarks() {
     <group>
       {locations
         .filter((location) => location.modelRoot)
-        .map((location) => (
-          <LandmarkInstance
-            key={location.id}
-            rootName={location.modelRoot!}
-            position={[location.coordinates.x, 1.05, location.coordinates.z]}
-            selected={location.id === selectedId}
-          />
-        ))}
+        .map((location) => {
+          const elevation =
+            location.id === "shinovar" || location.id === "purelake"
+              ? 1.05
+              : location.id === "aimia"
+                ? 0.08
+                : 0.76;
+          return (
+            <LandmarkInstance
+              key={location.id}
+              rootName={location.modelRoot!}
+              position={[
+                location.coordinates.x,
+                elevation,
+                location.coordinates.z,
+              ]}
+              selected={location.id === selectedId}
+            />
+          );
+        })}
     </group>
   );
 }

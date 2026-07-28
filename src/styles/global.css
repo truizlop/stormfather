@@ -849,6 +849,110 @@ input:focus-visible {
   display: none;
 }
 
+.search-backdrop {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  padding-top: 92px;
+  place-items: start center;
+  background: rgba(1, 8, 12, 0.62);
+  backdrop-filter: blur(7px);
+}
+
+.search-palette {
+  width: min(560px, calc(100vw - 32px));
+  overflow: hidden;
+  border-color: rgba(202, 170, 107, 0.52);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.7);
+}
+
+.search-palette header {
+  display: grid;
+  grid-template-columns: 22px 1fr 36px;
+  align-items: center;
+  min-height: 54px;
+  padding: 0 10px 0 17px;
+  border-bottom: 1px solid rgba(202, 170, 107, 0.22);
+  color: var(--brass);
+}
+
+.search-palette input {
+  min-width: 0;
+  height: 52px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #eee1c6;
+  font: 18px/1 "Cormorant Garamond", Georgia, serif;
+}
+
+.search-palette input::placeholder {
+  color: rgba(224, 218, 202, 0.48);
+}
+
+.search-palette header button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: rgba(232, 224, 207, 0.7);
+  cursor: pointer;
+}
+
+.search-results {
+  display: grid;
+  max-height: min(480px, 65vh);
+  overflow-y: auto;
+  padding: 7px;
+}
+
+.search-results > button {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 9px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 0;
+  border-bottom: 1px solid rgba(202, 170, 107, 0.11);
+  background: transparent;
+  color: rgba(229, 225, 213, 0.77);
+  text-align: left;
+  cursor: pointer;
+}
+
+.search-results > button:hover,
+.search-results > button:focus-visible {
+  outline: 0;
+  background: rgba(202, 170, 107, 0.09);
+  color: #f2e2bc;
+}
+
+.search-results span {
+  display: grid;
+  gap: 2px;
+}
+
+.search-results strong {
+  font: 600 17px/1 "Cormorant Garamond", Georgia, serif;
+}
+
+.search-results small {
+  color: rgba(212, 217, 212, 0.49);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.search-results > p {
+  margin: 24px;
+  color: rgba(229, 225, 213, 0.62);
+  text-align: center;
+}
+
 .loading-overlay {
   position: absolute;
   inset: 0;
@@ -1018,6 +1122,21 @@ input:focus-visible {
     gap: 10px;
     min-height: 226px;
     padding: 16px 12px 10px;
+  }
+
+  .mobile-chrome.is-menu-open .mobile-sheet {
+    min-height: min(520px, calc(100vh - 138px));
+  }
+
+  .mobile-chrome.is-menu-open .mobile-travel-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-content: start;
+    overflow-y: auto;
+  }
+
+  .mobile-chrome.is-menu-open .mobile-travel-list button {
+    width: auto;
   }
 
   .sheet-handle {

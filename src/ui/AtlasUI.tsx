@@ -4,6 +4,7 @@ import { LocationPanel } from "./LocationPanel";
 import { MapControls } from "./MapControls";
 import { MiniMap } from "./MiniMap";
 import { MobileChrome } from "./MobileChrome";
+import { SearchPalette } from "./SearchPalette";
 import { StormTimeline } from "./StormTimeline";
 import { Toast } from "./Toast";
 import { TopBar } from "./TopBar";
@@ -23,6 +24,7 @@ export function AtlasUI() {
       </div>
       <MapControls />
       <MobileChrome />
+      <SearchPalette />
       <Toast />
       <p className="unofficial-note">
         Original, unofficial fan-made visualization

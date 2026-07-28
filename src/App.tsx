@@ -22,7 +22,7 @@ export function App() {
     <main className="app-shell">
       <Canvas
         className="world-canvas"
-        shadows
+        shadows="basic"
         dpr={[1, 1.6]}
         camera={{
           position: [49, 14, 24],

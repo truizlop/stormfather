@@ -92,7 +92,7 @@ function Walkers({
   return (
     <group>
       <instancedMesh ref={bodies} args={[undefined, undefined, count]} castShadow>
-        <coneGeometry args={[0.13, 0.09, 0.42, 6]} />
+        <coneGeometry args={[0.13, 0.42, 6]} />
         <meshStandardMaterial color={palette.cloth} roughness={0.82} />
       </instancedMesh>
       <instancedMesh ref={heads} args={[undefined, undefined, count]} castShadow>

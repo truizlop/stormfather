@@ -36,6 +36,7 @@ export function TopBar() {
   const togglePlaying = useAtlasStore((state) => state.togglePlaying);
   const toggleNightMode = useAtlasStore((state) => state.toggleNightMode);
   const toggleMenu = useAtlasStore((state) => state.toggleMenu);
+  const setSearchOpen = useAtlasStore((state) => state.setSearchOpen);
 
   return (
     <header className="top-bar">
@@ -56,7 +57,11 @@ export function TopBar() {
         ))}
       </nav>
       <div className="top-actions">
-        <button type="button" aria-label="Search locations" disabled>
+        <button
+          type="button"
+          aria-label="Search locations"
+          onClick={() => setSearchOpen(true)}
+        >
           <Search size={16} />
         </button>
         <button

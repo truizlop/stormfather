@@ -10,6 +10,7 @@ interface AtlasState {
   stormMode: boolean;
   nightMode: boolean;
   menuOpen: boolean;
+  searchOpen: boolean;
   locationPanelOpen: boolean;
   toast: { title: string; message: string } | null;
   selectLocation: (id: string) => void;
@@ -20,6 +21,7 @@ interface AtlasState {
   setStormMode: (enabled: boolean) => void;
   toggleNightMode: () => void;
   toggleMenu: () => void;
+  setSearchOpen: (open: boolean) => void;
   toggleLocationPanel: () => void;
   showToast: (title: string, message: string) => void;
   dismissToast: () => void;
@@ -34,6 +36,7 @@ export const useAtlasStore = create<AtlasState>((set) => ({
   stormMode: false,
   nightMode: true,
   menuOpen: false,
+  searchOpen: false,
   locationPanelOpen: true,
   toast: null,
   selectLocation: (id) =>
@@ -42,6 +45,7 @@ export const useAtlasStore = create<AtlasState>((set) => ({
       travelEpoch: state.travelEpoch + 1,
       stormMode: id === "highstorm",
       menuOpen: false,
+      searchOpen: false,
       locationPanelOpen: true,
     })),
   setSimulationTime: (simulationTime) => set({ simulationTime }),
@@ -56,6 +60,7 @@ export const useAtlasStore = create<AtlasState>((set) => ({
     })),
   toggleNightMode: () => set((state) => ({ nightMode: !state.nightMode })),
   toggleMenu: () => set((state) => ({ menuOpen: !state.menuOpen })),
+  setSearchOpen: (searchOpen) => set({ searchOpen }),
   toggleLocationPanel: () =>
     set((state) => ({ locationPanelOpen: !state.locationPanelOpen })),
   showToast: (title, message) => set({ toast: { title, message } }),

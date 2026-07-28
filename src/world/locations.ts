@@ -36,7 +36,6 @@ const locationData = [
       "A vast eastern nation of fortified lait cities, windward walls and caravan roads.",
     facts: ["Capital: Kholinar", "Vorin kingdoms", "Storm-facing fortifications"],
     culture: "alethi",
-    modelRoot: "Landmark_Kholinar",
     population: 2_120_000,
     activity: "Caravans on the kingways",
   },
