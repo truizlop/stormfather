@@ -8,3 +8,4 @@ test-results/
 
 # The living execution plan is deliberately local and is not committed.
 ROSHAR_EXECPLAN.md
+ROSHAR_DETAIL_EXECPLAN.md
