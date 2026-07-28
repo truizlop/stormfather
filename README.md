@@ -10,4 +10,22 @@ The project aims for the immediacy of a 3D map and the ambient life of a city-bu
 
 The accepted design concepts are preserved in [`docs/concepts`](docs/concepts). They establish a dark mineral cartographic interface, fine brass rules, restrained Stormlight cyan, editorial place-name typography, and a detailed miniature-diorama world.
 
-Development and deployment instructions will be added with the application foundation.
+## Development
+
+Requires Node.js 22 or newer.
+
+```bash
+npm install
+npm run dev
+```
+
+Quality checks:
+
+```bash
+npm run typecheck
+npm test
+npm run lint
+npm run build
+```
+
+The `main` branch is published to GitHub Pages by [the deployment workflow](.github/workflows/deploy.yml).

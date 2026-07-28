@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+coverage/
+playwright-report/
+test-results/
+
+# The living execution plan is deliberately local and is not committed.
+ROSHAR_EXECPLAN.md
