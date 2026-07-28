@@ -51,7 +51,7 @@ export function WorldLabels() {
             <button
               className="easter-egg"
               type="button"
-              aria-label="Inspect a curious object"
+              aria-label={`Inspect ${egg.title}`}
               onClick={() => showToast(egg.title, egg.message)}
             >
               <span aria-hidden="true">✦</span>

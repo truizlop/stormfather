@@ -53,8 +53,8 @@ export function CameraRig() {
 
     if (stormMode) {
       const stormX = stormXAtTime(store.simulationTime);
-      const desiredPosition = new THREE.Vector3(stormX + 13, 31, 27);
-      const desiredTarget = new THREE.Vector3(stormX - 4, 1, 0);
+      const desiredPosition = new THREE.Vector3(stormX + 7, 29, 23);
+      const desiredTarget = new THREE.Vector3(stormX - 13.5, 1, 0);
       camera.position.lerp(desiredPosition, 1 - Math.exp(-delta * 1.4));
       control.target.lerp(desiredTarget, 1 - Math.exp(-delta * 1.6));
       control.update();
