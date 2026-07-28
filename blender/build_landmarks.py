@@ -115,6 +115,11 @@ p = {
     "earth": material("SF_Shin_Earth", (0.34, 0.20, 0.10), 0, 1),
     "leaf": material("SF_Leaf", (0.12, 0.27, 0.08), 0, 0.92),
     "red_leaf": material("SF_Red_Leaf", (0.43, 0.05, 0.025), 0, 0.9),
+    "wet_stone": material("SF_Wet_Plateau", (0.075, 0.105, 0.12), 0.05, 0.48),
+    "wood": material("SF_Storm_Wood", (0.24, 0.13, 0.065), 0, 0.86),
+    "rope": material("SF_Braided_Rope", (0.41, 0.30, 0.16), 0, 0.96),
+    "cloth_blue": material("SF_Cloth_Indigo", (0.035, 0.12, 0.24), 0, 0.88),
+    "cloth_red": material("SF_Cloth_Maroon", (0.31, 0.055, 0.065), 0, 0.9),
 }
 
 
@@ -467,6 +472,111 @@ def build_kharbranth() -> None:
     cube("Kharbranth_Harbor_Quay", (0, -4.15, 0.4), (4.2, 0.42, 0.18), p["stone_light"], r)
     cyl("Kharbranth_Harbor_Light", (-3.4, -4, 1.25), 0.34, 1.8, p["teal"], r, 12, 0.04)
     cone("Kharbranth_Harbor_Light_Roof", (-3.4, -4, 2.3), 0.48, 0.05, 0.4, p["brass"], r, 12)
+    # Dense human-scale circulation and weathering cues: the Ralinsa is a real
+    # switchback stair rather than one smooth slab, with drains and awnings.
+    for tier in range(6):
+        direction = -1 if tier % 2 else 1
+        for step in range(11):
+            x = direction * (-2.35 + step * 0.43)
+            y = -2.72 + tier * 1.02 + step * 0.017
+            z = 1.08 + tier * 0.52 + step * 0.018
+            cube(
+                f"Kharbranth_Ralinsa_Tread_{tier + 1}_{step + 1:02d}",
+                (x, y, z),
+                (0.235, 0.31, 0.035),
+                p["stone_light"] if step % 4 else p["wet_stone"],
+                r,
+                0.016,
+            )
+        cube(
+            f"Kharbranth_Gravity_Drain_{tier + 1}",
+            (0, -3.04 + tier * 1.02, 0.89 + tier * 0.52),
+            (2.55 - tier * 0.24, 0.045, 0.055),
+            p["slate"],
+            r,
+            0.018,
+        )
+        for stall in range(3):
+            x = -1.9 + stall * 1.9 + (tier % 2) * 0.25
+            canopy = cube(
+                f"Kharbranth_Awning_{tier + 1}_{stall + 1}",
+                (x, -3.18 + tier * 1.02, 1.86 + tier * 0.52),
+                (0.62, 0.42, 0.045),
+                p["cloth_blue"] if (tier + stall) % 2 else p["cloth_red"],
+                r,
+                0.018,
+            )
+            canopy.rotation_euler[0] = math.radians(8)
+            for side in (-1, 1):
+                cyl(
+                    f"Kharbranth_Awning_Post_{tier + 1}_{stall + 1}_{side}",
+                    (x + side * 0.48, -3.04 + tier * 1.02, 1.42 + tier * 0.52),
+                    0.028,
+                    0.88,
+                    p["wood"],
+                    r,
+                    8,
+                    0,
+                )
+    for arch in range(7):
+        x = -3 + arch
+        for side in (-1, 1):
+            cube(
+                f"Kharbranth_Quay_Arcade_{arch + 1}_{side}",
+                (x + side * 0.27, -4.56, 0.93),
+                (0.075, 0.12, 0.48),
+                p["stone_light"],
+                r,
+                0.035,
+            )
+        cube(
+            f"Kharbranth_Quay_Lintel_{arch + 1}",
+            (x, -4.56, 1.41),
+            (0.36, 0.12, 0.075),
+            p["stone_light"],
+            r,
+            0.035,
+        )
+    for dock in range(3):
+        x = -2.6 + dock * 2.6
+        cube(
+            f"Kharbranth_Dock_{dock + 1}",
+            (x, -5.2, 0.26),
+            (0.72, 1.05, 0.075),
+            p["wood"],
+            r,
+            0.025,
+        )
+        for side in (-1, 1):
+            cyl(
+                f"Kharbranth_Dock_Piling_{dock + 1}_{side}",
+                (x + side * 0.58, -5.6, 0.12),
+                0.055,
+                0.75,
+                p["wood"],
+                r,
+                8,
+                0,
+            )
+        hull = cube(
+            f"Kharbranth_Harbor_Skiff_{dock + 1}",
+            (x + 0.9, -6.05, 0.19),
+            (0.78, 0.22, 0.12),
+            p["terracotta"],
+            r,
+            0.08,
+        )
+        hull.rotation_euler[2] = -0.14 + dock * 0.12
+        cyl(
+            f"Kharbranth_Harbor_Mast_{dock + 1}",
+            (x + 0.9, -6.05, 0.9),
+            0.025,
+            1.4,
+            p["wood"],
+            r,
+            8,
+            0,
+        )
 
 
 def build_kholinar() -> None:
@@ -590,6 +700,44 @@ def build_purelake() -> None:
         raft = cube(f"Purelake_Raft_{i}", (x, y, 0.28), (0.85, 0.34, 0.07), p["earth"], r, 0.025)
         raft.rotation_euler[2] = angle
         cyl(f"Purelake_RaftPole_{i}", (x, y, 0.9), 0.035, 1.35, p["brass"], r, 8, 0)
+    for path in range(4):
+        angle = -0.5 + path * 0.36
+        for plank in range(9):
+            radius = 1.1 + plank * 0.33
+            x = math.cos(angle) * radius
+            y = math.sin(angle) * radius
+            board = cube(
+                f"Purelake_Walkway_{path + 1}_{plank + 1:02d}",
+                (x, y, 0.41 + (plank % 2) * 0.012),
+                (0.19, 0.34, 0.035),
+                p["wood"],
+                r,
+                0.018,
+            )
+            board.rotation_euler[2] = angle
+    for frame in range(5):
+        angle = frame * 1.17
+        x, y = math.cos(angle) * 3.9, math.sin(angle) * 2.6
+        for side in (-1, 1):
+            cyl(
+                f"Purelake_NetFrame_{frame + 1}_{side}",
+                (x + side * 0.36, y, 0.82),
+                0.025,
+                1.2,
+                p["wood"],
+                r,
+                8,
+                0,
+            )
+        for line in range(5):
+            cube(
+                f"Purelake_NetLine_{frame + 1}_{line + 1}",
+                (x - 0.32 + line * 0.16, y, 0.82),
+                (0.012, 0.02, 0.42),
+                p["rope"],
+                r,
+                0,
+            )
 
 
 def build_shinovar() -> None:
@@ -718,6 +866,241 @@ def build_shattered_plains() -> None:
             8,
             0.02,
         )
+    # A working warcamp edge: wet paving, scaffolds, stores, shelters and bridge
+    # components make the plateau feel occupied at close LOD.
+    for row in range(5):
+        for column in range(6):
+            x = -4.45 + column * 0.34
+            y = -1.35 + row * 0.34
+            slab = cube(
+                f"Warcamp_Paving_{row + 1}_{column + 1}",
+                (x, y, 1.18 + ((row + column) % 3) * 0.012),
+                (0.155, 0.155, 0.028),
+                p["wet_stone"] if (row + column) % 4 else p["stone_light"],
+                r,
+                0.025,
+            )
+            slab.rotation_euler[2] = ((row * 7 + column * 3) % 5 - 2) * 0.025
+    for bay in range(4):
+        x = -3.8 + bay * 0.48
+        for side in (-1, 1):
+            cyl(
+                f"Warcamp_Scaffold_Post_{bay + 1}_{side}",
+                (x, -2.55 + side * 0.48, 1.88),
+                0.035,
+                1.55,
+                p["wood"],
+                r,
+                8,
+                0,
+            )
+        beam = cyl(
+            f"Warcamp_Scaffold_Beam_{bay + 1}",
+            (x, -2.55, 2.32),
+            0.03,
+            1.15,
+            p["rope"],
+            r,
+            8,
+            0,
+        )
+        beam.rotation_euler[0] = math.pi / 2
+    for tent in range(4):
+        x = -5.2 + tent * 0.72
+        y = 1.65 + (tent % 2) * 0.55
+        cone(
+            f"Warcamp_StormTent_{tent + 1}",
+            (x, y, 1.58),
+            0.48,
+            0.08,
+            0.82,
+            p["cloth_blue"] if tent % 2 else p["cloth_red"],
+            r,
+            4,
+            0.025,
+        ).rotation_euler[2] = math.pi / 4
+        cube(
+            f"Warcamp_TentWall_{tent + 1}",
+            (x, y, 1.25),
+            (0.42, 0.36, 0.24),
+            p["cloth_blue"] if tent % 2 else p["cloth_red"],
+            r,
+            0.025,
+        )
+    for crate_index in range(14):
+        x = -5.45 + (crate_index % 5) * 0.26
+        y = -2.2 + (crate_index // 5) * 0.28
+        cube(
+            f"Warcamp_Crate_{crate_index + 1:02d}",
+            (x, y, 1.32 + (crate_index % 2) * 0.13),
+            (0.115, 0.115, 0.12),
+            p["wood"],
+            r,
+            0.02,
+        )
+
+
+def build_detail_modules() -> None:
+    awning = root("Module_Storm_Awning", (20, 20, 0))
+    for side in (-1, 1):
+        cyl(
+            f"Module_Awning_Post_{side}",
+            (side * 0.75, 0, 0.7),
+            0.05,
+            1.4,
+            p["wood"],
+            awning,
+            8,
+            0,
+        )
+    canopy = cube(
+        "Module_Awning_Canopy",
+        (0, 0, 1.42),
+        (0.95, 0.62, 0.05),
+        p["cloth_blue"],
+        awning,
+        0.02,
+    )
+    canopy.rotation_euler[0] = math.radians(8)
+    cube("Module_Awning_Counter", (0, 0.16, 0.6), (0.74, 0.28, 0.12), p["stone"], awning)
+
+    arch = root("Module_Stone_Arch", (24, 20, 0))
+    for side in (-1, 1):
+        cube(
+            f"Module_Arch_Pier_{side}",
+            (side * 0.48, 0, 0.68),
+            (0.16, 0.28, 0.68),
+            p["stone_light"],
+            arch,
+            0.07,
+        )
+    cube("Module_Arch_Lintel", (0, 0, 1.38), (0.72, 0.28, 0.16), p["stone_light"], arch, 0.08)
+    torus(
+        "Module_Arch_Brass_Bell",
+        (0, -0.04, 1.03),
+        0.18,
+        0.035,
+        p["brass"],
+        arch,
+        (math.pi / 2, 0, 0),
+    )
+
+    stall = root("Module_Market_Stall", (28, 20, 0))
+    cube("Module_Stall_Table", (0, 0, 0.58), (0.82, 0.34, 0.1), p["wood"], stall)
+    for side in (-1, 1):
+        cyl(
+            f"Module_Stall_Post_{side}",
+            (side * 0.68, 0, 1),
+            0.035,
+            1.8,
+            p["wood"],
+            stall,
+            8,
+            0,
+        )
+    cube("Module_Stall_Canopy", (0, 0, 1.85), (0.92, 0.58, 0.055), p["cloth_red"], stall, 0.02)
+    for basket in range(4):
+        cyl(
+            f"Module_Stall_Basket_{basket + 1}",
+            (-0.48 + basket * 0.31, -0.02, 0.82),
+            0.12,
+            0.13,
+            p["rope"],
+            stall,
+            10,
+            0.015,
+        )
+
+    crane = root("Module_Dock_Crane", (32, 20, 0))
+    cyl("Module_Crane_Mast", (0, 0, 1.35), 0.07, 2.7, p["wood"], crane, 10, 0)
+    boom = cyl("Module_Crane_Boom", (0.62, 0, 2.35), 0.055, 1.5, p["wood"], crane, 10, 0)
+    boom.rotation_euler[1] = math.pi / 2
+    cube("Module_Crane_Rope", (1.28, 0, 1.65), (0.018, 0.018, 0.72), p["rope"], crane, 0)
+    torus("Module_Crane_Hook", (1.28, 0, 0.92), 0.1, 0.025, p["brass"], crane, (math.pi / 2, 0, 0))
+
+    bridge = root("Module_Rope_Bridge", (36, 20, 0))
+    for index in range(13):
+        x = -1.8 + index * 0.3
+        cube(
+            f"Module_RopeBridge_Slat_{index + 1:02d}",
+            (x, 0, 0.1 - 0.18 * math.sin(index / 12 * math.pi)),
+            (0.13, 0.46, 0.045),
+            p["wood"],
+            bridge,
+            0.018,
+        )
+        for side in (-1, 1):
+            cyl(
+                f"Module_RopeBridge_Post_{index + 1:02d}_{side}",
+                (x, side * 0.42, 0.42),
+                0.025,
+                0.72,
+                p["rope"],
+                bridge,
+                8,
+                0,
+            )
+    for side in (-1, 1):
+        rail = cyl(
+            f"Module_RopeBridge_Rail_{side}",
+            (0, side * 0.44, 0.62),
+            0.025,
+            3.8,
+            p["rope"],
+            bridge,
+            8,
+            0,
+        )
+        rail.rotation_euler[1] = math.pi / 2
+
+    run = root("Prop_Bridge_Run", (41, 20, 0))
+    cube("BridgeRun_Deck", (0, 0, 1.18), (2.4, 0.72, 0.11), p["wood"], run, 0.035)
+    for slat in range(12):
+        cube(
+            f"BridgeRun_Slat_{slat + 1:02d}",
+            (-2.15 + slat * 0.39, 0, 1.32),
+            (0.16, 0.8, 0.045),
+            p["stone_light"] if slat % 4 == 0 else p["wood"],
+            run,
+            0.018,
+        )
+    bridge_skin = material("SF_Bridgeman_Skin", (0.32, 0.14, 0.07))
+    bridge_cloth = material("SF_Bridgeman_Cloth", (0.26, 0.16, 0.09))
+    for runner in range(10):
+        x = -1.8 + (runner % 5) * 0.9
+        y = -0.92 if runner < 5 else 0.92
+        for side in (-1, 1):
+            leg = cyl(
+                f"BridgeRun_Runner_{runner + 1}_Leg_{side}",
+                (x + side * 0.11, y, 0.38),
+                0.07,
+                0.62,
+                p["stone_dark"],
+                run,
+                8,
+                0.015,
+            )
+            leg.rotation_euler[1] = side * (0.25 if runner % 2 else -0.25)
+        cone(
+            f"BridgeRun_Runner_{runner + 1}_Torso",
+            (x, y, 0.92),
+            0.22,
+            0.16,
+            0.55,
+            bridge_cloth,
+            run,
+            8,
+            0.02,
+        )
+        sphere(
+            f"BridgeRun_Runner_{runner + 1}_Head",
+            (x, y, 1.32),
+            (0.15, 0.14, 0.17),
+            bridge_skin,
+            run,
+            10,
+            6,
+        )
 
 
 def build_actors() -> None:
@@ -786,6 +1169,7 @@ build_purelake()
 build_shinovar()
 build_akinah()
 build_shattered_plains()
+build_detail_modules()
 build_actors()
 
 
@@ -823,7 +1207,7 @@ for y in (-7, 8):
         )
         ring = link_preview(bpy.context.object)
         ring.data.materials.append(p["brass"])
-bpy.ops.mesh.primitive_cube_add(location=(-4.5, 20, -0.15), scale=(22, 2.2, 0.15))
+bpy.ops.mesh.primitive_cube_add(location=(8, 20, -0.15), scale=(36, 2.2, 0.15))
 actor_strip = link_preview(bpy.context.object)
 actor_strip.data.materials.append(p["slate"])
 

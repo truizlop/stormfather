@@ -18,6 +18,12 @@ const expectedRoots = [
   "Actor_Singer",
   "Actor_Thaylen",
   "Actor_Purelaker",
+  "Module_Storm_Awning",
+  "Module_Stone_Arch",
+  "Module_Market_Stall",
+  "Module_Dock_Crane",
+  "Module_Rope_Bridge",
+  "Prop_Bridge_Run",
 ];
 const expectedTextures = [
   "crem-stone-albedo.jpg",
