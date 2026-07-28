@@ -69,7 +69,7 @@ const locationData = [
     subtitle: "Cymatic chasms of Natanatan",
     kind: "landmark",
     coordinates: coordinateFor("shattered-plains"),
-    camera: { position: [47, 15, 25], target: [38.4, 1.6, 12.4] },
+    camera: { position: [46, 7.2, 3], target: [37.2, 1.65, 11.45] },
     arrivalDetail: "city",
     regionColor: "#504a3e",
     accentColor: "#6ee6f2",

@@ -109,6 +109,9 @@ export function Landmarks() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const selectedId = useAtlasStore((state) => state.selectedId);
   if (detailLevel === "continent" || detailLevel === "region") return null;
+  if (detailLevel === "street" && selectedId === "shattered-plains") {
+    return null;
+  }
 
   return (
     <group>

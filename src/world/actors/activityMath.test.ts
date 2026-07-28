@@ -12,7 +12,7 @@ describe("city activity motion", () => {
     const start = bridgeRunPose(0, 0, center);
     const crossing = bridgeRunPose(5, 0, center);
 
-    expect(start.x).toBeCloseTo(36.85);
+    expect(start.x).toBeCloseTo(38.95);
     expect(start.z).toBeCloseTo(11.41);
     expect(crossing.x).toBeGreaterThan(start.x + 1);
     expect(crossing.z).toBeGreaterThan(start.z);
@@ -24,7 +24,7 @@ describe("city activity motion", () => {
     const sheltering = bridgeRunPose(5, 1, center);
 
     expect(sheltering.x).toBeLessThan(exposed.x);
-    expect(sheltering.x).toBeCloseTo(36.98, 1);
+    expect(sheltering.x).toBeCloseTo(39.08, 1);
   });
 
   it("brings fishing rafts into their village and lowers cargo", () => {

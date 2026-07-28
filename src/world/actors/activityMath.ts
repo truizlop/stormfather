@@ -25,7 +25,7 @@ export function bridgeRunPose(
   const outbound = cycle <= 1;
 
   return {
-    x: THREE.MathUtils.lerp(center[0] - 3.15, center[0] + 0.55, progress),
+    x: THREE.MathUtils.lerp(center[0] - 1.05, center[0] + 2.65, progress),
     z: THREE.MathUtils.lerp(center[1] - 2.35, center[1] - 0.35, progress),
     heading: outbound ? Math.atan2(3.7, 2) : Math.atan2(-3.7, -2),
   };
