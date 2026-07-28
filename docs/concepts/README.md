@@ -12,6 +12,13 @@ These images are the implementation specification for the Roshar living atlas.
   geographically recognizable Roshar silhouette, dense island systems, regional
   relief, river networks, shallow shelves, settlement-scale landmarks, and a
   distant Highstorm, while preserving the accepted interface.
+- `city-fidelity-kharbranth.jpg` defines the realistic Kharbranth benchmark:
+  a storm-sheltered cliff wedge, working harbor, continuous Ralinsa, blocky
+  painted buildings, bells, cliff-carved institutions, grounded PBR materials,
+  correctly scaled crowds, and cold highstorm-front light.
+- `city-fidelity-kharbranth-residents.jpg` defines the corresponding human
+  benchmark: realistic anatomy, varied Rosharan complexions, layered workwear,
+  occupation props, visible textile wear, and a covered Vorin safehand.
 
 The visuals are original ImageGen concepts created for this project. They are not official art and do not reproduce an official map raster.
 
@@ -23,3 +30,5 @@ LOD budgets. Full generation prompts are preserved in
 `refinement-prompts.md`.
 The full third-pass prompt and its reference roles are preserved in
 `fidelity-prompts.md`.
+The city-fidelity prompts, illustration research, factual cues, and copyright
+boundary are preserved in `city-fidelity-prompts.md`.
