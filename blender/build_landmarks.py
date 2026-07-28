@@ -85,6 +85,48 @@ def material(
     return mat
 
 
+def textured_material(
+    name: str,
+    color: tuple[float, float, float],
+    texture_name: str,
+    metallic: float = 0,
+    roughness: float = 0.84,
+    bump_strength: float = 0.16,
+):
+    """Create a preview material whose image is also compatible with GLB export.
+
+    The runtime reapplies the same project texture by semantic material name, but
+    keeping it in Blender makes the deterministic authored preview useful as a
+    material-fidelity check.
+    """
+
+    mat = material(name, color, metallic, roughness)
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    texture_path = ROOT / "public" / "textures" / texture_name
+    image = bpy.data.images.load(str(texture_path), check_existing=True)
+    image.colorspace_settings.name = "sRGB"
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.name = f"{name}_Texture"
+    texture.image = image
+    texture.extension = "REPEAT"
+    mix = nodes.new("ShaderNodeMixRGB")
+    mix.name = f"{name}_Tint"
+    mix.blend_type = "MULTIPLY"
+    mix.inputs[0].default_value = 1
+    mix.inputs[2].default_value = (*color, 1)
+    links.new(texture.outputs["Color"], mix.inputs[1])
+    links.new(mix.outputs["Color"], bsdf.inputs["Base Color"])
+    bump = nodes.new("ShaderNodeBump")
+    bump.name = f"{name}_Bump"
+    bump.inputs["Strength"].default_value = bump_strength
+    bump.inputs["Distance"].default_value = 0.075
+    links.new(texture.outputs["Color"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    return mat
+
+
 p = {
     "stone_dark": material("SF_Stormworn_Basalt", (0.075, 0.105, 0.115), 0.02, 0.92),
     "stone": material("SF_Crem_Stone", (0.29, 0.27, 0.22), 0.01, 0.9),
@@ -133,6 +175,47 @@ p = {
         0.85,
     ),
 }
+
+p.update(
+    {
+        "kh_plaster_red": textured_material(
+            "SF_Kharbranth_Plaster_Red",
+            (0.48, 0.19, 0.13),
+            "kharbranth-plaster-realistic.jpg",
+        ),
+        "kh_plaster_ochre": textured_material(
+            "SF_Kharbranth_Plaster_Ochre",
+            (0.56, 0.35, 0.13),
+            "kharbranth-plaster-realistic.jpg",
+        ),
+        "kh_plaster_teal": textured_material(
+            "SF_Kharbranth_Plaster_Teal",
+            (0.08, 0.32, 0.34),
+            "kharbranth-plaster-realistic.jpg",
+        ),
+        "kh_plaster_ivory": textured_material(
+            "SF_Kharbranth_Plaster_Ivory",
+            (0.56, 0.53, 0.45),
+            "kharbranth-plaster-realistic.jpg",
+        ),
+        "kh_stone": textured_material(
+            "SF_Kharbranth_Wet_Stone",
+            (0.48, 0.5, 0.51),
+            "kharbranth-stone-realistic.jpg",
+            0.03,
+            0.58,
+            0.22,
+        ),
+        "kh_cliff": textured_material(
+            "SF_Kharbranth_Stormcut_Cliff",
+            (0.18, 0.2, 0.2),
+            "kharbranth-stone-realistic.jpg",
+            0.02,
+            0.78,
+            0.34,
+        ),
+    }
+)
 
 
 def link_asset(obj: bpy.types.Object) -> bpy.types.Object:
@@ -278,6 +361,24 @@ def prism(name, points, height, mat, parent=None, z=0):
     return finish(obj, mat, 0.12)
 
 
+def join_meshes(name, objects, parent=None):
+    """Join decorative primitives into one draw-call-friendly authored mesh."""
+
+    meshes = [obj for obj in objects if obj and obj.type == "MESH"]
+    if not meshes:
+        return None
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in meshes:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    bpy.ops.object.join()
+    result = meshes[0]
+    result.name = name
+    if parent:
+        result.parent = parent
+    return result
+
+
 def build_urithiru() -> None:
     r = root("Landmark_Urithiru", (-22, -7, 0))
     points = [
@@ -401,194 +502,773 @@ def build_oathgate() -> None:
 
 def build_kharbranth() -> None:
     r = root("Landmark_Kharbranth", (5, -7, 0))
+    rng = random.Random(73191)
+
+    # Kharbranth occupies a broad crack that opens toward the harbor. The rear
+    # prisms are only dark backing; dozens of overlapping storm-cut ribs form
+    # the visible canyon silhouette so the walls never read as two flat slabs.
     for side in (-1, 1):
         points = [
-            (side * 1.2, -4.8),
-            (side * 5.8, -4.2),
-            (side * 6.4, 3.8),
-            (side * 2.2, 5.1),
-            (side * 0.9, 2.4),
+            (side * 6.15, -5.35),
+            (side * 8.0, -4.85),
+            (side * 8.25, -0.8),
+            (side * 7.85, 5.25),
+            (side * 6.45, 6.15),
+            (side * 5.95, 4.3),
+            (side * 5.82, 0.4),
         ]
-        prism(f"Kharbranth_Mountain_{side}", points, 2, p["stone_dark"], r, 1)
-    colors = [p["terracotta"], p["ochre"], p["teal"], p["ivory"]]
-    for tier in range(7):
-        y = -3 + tier * 1.02
-        z = 0.45 + tier * 0.52
-        width = 5 - tier * 0.42
-        cube(f"Kharbranth_Terrace_{tier + 1}", (0, y, z), (width, 0.48, 0.22), p["stone"], r)
-        count = max(3, 8 - tier)
-        for j in range(count):
-            x = -width + 0.6 + (j + 0.25 * (tier % 2)) * (2 * width - 1.2) / max(1, count - 1)
-            height = 0.38 + 0.13 * ((j + tier) % 3)
-            cube(
-                f"Kharbranth_House_{tier + 1}_{j + 1}",
-                (x, y, z + 0.28 + height),
-                (0.38, 0.34, height),
-                colors[(j + tier) % len(colors)],
-                r,
-                0.055,
-            )
-            cube(
-                f"Kharbranth_Window_{tier + 1}_{j + 1}",
-                (x, y - 0.35, z + 0.34 + height),
-                (0.09, 0.025, 0.1),
-                p["cyan"],
-                r,
-                0.015,
-            )
-    for tier in range(6):
-        y = -2.52 + tier * 1.02
-        road = cube(
-            f"Kharbranth_Ralinsa_{tier + 1}",
-            (0, y, 1.02 + tier * 0.52),
-            (2.8 - tier * 0.28, 0.09, 0.055),
-            p["stone_light"],
+        prism(
+            f"Kharbranth_Cliff_Wall_{'West' if side < 0 else 'East'}",
+            points,
+            7.8,
+            p["kh_cliff"],
             r,
-            0.03,
+            3.2,
         )
-        road.rotation_euler[2] = -0.11 if tier % 2 == 0 else 0.11
-    for index, (x, y, z, scale) in enumerate(
-        [(-2.2, 2.4, 4.3, 1), (2.4, 1.5, 3.8, 0.82), (0, 3.5, 5.1, 1.2)]
-    ):
-        for side in (-1, 1):
-            cube(
-                f"Kharbranth_BellTower_{index}_Pillar_{side}",
-                (x + side * 0.32 * scale, y, z),
-                (0.1 * scale, 0.18 * scale, 0.75 * scale),
+
+        # Two staggered fields of elongated boulders create ledges, crevices
+        # and a ragged inner edge. The denser inner field is what frames the
+        # city when approached from the sea.
+        for ridge in range(18):
+            band = ridge % 9
+            outer = ridge // 9
+            y = -4.65 + band * 1.25 + outer * 0.28
+            inner_edge = 4.2 + band * 0.035
+            x = side * (
+                inner_edge
+                + outer * 0.78
+                + rng.uniform(-0.22, 0.25)
+            )
+            base_z = 0.75 + band * 0.49 + outer * 0.58
+            ridge_obj = sphere(
+                f"Kharbranth_Cliff_Ridge_{side}_{ridge + 1:02d}",
+                (x, y, base_z),
+                (
+                    0.7 + rng.random() * 0.38,
+                    0.82 + rng.random() * 0.42,
+                    1.3 + rng.random() * 0.72,
+                ),
+                p["kh_cliff"] if ridge % 3 else p["wet_stone"],
+                r,
+                14,
+                8,
+            )
+            ridge_obj.rotation_euler[0] = rng.uniform(-0.08, 0.08)
+            ridge_obj.rotation_euler[1] = side * rng.uniform(0.09, 0.24)
+            ridge_obj.rotation_euler[2] = side * rng.uniform(-0.14, 0.12)
+
+        # Horizontal strata catch the grazing harbor light and give the
+        # storm-cut canyon a geological scale that small houses can sit against.
+        strata = []
+        for stratum in range(10):
+            y = -4.25 + stratum * 1.02
+            z = 1.25 + stratum * 0.5
+            ledge = cube(
+                f"Kharbranth_Cliff_Stratum_{side}_{stratum + 1:02d}",
+                (side * (4.22 + rng.uniform(0.05, 0.42)), y, z),
+                (0.52, 0.52, 0.075),
+                p["wet_stone"],
+                r,
+                0.065,
+            )
+            ledge.rotation_euler[1] = side * rng.uniform(-0.18, 0.16)
+            ledge.rotation_euler[2] = side * rng.uniform(-0.11, 0.11)
+            strata.append(ledge)
+        join_meshes(
+            f"Kharbranth_Cliff_Strata_{'West' if side < 0 else 'East'}",
+            strata,
+            r,
+        )
+
+    colors = [
+        p["kh_plaster_red"],
+        p["kh_plaster_ochre"],
+        p["kh_plaster_teal"],
+        p["kh_plaster_ivory"],
+    ]
+    roof_colors = [p["copper"], p["slate"], p["terracotta"], p["tile"]]
+
+    # The first six tiers share the exact road elevations consumed by the web
+    # surface sampler. Houses rise behind those roads, leaving the switchback
+    # circulation itself walkable.
+    for tier in range(6):
+        road_y = -2.52 + tier * 1.02
+        road_z = 1.075 + tier * 0.52
+        half_width = 4.65 - tier * 0.34
+        cube(
+            f"Kharbranth_Terrace_{tier + 1:02d}",
+            (0, road_y + 0.34, road_z - 0.32),
+            (half_width + 0.25, 0.54, 0.26),
+            p["kh_stone"],
+            r,
+            0.045,
+        )
+
+        # Each horizontal flight visibly rises across the city. Alternating end
+        # stairs join one flight to the next, making the Ralinsa continuous.
+        treads = []
+        tread_count = 24
+        direction = 1 if tier % 2 == 0 else -1
+        for step in range(tread_count):
+            progress = step / (tread_count - 1)
+            x = direction * (-half_width + 0.2 + progress * (2 * half_width - 0.4))
+            tread = cube(
+                f"Kharbranth_Ralinsa_Tier_{tier + 1:02d}_Tread_{step + 1:02d}",
+                (x, road_y - 0.3, road_z + progress * 0.16),
+                (half_width / tread_count + 0.015, 0.3, 0.035),
                 p["stone_light"],
                 r,
-                0.04,
+                0.012,
             )
-        cone(
-            f"Kharbranth_Bell_{index}",
-            (x, y - 0.03, z + 0.12 * scale),
-            0.25 * scale,
-            0.1 * scale,
-            0.34 * scale,
-            p["brass"],
+            treads.append(tread)
+        join_meshes(f"Kharbranth_Ralinsa_Run_{tier + 1:02d}", treads, r)
+
+        if tier < 5:
+            connector_x = direction * (half_width - 0.2)
+            connector = []
+            for step in range(13):
+                progress = step / 12
+                connector.append(
+                    cube(
+                        f"Kharbranth_Ralinsa_Connector_{tier + 1:02d}_{step + 1:02d}",
+                        (
+                            connector_x,
+                            road_y - 0.02 + progress * 0.98,
+                            road_z + 0.17 + progress * 0.5,
+                        ),
+                        (0.31, 0.055, 0.03),
+                        p["kh_stone"],
+                        r,
+                        0.01,
+                    )
+                )
+            join_meshes(
+                f"Kharbranth_Ralinsa_EndStair_{tier + 1:02d}",
+                connector,
+                r,
+            )
+
+        windows = []
+        doors = []
+        parapets = []
+        balconies = []
+        awnings = []
+        bells = []
+        house_count = 13 - tier
+        spacing = (half_width * 2 - 0.8) / max(1, house_count - 1)
+        for row in range(2):
+            for house in range(house_count):
+                x = (
+                    -half_width
+                    + 0.42
+                    + house * spacing
+                    + (spacing * 0.46 if row else 0)
+                )
+                if x > half_width - 0.3:
+                    continue
+                # Preserve a wide sight line and walking corridor for the
+                # Ralinsa's long harbor-to-upper-city stair.
+                if 2.58 < x < 3.82:
+                    continue
+                width = 0.25 + rng.random() * 0.14
+                depth = 0.25 + rng.random() * 0.11
+                height = (
+                    0.5
+                    + rng.random() * 0.5
+                    + tier * 0.035
+                    + row * 0.16
+                )
+                y = (
+                    road_y
+                    + 0.38
+                    + row * 0.55
+                    + rng.uniform(-0.035, 0.045)
+                )
+                z = road_z + 0.18 + row * 0.19 + height
+                body_mat = colors[(house * 3 + tier + row * 2) % len(colors)]
+                cube(
+                    f"Kharbranth_House_T{tier + 1:02d}_R{row + 1:02d}_{house + 1:02d}",
+                    (x, y, z),
+                    (width, depth, height),
+                    body_mat,
+                    r,
+                    0.035,
+                )
+
+                # Painted blocks use small square windows, deep lintels, doors
+                # and imperfect parapets instead of generic fantasy roofs.
+                floors = 2 if height > 0.72 else 1
+                for floor in range(floors):
+                    window_z = z - height + 0.33 + floor * 0.48
+                    for offset in (-0.11, 0.11):
+                        if width < 0.29 and offset > 0:
+                            continue
+                        windows.append(
+                            cube(
+                                f"Kharbranth_Window_T{tier + 1:02d}_R{row + 1:02d}_{house + 1:02d}_{floor}_{offset}",
+                                (x + offset, y - depth - 0.018, window_z),
+                                (0.055, 0.018, 0.075),
+                                p["glass_dark"],
+                                r,
+                                0.008,
+                            )
+                        )
+                        windows.append(
+                            cube(
+                                f"Kharbranth_Window_Lintel_T{tier + 1:02d}_R{row + 1:02d}_{house + 1:02d}_{floor}_{offset}",
+                                (x + offset, y - depth - 0.037, window_z + 0.095),
+                                (0.075, 0.014, 0.018),
+                                p["stone_light"],
+                                r,
+                                0.006,
+                            )
+                        )
+                doors.append(
+                    cube(
+                        f"Kharbranth_Door_T{tier + 1:02d}_R{row + 1:02d}_{house + 1:02d}",
+                        (x, y - depth - 0.024, z - height + 0.19),
+                        (0.08, 0.022, 0.19),
+                        p["wood"],
+                        r,
+                        0.01,
+                    )
+                )
+                parapets.append(
+                    cube(
+                        f"Kharbranth_RoofTrimFront_T{tier + 1:02d}_R{row + 1:02d}_{house + 1:02d}",
+                        (x, y - depth + 0.025, z + height + 0.045),
+                        (width, 0.025, 0.045),
+                        body_mat,
+                        r,
+                        0.006,
+                    )
+                )
+                for side in (-1, 1):
+                    parapets.append(
+                        cube(
+                            f"Kharbranth_RoofTrim_T{tier + 1:02d}_R{row + 1:02d}_{house + 1:02d}_{side}",
+                            (x + side * (width - 0.025), y, z + height + 0.045),
+                            (0.025, depth + 0.025, 0.045),
+                            body_mat,
+                            r,
+                            0.006,
+                        )
+                    )
+
+                if (house + tier + row) % 4 == 0:
+                    balconies.append(
+                        cube(
+                            f"Kharbranth_Balcony_T{tier + 1:02d}_R{row + 1:02d}_{house + 1:02d}",
+                            (x, y - depth - 0.15, z + 0.05),
+                            (width * 0.78, 0.14, 0.03),
+                            p["wood"],
+                            r,
+                            0.01,
+                        )
+                    )
+                    for side in (-1, 1):
+                        balconies.append(
+                            cyl(
+                                f"Kharbranth_BalconyRail_T{tier + 1:02d}_R{row + 1:02d}_{house + 1:02d}_{side}",
+                                (
+                                    x + side * width * 0.65,
+                                    y - depth - 0.25,
+                                    z + 0.16,
+                                ),
+                                0.012,
+                                0.25,
+                                p["brass"],
+                                r,
+                                6,
+                                0,
+                            )
+                        )
+                if row == 0 and (house * 5 + tier) % 7 == 0:
+                    canopy = cube(
+                        f"Kharbranth_Awning_T{tier + 1:02d}_{house + 1:02d}",
+                        (x, road_y - 0.1, road_z + 0.56),
+                        (0.27, 0.28, 0.025),
+                        p["cloth_blue"] if house % 2 else p["cloth_red"],
+                        r,
+                        0.008,
+                    )
+                    canopy.rotation_euler[0] = math.radians(10)
+                    awnings.append(canopy)
+
+                # Bells are everyday street furniture. Small brackets on
+                # roughly every third front-row house create the City of Bells.
+                if row == 0 and (house + tier * 2) % 3 == 0:
+                    bracket_x = x + width * 0.72
+                    bells.append(
+                        cube(
+                            f"Kharbranth_BellBracket_T{tier + 1:02d}_{house + 1:02d}",
+                            (bracket_x, y - depth - 0.16, z + 0.34),
+                            (0.11, 0.018, 0.018),
+                            p["brass"],
+                            r,
+                            0.005,
+                        )
+                    )
+                    bells.append(
+                        cone(
+                            f"Kharbranth_Bell_T{tier + 1:02d}_{house + 1:02d}",
+                            (bracket_x + 0.08, y - depth - 0.16, z + 0.22),
+                            0.065,
+                            0.028,
+                            0.105,
+                            p["brass"],
+                            r,
+                            10,
+                            0.008,
+                        )
+                    )
+
+        join_meshes(f"Kharbranth_Window_Batch_{tier + 1:02d}", windows, r)
+        join_meshes(f"Kharbranth_Door_Batch_{tier + 1:02d}", doors, r)
+        join_meshes(f"Kharbranth_RoofTrim_Batch_{tier + 1:02d}", parapets, r)
+        join_meshes(f"Kharbranth_Balcony_Batch_{tier + 1:02d}", balconies, r)
+        join_meshes(f"Kharbranth_Awning_Batch_{tier + 1:02d}", awnings, r)
+        join_meshes(f"Kharbranth_Bell_Batch_{tier + 1:02d}", bells, r)
+
+    # The lower ward fills the visual and physical gap between quay and first
+    # Ralinsa flight. Its taller inns and warehouses make the harbor feel like
+    # the working entrance to a cosmopolitan city rather than a model display.
+    lower_windows = []
+    lower_details = []
+    for block in range(15):
+        x = -4.25 + block * 0.61
+        if 2.55 < x < 3.85:
+            continue
+        width = 0.24 + rng.random() * 0.08
+        depth = 0.38 + rng.random() * 0.1
+        height = 0.56 + (block % 4) * 0.12 + rng.random() * 0.18
+        y = -3.28 + (block % 2) * 0.12
+        z = 0.64 + height
+        body_mat = colors[(block + 1) % len(colors)]
+        cube(
+            f"Kharbranth_LowerWard_Block_{block + 1:02d}",
+            (x, y, z),
+            (width, depth, height),
+            body_mat,
             r,
-            12,
-            0.025,
-        )
-        cone(
-            f"Kharbranth_BellRoof_{index}",
-            (x, y, z + 0.95 * scale),
-            0.58 * scale,
-            0.06,
-            0.48 * scale,
-            p["brass"],
-            r,
-            8,
             0.035,
         )
-    cube("Kharbranth_Harbor_Quay", (0, -4.15, 0.4), (4.2, 0.42, 0.18), p["stone_light"], r)
-    cyl("Kharbranth_Harbor_Light", (-3.4, -4, 1.25), 0.34, 1.8, p["teal"], r, 12, 0.04)
-    cone("Kharbranth_Harbor_Light_Roof", (-3.4, -4, 2.3), 0.48, 0.05, 0.4, p["brass"], r, 12)
-    # Dense human-scale circulation and weathering cues: the Ralinsa is a real
-    # switchback stair rather than one smooth slab, with drains and awnings.
-    for tier in range(6):
-        direction = -1 if tier % 2 else 1
-        for step in range(11):
-            x = direction * (-2.35 + step * 0.43)
-            y = -2.72 + tier * 1.02 + step * 0.017
-            z = 1.08 + tier * 0.52 + step * 0.018
+        for floor in range(2 if height > 0.78 else 1):
+            for offset in (-0.1, 0.1):
+                lower_windows.append(
+                    cube(
+                        f"Kharbranth_LowerWard_Window_{block + 1:02d}_{floor}_{offset}",
+                        (
+                            x + offset,
+                            y - depth - 0.02,
+                            z - height + 0.34 + floor * 0.43,
+                        ),
+                        (0.052, 0.018, 0.068),
+                        p["glass_dark"],
+                        r,
+                        0.008,
+                    )
+                )
+        lower_details.append(
             cube(
-                f"Kharbranth_Ralinsa_Tread_{tier + 1}_{step + 1:02d}",
-                (x, y, z),
-                (0.235, 0.31, 0.035),
-                p["stone_light"] if step % 4 else p["wet_stone"],
+                f"Kharbranth_LowerWard_Door_{block + 1:02d}",
+                (x, y - depth - 0.025, z - height + 0.19),
+                (0.075, 0.022, 0.19),
+                p["wood"],
                 r,
-                0.016,
+                0.01,
             )
+        )
+        lower_details.append(
+            cube(
+                f"Kharbranth_LowerWard_Parapet_{block + 1:02d}",
+                (x, y - 0.02, z + height + 0.05),
+                (width + 0.03, depth + 0.03, 0.05),
+                body_mat,
+                r,
+                0.01,
+            )
+        )
+    join_meshes("Kharbranth_LowerWard_WindowBatch", lower_windows, r)
+    join_meshes("Kharbranth_LowerWard_DetailBatch", lower_details, r)
+
+    # A long processional arm of the Ralinsa climbs beside the eastern blocks.
+    # The tier flights remain the navigable switchback network; this broad run
+    # makes that defining urban feature readable in the sea-facing hero view.
+    ralinsa_steps = []
+    ralinsa_curbs = []
+    ralinsa_bells = []
+    for step in range(40):
+        progress = step / 39
+        x = 3.3 - progress * 0.28
+        y = -3.38 + progress * 6.85
+        z = 1.1 + progress * 3.88
+        ralinsa_steps.append(
+            cube(
+                f"Kharbranth_Ralinsa_Processional_Tread_{step + 1:02d}",
+                (x, y, z),
+                (0.55, 0.105, 0.055),
+                p["stone_light"],
+                r,
+                0.012,
+            )
+        )
+        for side in (-1, 1):
+            ralinsa_curbs.append(
+                cube(
+                    f"Kharbranth_Ralinsa_Processional_Curb_{step + 1:02d}_{side}",
+                    (x + side * 0.53, y, z + 0.07),
+                    (0.035, 0.105, 0.09),
+                    p["kh_stone"],
+                    r,
+                    0.01,
+                )
+            )
+        if step % 6 == 2:
+            bell_side = -1 if (step // 6) % 2 else 1
+            bell_x = x + bell_side * 0.66
+            ralinsa_bells.append(
+                cyl(
+                    f"Kharbranth_Ralinsa_Bellpost_{step + 1:02d}",
+                    (bell_x, y, z + 0.42),
+                    0.025,
+                    0.72,
+                    p["brass"],
+                    r,
+                    8,
+                    0.005,
+                )
+            )
+            ralinsa_bells.append(
+                cone(
+                    f"Kharbranth_Ralinsa_Bell_{step + 1:02d}",
+                    (bell_x, y - 0.03, z + 0.78),
+                    0.09,
+                    0.025,
+                    0.14,
+                    p["brass"],
+                    r,
+                    10,
+                    0.008,
+                )
+            )
+    join_meshes("Kharbranth_Ralinsa_Processional_Run", ralinsa_steps, r)
+    join_meshes("Kharbranth_Ralinsa_Processional_CurbBatch", ralinsa_curbs, r)
+    join_meshes("Kharbranth_Ralinsa_Processional_BellBatch", ralinsa_bells, r)
+
+    # The hospitals and royal complex terminate the canyon vista. They are a
+    # pale, horizontally layered civic ensemble with deep arcades rather than
+    # a generic fantasy castle; the Palanaeum itself remains implied below.
+    cube(
+        "Kharbranth_Civic_Foundation",
+        (0, 4.1, 4.82),
+        (3.62, 0.72, 0.3),
+        p["kh_stone"],
+        r,
+        0.06,
+    )
+    civic_parts = [
+        ("WestHospital", -2.25, 3.88, 5.62, 1.25, 0.54, 0.72),
+        ("Conclave", 0, 4.22, 6.08, 1.7, 0.64, 1.02),
+        ("EastHospital", 2.25, 3.88, 5.62, 1.25, 0.54, 0.72),
+    ]
+    for institution, x, y, z, width, depth, height in civic_parts:
         cube(
-            f"Kharbranth_Gravity_Drain_{tier + 1}",
-            (0, -3.04 + tier * 1.02, 0.89 + tier * 0.52),
-            (2.55 - tier * 0.24, 0.045, 0.055),
-            p["slate"],
+            f"Kharbranth_Institution_{institution}",
+            (x, y, z),
+            (width, depth, height),
+            p["kh_plaster_ivory"],
+            r,
+            0.055,
+        )
+        cube(
+            f"Kharbranth_Institution_{institution}_Cornice",
+            (x, y - depth - 0.06, z + height - 0.06),
+            (width + 0.11, 0.09, 0.07),
+            p["kh_stone"],
             r,
             0.018,
         )
-        for stall in range(3):
-            x = -1.9 + stall * 1.9 + (tier % 2) * 0.25
-            canopy = cube(
-                f"Kharbranth_Awning_{tier + 1}_{stall + 1}",
-                (x, -3.18 + tier * 1.02, 1.86 + tier * 0.52),
-                (0.62, 0.42, 0.045),
-                p["cloth_blue"] if (tier + stall) % 2 else p["cloth_red"],
-                r,
-                0.018,
-            )
-            canopy.rotation_euler[0] = math.radians(8)
+        cube(
+            f"Kharbranth_Institution_{institution}_Roof",
+            (x, y, z + height + 0.16),
+            (width + 0.12, depth + 0.1, 0.15),
+            p["kh_stone"],
+            r,
+            0.03,
+        )
+        portal_count = 7 if institution == "Conclave" else 5
+        portal_span = width * 1.48
+        civic_details = []
+        for portal in range(portal_count):
+            portal_x = x - portal_span / 2 + portal * portal_span / (portal_count - 1)
             for side in (-1, 1):
+                civic_details.append(
+                    cube(
+                        f"Kharbranth_Institution_{institution}_Portal_{portal + 1:02d}_{side}",
+                        (portal_x + side * 0.07, y - depth - 0.038, z - 0.2),
+                        (0.035, 0.035, 0.38),
+                        p["stone_light"],
+                        r,
+                        0.012,
+                    )
+                )
+            civic_details.append(
+                cone(
+                    f"Kharbranth_Institution_{institution}_PortalArch_{portal + 1:02d}",
+                    (portal_x, y - depth - 0.07, z + 0.18),
+                    0.12,
+                    0.04,
+                    0.16,
+                    p["stone_light"],
+                    r,
+                    12,
+                    0.01,
+                )
+            )
+            if institution == "Conclave":
+                civic_details.append(
+                    cube(
+                        f"Kharbranth_Institution_{institution}_UpperWindow_{portal + 1:02d}",
+                        (portal_x, y - depth - 0.052, z + 0.58),
+                        (0.055, 0.022, 0.1),
+                        p["glass_dark"],
+                        r,
+                        0.008,
+                    )
+                )
+        join_meshes(
+            f"Kharbranth_Institution_{institution}_FacadeBatch",
+            civic_details,
+            r,
+        )
+
+    # A stepped archive tower and two low lantern domes reproduce the civic
+    # skyline in the accepted visual target without inventing a needle-spired
+    # cathedral silhouette.
+    for level in range(3):
+        cube(
+            f"Kharbranth_Conclave_UpperLevel_{level + 1:02d}",
+            (0, 4.35 + level * 0.04, 7.32 + level * 0.42),
+            (1.28 - level * 0.2, 0.52 - level * 0.055, 0.24),
+            p["kh_plaster_ivory"],
+            r,
+            0.04,
+        )
+    for side in (-1, 1):
+        cyl(
+            f"Kharbranth_Hospital_Lantern_{side}",
+            (side * 2.25, 3.87, 6.63),
+            0.34,
+            0.34,
+            p["kh_plaster_ivory"],
+            r,
+            16,
+            0.02,
+        )
+        sphere(
+            f"Kharbranth_Hospital_Dome_{side}",
+            (side * 2.25, 3.87, 6.88),
+            (0.46, 0.46, 0.25),
+            p["copper"],
+            r,
+            18,
+            9,
+        )
+        cone(
+            f"Kharbranth_Hospital_Finial_{side}",
+            (side * 2.25, 3.87, 7.18),
+            0.06,
+            0.015,
+            0.28,
+            p["brass"],
+            r,
+            10,
+            0.01,
+        )
+
+    # A restrained harbor signal tower provides the one larger bell silhouette.
+    for side in (-1, 1):
+        cube(
+            f"Kharbranth_SignalTower_Pillar_{side}",
+            (-2.95 + side * 0.23, -3.9, 2.05),
+            (0.08, 0.13, 0.72),
+            p["kh_stone"],
+            r,
+            0.025,
+        )
+    cone(
+        "Kharbranth_SignalTower_Bell",
+        (-2.95, -4.02, 2.15),
+        0.2,
+        0.075,
+        0.3,
+        p["brass"],
+        r,
+        14,
+        0.018,
+    )
+    roof = cone(
+        "Kharbranth_SignalTower_Roof",
+        (-2.95, -3.9, 2.86),
+        0.52,
+        0.08,
+        0.42,
+        roof_colors[0],
+        r,
+        8,
+        0.025,
+    )
+    roof.rotation_euler[2] = math.pi / 8
+
+    # Working harbor foreground: arcaded quay, four piers, boats, mast-and-sail
+    # silhouettes, cargo and cranes. The sea itself remains a live shader.
+    cube(
+        "Kharbranth_Harbor_Quay",
+        (0, -4.15, 0.42),
+        (4.55, 0.52, 0.22),
+        p["kh_stone"],
+        r,
+        0.045,
+    )
+    arcade = []
+    for arch in range(10):
+        x = -4.0 + arch * 0.88
+        cone(
+            f"Kharbranth_QuayArcade_Arch_{arch + 1:02d}",
+            (x, -4.69, 1.13),
+            0.27,
+            0.14,
+            0.24,
+            p["kh_stone"],
+            r,
+            12,
+            0.012,
+        )
+        for side in (-1, 1):
+            arcade.append(
+                cube(
+                    f"Kharbranth_QuayArcade_Pillar_{arch + 1:02d}_{side}",
+                    (x + side * 0.17, -4.66, 0.82),
+                    (0.055, 0.09, 0.38),
+                    p["kh_stone"],
+                    r,
+                    0.012,
+                )
+            )
+    join_meshes("Kharbranth_QuayArcade_PillarBatch", arcade, r)
+
+    harbor_details = []
+    for dock in range(4):
+        x = -3.45 + dock * 2.25
+        dock_obj = cube(
+            f"Kharbranth_Dock_{dock + 1:02d}",
+            (x, -5.48, 0.25),
+            (0.63, 1.15, 0.07),
+            p["wood"],
+            r,
+            0.018,
+        )
+        for piling in (-1, -0.45, 0.45, 1):
+            harbor_details.append(
                 cyl(
-                    f"Kharbranth_Awning_Post_{tier + 1}_{stall + 1}_{side}",
-                    (x + side * 0.48, -3.04 + tier * 1.02, 1.42 + tier * 0.52),
-                    0.028,
-                    0.88,
+                    f"Kharbranth_DockPiling_{dock + 1:02d}_{piling}",
+                    (x + (0.54 if piling > 0 else -0.54), -5.48 + piling * 0.88, 0.08),
+                    0.045,
+                    0.82,
                     p["wood"],
                     r,
                     8,
                     0,
                 )
-    for arch in range(7):
-        x = -3 + arch
-        for side in (-1, 1):
-            cube(
-                f"Kharbranth_Quay_Arcade_{arch + 1}_{side}",
-                (x + side * 0.27, -4.56, 0.93),
-                (0.075, 0.12, 0.48),
-                p["stone_light"],
-                r,
-                0.035,
-            )
-        cube(
-            f"Kharbranth_Quay_Lintel_{arch + 1}",
-            (x, -4.56, 1.41),
-            (0.36, 0.12, 0.075),
-            p["stone_light"],
-            r,
-            0.035,
-        )
-    for dock in range(3):
-        x = -2.6 + dock * 2.6
-        cube(
-            f"Kharbranth_Dock_{dock + 1}",
-            (x, -5.2, 0.26),
-            (0.72, 1.05, 0.075),
-            p["wood"],
-            r,
-            0.025,
-        )
-        for side in (-1, 1):
-            cyl(
-                f"Kharbranth_Dock_Piling_{dock + 1}_{side}",
-                (x + side * 0.58, -5.6, 0.12),
-                0.055,
-                0.75,
-                p["wood"],
-                r,
-                8,
-                0,
             )
         hull = cube(
-            f"Kharbranth_Harbor_Skiff_{dock + 1}",
-            (x + 0.9, -6.05, 0.19),
-            (0.78, 0.22, 0.12),
-            p["terracotta"],
+            f"Kharbranth_Harbor_Skiff_{dock + 1:02d}",
+            (x + 0.72, -6.28, 0.18),
+            (0.78, 0.19, 0.12),
+            p["terracotta"] if dock % 2 else p["wood"],
             r,
-            0.08,
+            0.07,
         )
-        hull.rotation_euler[2] = -0.14 + dock * 0.12
-        cyl(
-            f"Kharbranth_Harbor_Mast_{dock + 1}",
-            (x + 0.9, -6.05, 0.9),
+        hull.rotation_euler[2] = -0.12 + dock * 0.07
+        mast = cyl(
+            f"Kharbranth_Harbor_Mast_{dock + 1:02d}",
+            (x + 0.72, -6.28, 0.95),
             0.025,
-            1.4,
+            1.55,
             p["wood"],
             r,
             8,
             0,
         )
+        sail = cube(
+            f"Kharbranth_Harbor_Sail_{dock + 1:02d}",
+            (x + 0.95, -6.27, 1.16),
+            (0.22, 0.018, 0.48),
+            p["cloth_red"] if dock % 2 else p["cloth_blue"],
+            r,
+            0.006,
+        )
+        sail.rotation_euler[1] = -0.16
+
+    for cargo in range(24):
+        x = -4.05 + (cargo % 12) * 0.72
+        y = -4.82 - (cargo // 12) * 0.34
+        harbor_details.append(
+            cube(
+                f"Kharbranth_Harbor_Crate_{cargo + 1:02d}",
+                (x, y, 0.66 + (cargo % 3) * 0.08),
+                (0.13 + (cargo % 2) * 0.035, 0.12, 0.11),
+                p["wood"],
+                r,
+                0.012,
+            )
+        )
+    join_meshes("Kharbranth_Harbor_TrimCargoBatch", harbor_details, r)
+
+    for crane_index, x in enumerate((-2.15, 2.25)):
+        cyl(
+            f"Kharbranth_DockCrane_Mast_{crane_index + 1:02d}",
+            (x, -4.85, 1.33),
+            0.055,
+            1.75,
+            p["wood"],
+            r,
+            10,
+            0.01,
+        )
+        boom = cube(
+            f"Kharbranth_DockCrane_Boom_{crane_index + 1:02d}",
+            (x + 0.38, -4.85, 2.02),
+            (0.48, 0.04, 0.045),
+            p["wood"],
+            r,
+            0.012,
+        )
+        boom.rotation_euler[1] = -0.26
+        cyl(
+            f"Kharbranth_DockCrane_Rope_{crane_index + 1:02d}",
+            (x + 0.78, -4.85, 1.45),
+            0.012,
+            1.05,
+            p["rope"],
+            r,
+            6,
+            0,
+        )
+
+    # Thin gravity drains visually connect the terraces and reinforce that the
+    # city is engineered for violent runoff.
+    for drain_index, x in enumerate((-3.15, -0.85, 1.55, 3.25)):
+        drain = cube(
+            f"Kharbranth_GravityDrain_{drain_index + 1:02d}",
+            (x, 0.15, 3.1),
+            (0.055, 3.15, 0.045),
+            p["slate"],
+            r,
+            0.012,
+        )
+        drain.rotation_euler[0] = -0.62
 
 
 def build_kholinar() -> None:
