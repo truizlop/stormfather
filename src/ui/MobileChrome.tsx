@@ -67,7 +67,7 @@ export function MobileChrome() {
           type="button"
           onClick={() =>
             window.dispatchEvent(
-              new CustomEvent("atlas:zoom", { detail: { factor: 0.62 } }),
+              new CustomEvent("atlas:zoom", { detail: { factor: 0.46 } }),
             )
           }
         >
