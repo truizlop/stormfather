@@ -1,4 +1,3 @@
-import { metersToLocal } from "../scale";
 import type { CreatureSpecies } from "./ecology";
 
 const shellMaterial = (
@@ -273,11 +272,3 @@ export function CreatureModel({ species }: { species: CreatureSpecies }) {
       return <Cremling />;
   }
 }
-
-export const creatureEyeHeight = {
-  chasmfiend: metersToLocal(8),
-  chull: metersToLocal(1.7),
-  axehound: metersToLocal(0.7),
-  skyeel: metersToLocal(5),
-  cremling: metersToLocal(0.08),
-} satisfies Record<CreatureSpecies, number>;
