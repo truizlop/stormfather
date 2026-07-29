@@ -1,4 +1,8 @@
 import type { DetailLevel } from "../types";
+import {
+  PEDESTRIAN_CLEARANCE_LOCAL_UNITS,
+  PEDESTRIAN_RADIUS_LOCAL_UNITS,
+} from "../scale";
 import type { GazetteerPlace } from "./types";
 
 export const semanticSettlementIds = [
@@ -296,6 +300,17 @@ export interface SemanticSettlementLayout {
   paving: readonly SemanticPavingSeed[];
   activity: readonly SemanticActivitySeed[];
   signature: readonly SemanticSignaturePart[];
+}
+
+export const SEMANTIC_ACTIVITY_CLEARANCE =
+  PEDESTRIAN_RADIUS_LOCAL_UNITS + PEDESTRIAN_CLEARANCE_LOCAL_UNITS;
+
+interface SemanticNavigationObstacle {
+  x: number;
+  z: number;
+  halfWidth: number;
+  halfDepth: number;
+  rotation: number;
 }
 
 function hash01(index: number, seed: number, multiplier: number) {
@@ -601,29 +616,179 @@ function createActivity(
   detailLevel: "city" | "street",
   compactViewport: boolean,
   paving: readonly SemanticPavingSeed[],
+  buildings: readonly SemanticBuildingSeed[],
+  signature: readonly SemanticSignaturePart[],
   heightAt: SettlementHeightSampler,
 ) {
   const baseCount = detailLevel === "street" ? 16 : 9;
   const count = Math.round(baseCount * (compactViewport ? 0.68 : 1));
+  const obstacles = [
+    ...buildings.map(
+      (building): SemanticNavigationObstacle => ({
+        x: building.x,
+        z: building.z,
+        halfWidth: building.width * 0.54,
+        halfDepth: building.depth * 0.54,
+        rotation: building.rotation,
+      }),
+    ),
+    signatureObstacle(signature),
+  ];
+  const clearPaving = paving.filter((point) =>
+    isSegmentClear(point, point, obstacles),
+  );
+
   return Array.from({ length: count }, (_, index): SemanticActivitySeed => {
-    const start = paving[(index * 5) % paving.length];
-    const end = paving[(index * 5 + 3) % paving.length];
+    const [start, end] = activityPath(
+      profile,
+      index,
+      count,
+      clearPaving,
+      obstacles,
+    );
     const startY = heightAt(center[0] + start.x, center[1] + start.z);
     const endY = heightAt(center[0] + end.x, center[1] + end.z);
+    const baseSpeed =
+      profile.activity === "procession"
+        ? 0.1
+        : profile.activity === "market-crowd"
+          ? 0.18
+          : 0.14;
     return {
       start: [start.x, startY, start.z],
       end: [end.x, endY, end.z],
       phase: hash01(index, profile.seed, 23) * 2,
       speed:
-        profile.activity === "procession"
-          ? 0.1
-          : profile.activity === "market-crowd"
-            ? 0.18
-            : 0.14,
+        baseSpeed *
+        (0.86 + hash01(index, profile.seed + 11, 19) * 0.28),
       color:
         profile.activityPalette[index % profile.activityPalette.length],
     };
   });
+}
+
+function signatureObstacle(
+  signature: readonly SemanticSignaturePart[],
+): SemanticNavigationObstacle {
+  let minimumX = Number.POSITIVE_INFINITY;
+  let maximumX = Number.NEGATIVE_INFINITY;
+  let minimumZ = Number.POSITIVE_INFINITY;
+  let maximumZ = Number.NEGATIVE_INFINITY;
+
+  for (const part of signature) {
+    const angle = part.rotation?.[1] ?? 0;
+    const cosine = Math.cos(angle);
+    const sine = Math.sin(angle);
+    const halfWidth = part.scale[0] / 2;
+    const halfDepth = part.scale[2] / 2;
+    const extentX =
+      Math.abs(cosine) * halfWidth + Math.abs(sine) * halfDepth;
+    const extentZ =
+      Math.abs(sine) * halfWidth + Math.abs(cosine) * halfDepth;
+    minimumX = Math.min(minimumX, part.position[0] - extentX);
+    maximumX = Math.max(maximumX, part.position[0] + extentX);
+    minimumZ = Math.min(minimumZ, part.position[2] - extentZ);
+    maximumZ = Math.max(maximumZ, part.position[2] + extentZ);
+  }
+
+  return {
+    x: (minimumX + maximumX) / 2,
+    z: (minimumZ + maximumZ) / 2,
+    halfWidth: (maximumX - minimumX) / 2,
+    halfDepth: (maximumZ - minimumZ) / 2,
+    rotation: 0,
+  };
+}
+
+function segmentIntersectsObstacle(
+  start: Pick<SemanticPavingSeed, "x" | "z">,
+  end: Pick<SemanticPavingSeed, "x" | "z">,
+  obstacle: SemanticNavigationObstacle,
+) {
+  const cosine = Math.cos(obstacle.rotation);
+  const sine = Math.sin(obstacle.rotation);
+  const startX =
+    cosine * (start.x - obstacle.x) + sine * (start.z - obstacle.z);
+  const startZ =
+    -sine * (start.x - obstacle.x) + cosine * (start.z - obstacle.z);
+  const endX =
+    cosine * (end.x - obstacle.x) + sine * (end.z - obstacle.z);
+  const endZ =
+    -sine * (end.x - obstacle.x) + cosine * (end.z - obstacle.z);
+  const deltaX = endX - startX;
+  const deltaZ = endZ - startZ;
+  const halfWidth = obstacle.halfWidth + SEMANTIC_ACTIVITY_CLEARANCE;
+  const halfDepth = obstacle.halfDepth + SEMANTIC_ACTIVITY_CLEARANCE;
+  let minimumTime = 0;
+  let maximumTime = 1;
+
+  for (const [origin, delta, extent] of [
+    [startX, deltaX, halfWidth],
+    [startZ, deltaZ, halfDepth],
+  ] as const) {
+    if (Math.abs(delta) < 1e-9) {
+      if (Math.abs(origin) > extent) return false;
+      continue;
+    }
+    const first = (-extent - origin) / delta;
+    const second = (extent - origin) / delta;
+    minimumTime = Math.max(minimumTime, Math.min(first, second));
+    maximumTime = Math.min(maximumTime, Math.max(first, second));
+    if (minimumTime > maximumTime) return false;
+  }
+  return true;
+}
+
+function isSegmentClear(
+  start: Pick<SemanticPavingSeed, "x" | "z">,
+  end: Pick<SemanticPavingSeed, "x" | "z">,
+  obstacles: readonly SemanticNavigationObstacle[],
+) {
+  return obstacles.every(
+    (obstacle) => !segmentIntersectsObstacle(start, end, obstacle),
+  );
+}
+
+function activityPath(
+  profile: SemanticSettlementProfile,
+  index: number,
+  count: number,
+  clearPaving: readonly SemanticPavingSeed[],
+  obstacles: readonly SemanticNavigationObstacle[],
+): readonly [
+  Pick<SemanticPavingSeed, "x" | "z">,
+  Pick<SemanticPavingSeed, "x" | "z">,
+] {
+  for (let attempt = 0; attempt < clearPaving.length; attempt += 1) {
+    const startIndex =
+      (profile.seed + index * 5 + attempt * 3) % clearPaving.length;
+    const endIndex =
+      (startIndex + 3 + index * 2 + attempt * 7) % clearPaving.length;
+    const start = clearPaving[startIndex];
+    const end = clearPaving[endIndex];
+    if (
+      Math.hypot(end.x - start.x, end.z - start.z) >= 0.28 &&
+      isSegmentClear(start, end, obstacles)
+    ) {
+      return [start, end];
+    }
+  }
+
+  const angle =
+    (index / Math.max(1, count)) * Math.PI * 2 + profile.seed * 0.071;
+  const halfArc = 0.08 + (index % 3) * 0.018;
+  for (let ring = 0; ring < 12; ring += 1) {
+    const radius = profile.radius * (1.08 + ring * 0.08);
+    const pointAt = (offset: number) => ({
+      x: Math.cos(angle + offset) * radius,
+      z: Math.sin(angle + offset) * radius * 0.82,
+    });
+    const start = pointAt(-halfArc);
+    const end = pointAt(halfArc);
+    if (isSegmentClear(start, end, obstacles)) return [start, end];
+  }
+
+  throw new Error(`Unable to create a clear activity path for ${profile.id}`);
 }
 
 function part(
@@ -749,14 +914,16 @@ export function createSemanticSettlementLayout(
     compactViewport,
     heightAt,
   );
+  const buildings = createBuildings(
+    profile,
+    center,
+    detailLevel,
+    compactViewport,
+    heightAt,
+  );
+  const signature = createSignature(profile, center, heightAt);
   return {
-    buildings: createBuildings(
-      profile,
-      center,
-      detailLevel,
-      compactViewport,
-      heightAt,
-    ),
+    buildings,
     paving,
     activity: createActivity(
       profile,
@@ -764,8 +931,10 @@ export function createSemanticSettlementLayout(
       detailLevel,
       compactViewport,
       paving,
+      buildings,
+      signature,
       heightAt,
     ),
-    signature: createSignature(profile, center, heightAt),
+    signature,
   };
 }

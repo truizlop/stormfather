@@ -1,6 +1,6 @@
 import { useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { metersToLocal } from "../scale";
 import { terrainHeightAt } from "../terrain/terrainHeight";
@@ -421,6 +421,7 @@ function SettlementActivity({
 }) {
   const bodies = useRef<THREE.InstancedMesh>(null);
   const heads = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
   const bodyHeight = metersToLocal(1.22);
   const headRadius = metersToLocal(0.14);
 
@@ -437,7 +438,6 @@ function SettlementActivity({
 
   useFrame((state) => {
     if (!bodies.current || !heads.current) return;
-    const dummy = new THREE.Object3D();
     const time = state.clock.elapsedTime;
     for (let index = 0; index < seeds.length; index += 1) {
       const seed = seeds[index];
@@ -541,6 +541,15 @@ export function SemanticSettlementDetail({
   const pavingTexture = useMemo(
     () => configuredTexture(pavingSource, 4.4, THREE.SRGBColorSpace),
     [pavingSource],
+  );
+  useEffect(
+    () => () => {
+      masonryAlbedo.dispose();
+      masonryBump.dispose();
+      woodBump.dispose();
+      pavingTexture.dispose();
+    },
+    [masonryAlbedo, masonryBump, pavingTexture, woodBump],
   );
   const layout = useMemo(
     () =>
