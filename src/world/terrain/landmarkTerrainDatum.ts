@@ -7,6 +7,12 @@ interface AuthoredTerrainDatum {
    * down by this amount before the landmark scale is applied.
    */
   authoredSupportY: number;
+  /**
+   * Small authored-local reveal left above the runtime cradle. Dense civic
+   * blocks need their foundation toes visible; registering the old shelf's
+   * exact top can let the interpolated heightfield occlude the first storey.
+   */
+  terrainRevealY?: number;
   hidesNode: (nodeName: string) => boolean;
 }
 
@@ -26,6 +32,7 @@ const authoredTerrainDatums: Partial<
 > = {
   azir: {
     authoredSupportY: 0.6,
+    terrainRevealY: 0.12,
     hidesNode: hidesAuthoredTerrainCradle("Azimir_TerrainCradle"),
   },
   aimia: {
@@ -72,7 +79,7 @@ export function landmarkPresentationNodeIsHidden(
 export function landmarkTerrainShift(locationId: string) {
   const datum = authoredTerrainDatums[locationId];
   return datum && datum.authoredSupportY !== 0
-    ? -datum.authoredSupportY
+    ? -(datum.authoredSupportY - (datum.terrainRevealY ?? 0))
     : 0;
 }
 

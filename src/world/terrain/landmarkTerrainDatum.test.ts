@@ -58,15 +58,22 @@ describe("authored terrain registration", () => {
 
   it("registers rebuilt roots but lets runtime terrain replace Blender cradle bands", () => {
     const rebuiltCradles = [
-      ["kholinar", 0.67, "Kholinar_TerrainCradle"],
-      ["azir", 0.6, "Azimir_TerrainCradle"],
-      ["shinovar", 0.36, "Shinovar_TerrainCradle_Valley"],
-      ["aimia", 0.56, "Akinah_TerrainCradle_Island"],
+      ["kholinar", 0.67, 0, "Kholinar_TerrainCradle"],
+      ["azir", 0.6, 0.12, "Azimir_TerrainCradle"],
+      ["shinovar", 0.36, 0, "Shinovar_TerrainCradle_Valley"],
+      ["aimia", 0.56, 0, "Akinah_TerrainCradle_Island"],
     ] as const;
 
-    for (const [locationId, authoredSupportY, nodePrefix] of rebuiltCradles) {
+    for (const [
+      locationId,
+      authoredSupportY,
+      terrainRevealY,
+      nodePrefix,
+    ] of rebuiltCradles) {
       const shift = landmarkTerrainShift(locationId);
-      expect(authoredSupportY + shift, locationId).toBeCloseTo(0);
+      expect(authoredSupportY + shift, locationId).toBeCloseTo(
+        terrainRevealY,
+      );
       for (const suffix of [
         "Surface",
         "Transition",

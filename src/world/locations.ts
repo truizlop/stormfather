@@ -83,9 +83,11 @@ const locationData = [
     coordinates: coordinateFor("shattered-plains"),
     // Frame the complete cymatic field around Stormseat. The previous
     // warcamp-biased target cropped the eastern plateaus behind the travel
-    // panel and made the old chasm-floor presentation disk dominate.
+    // panel and made the old chasm-floor presentation disk dominate. Approach
+    // from the interior/west so the oblique view never sees beyond Roshar's
+    // finite eastern terrain mesh.
     camera: {
-      position: [50.5, 11, 3],
+      position: [29.5, 11.5, 4.5],
       target: [40, 1.55, 13.76],
     },
     arrivalDetail: "city",

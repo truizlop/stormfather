@@ -21,6 +21,9 @@ describe("authored destination arrival framing", () => {
     expect(targetOffset).toBeLessThan(0.05);
     expect(cameraDistance).toBeGreaterThan(11);
     expect(cameraDistance).toBeLessThan(28);
+    expect(location!.camera.position[0]).toBeLessThan(
+      location!.coordinates.x,
+    );
   });
 
   it.each([
