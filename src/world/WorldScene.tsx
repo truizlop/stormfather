@@ -3,7 +3,6 @@ import { useThree } from "@react-three/fiber";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { CameraRig } from "./CameraRig";
 import { CityClusters } from "./CityClusters";
-import { Landmarks } from "./Landmarks";
 import { SettlementLights } from "./SettlementLights";
 import { SimulationClock } from "./SimulationClock";
 import { WorldLabels } from "./WorldLabels";
@@ -99,7 +98,6 @@ export function WorldScene() {
         focusWorld={focusWorld}
       />
       <CityClusters />
-      <Landmarks />
       <SettlementLights />
       <WorldTraffic />
       <ReactiveFlora />
