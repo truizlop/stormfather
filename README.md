@@ -73,6 +73,11 @@ Rebuild the source Blender scene and exported GLB with:
 /Applications/Blender.app/Contents/MacOS/Blender --background --python blender/build_landmarks.py
 ```
 
-The deterministic authoring script writes `blender/roshar-landmarks.blend`, `public/models/roshar-landmarks.glb`, and the preview render in `docs`.
+The deterministic authoring script writes `blender/roshar-landmarks.blend`,
+`public/models/roshar-landmarks.glb`, and the preview render in `docs`. It also
+exports semantic extras such as Urithiru’s ten local Oathgate destinations.
+Run `npm run validate:assets` after every export to verify modeled-city density,
+required architectural systems, and the separation between local Oathgate
+portals and their distant destination cities.
 
 The `main` branch is published to GitHub Pages by [the deployment workflow](.github/workflows/deploy.yml).

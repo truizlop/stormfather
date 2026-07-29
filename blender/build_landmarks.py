@@ -142,6 +142,14 @@ p = {
         (0.05, 0.86, 1),
         3.2,
     ),
+    "radiant_soft": material(
+        "SF_Urithiru_Radiant_Stormlight",
+        (0.16, 0.46, 0.54),
+        0.12,
+        0.32,
+        (0.12, 0.58, 0.72),
+        1.35,
+    ),
     "water": material(
         "SF_Purelake_Water",
         (0.02, 0.29, 0.36),
@@ -684,16 +692,16 @@ def build_urithiru() -> None:
     # presents its monumental, rounded face to the Oathgate approaches while
     # the west (+Y) elevation disappears into the mountain.
     mountain_outline = [
-        (-6, -3.8),
-        (-4.8, -5),
-        (-1.5, -5.8),
-        (2.8, -5.1),
-        (5.4, -3.2),
-        (5.8, 1.6),
-        (3.6, 4.4),
-        (0, 5.4),
-        (-3.8, 4.5),
-        (-5.7, 2.2),
+        (-5.88, -3.55),
+        (-4.82, -4.74),
+        (-1.58, -5.72),
+        (2.72, -5.08),
+        (5.34, -3.12),
+        (5.78, 1.72),
+        (3.58, 4.58),
+        (0, 5.52),
+        (-3.76, 4.68),
+        (-5.72, 2.26),
     ]
     prism(
         "Urithiru_Mountain_Base",
@@ -727,6 +735,50 @@ def build_urithiru() -> None:
         r,
         2,
     )
+    # The tower is not placed in front of a mountain: its rear strata vanish
+    # into a high saddle, with storm-cut shoulders visibly embracing both
+    # flanks. These overlapping masses preserve that relationship from oblique
+    # city cameras while keeping the east elevation readable.
+    rock(
+        "Urithiru_Mountain_Embedded_Backbone",
+        (0.08, 4.02, 5.05),
+        (2.82, 1.36, 5.18),
+        p["stone_dark"],
+        r,
+        3,
+    )
+    rock(
+        "Urithiru_Mountain_Embrace_North",
+        (-4.52, 2.76, 4.02),
+        (1.62, 1.72, 4.28),
+        p["stone_dark"],
+        r,
+        2,
+    )
+    rock(
+        "Urithiru_Mountain_Embrace_South",
+        (4.36, 2.84, 3.72),
+        (1.74, 1.66, 3.92),
+        p["stone_dark"],
+        r,
+        2,
+    )
+    rock(
+        "Urithiru_Mountain_Cleft_North",
+        (-2.78, 3.18, 3.12),
+        (1.44, 1.18, 3.18),
+        p["stone"],
+        r,
+        2,
+    )
+    rock(
+        "Urithiru_Mountain_Cleft_South",
+        (2.72, 3.26, 2.92),
+        (1.5, 1.14, 2.92),
+        p["stone"],
+        r,
+        2,
+    )
 
     def semicircular_plan(
         half_width: float,
@@ -747,26 +799,58 @@ def build_urithiru() -> None:
         return outline
 
     tier_specs = (
-        (5.20, 3.45, 2.46, 0.64),
-        (4.82, 3.21, 2.31, 0.62),
-        (4.42, 2.97, 2.16, 0.60),
-        (4.02, 2.72, 2.00, 0.58),
-        (3.61, 2.47, 1.83, 0.56),
-        (3.20, 2.21, 1.65, 0.54),
-        (2.78, 1.94, 1.47, 0.52),
-        (2.34, 1.65, 1.27, 0.50),
-        (1.91, 1.35, 1.05, 0.48),
-        (1.48, 1.03, 0.82, 0.46),
+        (5.20, 3.45, 2.46, 0.78),
+        (4.88, 3.23, 2.34, 0.76),
+        (4.53, 3.02, 2.21, 0.74),
+        (4.17, 2.80, 2.07, 0.72),
+        (3.80, 2.57, 1.92, 0.70),
+        (3.42, 2.34, 1.76, 0.67),
+        (3.03, 2.10, 1.59, 0.64),
+        (2.63, 1.85, 1.41, 0.61),
+        (2.21, 1.59, 1.21, 0.58),
+        (1.78, 1.30, 0.98, 0.55),
     )
     first_tier_plan = semicircular_plan(*tier_specs[0][:3])
     prism(
         "Urithiru_Terrain_Seated_Foundation",
         first_tier_plan,
-        0.38,
+        1.18,
         p["stone_dark"],
         r,
-        1.13,
+        0.43,
     )
+    prism(
+        "Urithiru_MountainCut_CeremonialApron",
+        [
+            (-5.2, -3.18),
+            (5.2, -3.18),
+            (4.42, -4.12),
+            (2.42, -5.18),
+            (-2.42, -5.18),
+            (-4.42, -4.12),
+        ],
+        0.58,
+        p["stone_dark"],
+        r,
+        0.83,
+    )
+    for retaining_index, (retaining_x, retaining_y, retaining_angle) in enumerate(
+        (
+            (-4.62, -3.55, -0.42),
+            (-3.62, -4.34, -0.28),
+            (3.62, -4.34, 0.28),
+            (4.62, -3.55, 0.42),
+        )
+    ):
+        retaining_wall = cube(
+            f"Urithiru_MountainCut_RetainingWing_{retaining_index + 1:02d}",
+            (retaining_x, retaining_y, 1.13),
+            (0.98, 0.18, 0.42),
+            city_surface["urithiru"],
+            r,
+            0.045,
+        )
+        retaining_wall.rotation_euler[2] = retaining_angle
     lower_buttresses = []
     for buttress_index in range(7):
         angle = -0.92 + buttress_index * (1.84 / 6)
@@ -824,11 +908,23 @@ def build_urithiru() -> None:
             r,
             tier_top - 0.045,
         )
+        prism(
+            f"Urithiru_GrandTerrace_{tier_number:02d}",
+            semicircular_plan(
+                width + 0.16,
+                front_depth + 0.17,
+                back_depth + 0.10,
+            ),
+            0.075,
+            p["stone_light"],
+            r,
+            tier_top + 0.018,
+        )
 
         # Repeated vertical recesses and arch heads give the east face the
         # strongly ribbed, monumental cadence seen in both elevation studies.
-        window_count = max(3, 11 - tier_index)
-        facade_span = 1.72
+        window_count = max(6, 15 - tier_index)
+        facade_span = 2.12
         facade_details: list[bpy.types.Object] = []
         for window_index in range(window_count):
             facade_angle = (
@@ -846,7 +942,7 @@ def build_urithiru() -> None:
                 width * math.cos(facade_angle),
             )
             bay_half_width = max(window_half_width * 1.72, 0.105)
-            bay_half_height = max(window_half_height * 1.82, tier_height * 0.26)
+            bay_half_height = max(window_half_height * 1.82, tier_height * 0.31)
 
             bay = cube(
                 f"Urithiru_East_BayRecess_{tier_number:02d}_{window_index + 1:02d}",
@@ -939,6 +1035,79 @@ def build_urithiru() -> None:
             r,
         )
 
+        # A quiet vertical lightwell unifies all ten strata. It is deliberately
+        # narrow and low-emission: a sign of a living Radiant city, not a neon
+        # stripe painted over the ancient stone.
+        cube(
+            f"Urithiru_RadiantLightwell_{tier_number:02d}",
+            (0, -front_depth - 0.094, tier_center),
+            (0.045, 0.024, tier_height * 0.30),
+            p["radiant_soft"],
+            r,
+            0.008,
+        )
+
+        terrace_details: list[bpy.types.Object] = []
+        parapet_count = max(6, 13 - tier_index)
+        for parapet_index in range(parapet_count):
+            parapet_angle = (
+                -1.02
+                + 2.04 * parapet_index / max(1, parapet_count - 1)
+            )
+            tangent = math.atan2(
+                front_depth * math.sin(parapet_angle),
+                width * math.cos(parapet_angle),
+            )
+            parapet = cube(
+                f"Urithiru_TerraceParapet_{tier_number:02d}_{parapet_index + 1:02d}",
+                (
+                    (width + 0.13) * math.sin(parapet_angle),
+                    -(front_depth + 0.15) * math.cos(parapet_angle),
+                    tier_top + 0.12,
+                ),
+                (0.035, 0.045, 0.095),
+                p["stone_light"],
+                r,
+                0.008,
+            )
+            parapet.rotation_euler[2] = tangent
+            terrace_details.append(parapet)
+        join_meshes(
+            f"Urithiru_TerraceParapetBatch_{tier_number:02d}",
+            terrace_details,
+            r,
+        )
+
+        stratum_buttresses: list[bpy.types.Object] = []
+        for buttress_index, buttress_angle in enumerate(
+            (-1.08, -0.56, 0.56, 1.08)
+        ):
+            tangent = math.atan2(
+                front_depth * math.sin(buttress_angle),
+                width * math.cos(buttress_angle),
+            )
+            outward_x = math.sin(buttress_angle)
+            outward_y = -math.cos(buttress_angle)
+            buttress = cube(
+                f"Urithiru_StratumButtress_{tier_number:02d}_{buttress_index + 1:02d}",
+                (
+                    width * outward_x + outward_x * 0.14,
+                    front_depth * outward_y + outward_y * 0.14,
+                    tier_center,
+                ),
+                (0.06, 0.105, tier_height * 0.47),
+                city_surface["urithiru"],
+                r,
+                0.018,
+            )
+            buttress.rotation_euler[2] = tangent
+            stratum_buttresses.append(buttress)
+        join_meshes(
+            f"Urithiru_StratumButtressBatch_{tier_number:02d}",
+            stratum_buttresses,
+            r,
+        )
+
         cube(
             f"Urithiru_East_GalleryLedge_{tier_number:02d}",
             (0, -front_depth - 0.12, tier_bottom + 0.075),
@@ -948,6 +1117,53 @@ def build_urithiru() -> None:
             0.008,
         )
         tier_bottom = tier_top + (0.11 if tier_index < 4 else 0.10)
+
+    # Two lower bastions frame the entrance like occupied districts rather
+    # than decorative turrets. Their stacked, door-scale galleries make the
+    # immense central tower legible at human scale.
+    for side in (-1, 1):
+        side_label = "North" if side < 0 else "South"
+        cube(
+            f"Urithiru_{side_label}_LowerBastion_Base",
+            (side * 3.72, -2.42, 1.56),
+            (0.66, 0.58, 0.54),
+            city_surface["urithiru"],
+            r,
+            0.07,
+        )
+        cube(
+            f"Urithiru_{side_label}_LowerBastion_Gallery",
+            (side * 3.72, -2.42, 2.36),
+            (0.52, 0.49, 0.30),
+            city_surface["urithiru"],
+            r,
+            0.055,
+        )
+        cyl(
+            f"Urithiru_{side_label}_LowerBastion_Crown",
+            (side * 3.72, -2.42, 2.73),
+            0.56,
+            0.16,
+            p["stone_dark"],
+            r,
+            20,
+            0.025,
+        )
+        for bastion_bay in range(5):
+            bay_angle = -0.72 + bastion_bay * 0.36
+            bay = cube(
+                f"Urithiru_{side_label}_BastionBay_{bastion_bay + 1:02d}",
+                (
+                    side * 3.72 + math.sin(bay_angle) * 0.54,
+                    -2.42 - math.cos(bay_angle) * 0.50,
+                    2.32,
+                ),
+                (0.05, 0.025, 0.14),
+                p["glass_dark"] if bastion_bay != 2 else p["radiant_soft"],
+                r,
+                0.008,
+            )
+            bay.rotation_euler[2] = bay_angle
 
     # The broad east entrance is architectural in scale, with three
     # human-scale doors set into it so the city never reads as a miniature.
@@ -1028,59 +1244,134 @@ def build_urithiru() -> None:
             0.006,
         )
 
-    for step_index in range(5):
+    for step_index in range(7):
         cube(
             f"Urithiru_East_EntranceStep_{step_index + 1:02d}",
             (
                 0,
-                -3.82 - step_index * 0.22,
-                1.28 - step_index * 0.055,
+                -3.70 - step_index * 0.15,
+                1.205 - step_index * 0.029,
             ),
-            (0.92 + step_index * 0.12, 0.15, 0.055),
+            (0.94 + step_index * 0.105, 0.12, 0.038),
             p["stone_light"],
             r,
             0.018,
         )
     approach_ramp = cube(
         "Urithiru_Oathgate_ApproachRamp",
-        (0, -4.82, 1.14),
-        (1.38, 0.42, 0.055),
+        (0, -4.13, 1.015),
+        (1.50, 0.79, 0.06),
         p["stone_light"],
         r,
         0.018,
     )
-    approach_ramp.rotation_euler[0] = -0.075
+    approach_ramp.rotation_euler[0] = -0.058
+    cube(
+        "Urithiru_Oathgate_Forecourt_BridgeFoundation",
+        (0, -4.13, 0.79),
+        (1.58, 0.82, 0.16),
+        p["stone_dark"],
+        r,
+        0.04,
+    )
+    for bridge_side in (-1, 1):
+        cube(
+            f"Urithiru_Oathgate_Forecourt_Balustrade_{bridge_side}",
+            (bridge_side * 1.46, -4.13, 1.22),
+            (0.065, 0.78, 0.24),
+            city_surface["urithiru"],
+            r,
+            0.024,
+        )
+    ceremonial_lamps: list[bpy.types.Object] = []
+    ceremonial_glows: list[bpy.types.Object] = []
+    for lamp_index in range(5):
+        lamp_y = -3.72 - lamp_index * 0.22
+        for lamp_side in (-1, 1):
+            ceremonial_lamps.append(
+                cyl(
+                    f"Urithiru_CeremonialLampStem_{lamp_index + 1:02d}_{lamp_side}",
+                    (lamp_side * 1.29, lamp_y, 1.35),
+                    0.018,
+                    0.40,
+                    p["brass"],
+                    r,
+                    8,
+                    0.004,
+                )
+            )
+            ceremonial_glows.append(
+                sphere(
+                    f"Urithiru_CeremonialLampGlow_{lamp_index + 1:02d}_{lamp_side}",
+                    (lamp_side * 1.29, lamp_y, 1.57),
+                    (0.055, 0.055, 0.075),
+                    p["radiant_soft"],
+                    r,
+                    10,
+                    6,
+                )
+            )
+    join_meshes("Urithiru_CeremonialLampStemBatch", ceremonial_lamps, r)
+    join_meshes("Urithiru_CeremonialLampGlowBatch", ceremonial_glows, r)
 
-    # The crown shifts from the stepped half-round massing into the cylindrical
-    # lantern shown in the west and east concept elevations.
+    # The crown resolves into three occupied drums rather than one small cap.
+    # Repeated human-scale bays keep the mass legible as a city, while the
+    # diminishing rings produce the mountain-tower silhouette in the supplied
+    # elevation studies.
     crown_base_z = tier_tops[-1] + 0.16
     cyl(
+        "Urithiru_Crown_TransitionPlinth",
+        (0, -0.02, crown_base_z + 0.14),
+        1.48,
+        0.28,
+        p["stone_dark"],
+        r,
+        32,
+        0.045,
+    )
+    cyl(
         "Urithiru_Crown_Rotunda",
-        (0, -0.04, crown_base_z + 0.28),
-        1.16,
-        0.56,
+        (0, -0.04, crown_base_z + 0.49),
+        1.27,
+        0.62,
         city_surface["urithiru"],
         r,
         32,
         0.045,
     )
-    for crown_index in range(12):
-        crown_angle = 2 * math.pi * crown_index / 12
-        crown_x = math.sin(crown_angle) * 1.115
-        crown_y = -0.04 - math.cos(crown_angle) * 1.115
+    crown_fins: list[bpy.types.Object] = []
+    for crown_index in range(16):
+        crown_angle = 2 * math.pi * crown_index / 16
+        crown_x = math.sin(crown_angle) * 1.235
+        crown_y = -0.04 - math.cos(crown_angle) * 1.235
         crown_bay = cube(
             f"Urithiru_Crown_VerticalBay_{crown_index + 1:02d}",
-            (crown_x, crown_y, crown_base_z + 0.29),
-            (0.072, 0.03, 0.205),
-            p["glass_dark"] if crown_index % 3 else p["cyan"],
+            (crown_x, crown_y, crown_base_z + 0.49),
+            (0.058, 0.03, 0.235),
+            p["glass_dark"] if crown_index % 4 else p["radiant_soft"],
             r,
             0.012,
         )
         crown_bay.rotation_euler[2] = crown_angle
+        crown_fin = cube(
+            f"Urithiru_Crown_Fin_{crown_index + 1:02d}",
+            (
+                math.sin(crown_angle) * 1.32,
+                -0.04 - math.cos(crown_angle) * 1.32,
+                crown_base_z + 0.49,
+            ),
+            (0.035, 0.095, 0.29),
+            p["stone_light"],
+            r,
+            0.012,
+        )
+        crown_fin.rotation_euler[2] = crown_angle
+        crown_fins.append(crown_fin)
+    join_meshes("Urithiru_Crown_RadialFinBatch", crown_fins, r)
     cyl(
         "Urithiru_Crown_Cornice",
-        (0, -0.04, crown_base_z + 0.59),
-        1.25,
+        (0, -0.04, crown_base_z + 0.83),
+        1.37,
         0.12,
         p["stone_dark"],
         r,
@@ -1088,21 +1379,128 @@ def build_urithiru() -> None:
         0.025,
     )
     cyl(
-        "Urithiru_Roof_Beacon",
-        (0, -0.04, crown_base_z + 0.91),
-        0.38,
-        0.52,
-        p["cyan"],
+        "Urithiru_Crown_UpperRotunda",
+        (0, -0.04, crown_base_z + 1.10),
+        0.98,
+        0.46,
+        city_surface["urithiru"],
         r,
-        16,
+        28,
         0.03,
     )
+    for upper_index in range(12):
+        upper_angle = 2 * math.pi * upper_index / 12
+        upper_bay = cube(
+            f"Urithiru_Crown_UpperBay_{upper_index + 1:02d}",
+            (
+                math.sin(upper_angle) * 0.955,
+                -0.04 - math.cos(upper_angle) * 0.955,
+                crown_base_z + 1.10,
+            ),
+            (0.052, 0.026, 0.17),
+            p["glass_dark"] if upper_index % 3 else p["radiant_soft"],
+            r,
+            0.01,
+        )
+        upper_bay.rotation_euler[2] = upper_angle
+    cyl(
+        "Urithiru_Crown_UpperCornice",
+        (0, -0.04, crown_base_z + 1.36),
+        1.06,
+        0.11,
+        p["stone_dark"],
+        r,
+        28,
+        0.02,
+    )
+    cyl(
+        "Urithiru_Crown_RadiantLantern",
+        (0, -0.04, crown_base_z + 1.62),
+        0.67,
+        0.41,
+        city_surface["urithiru"],
+        r,
+        24,
+        0.028,
+    )
+    for lantern_index in range(8):
+        lantern_angle = 2 * math.pi * lantern_index / 8
+        lantern_bay = cube(
+            f"Urithiru_Crown_LanternBay_{lantern_index + 1:02d}",
+            (
+                math.sin(lantern_angle) * 0.655,
+                -0.04 - math.cos(lantern_angle) * 0.655,
+                crown_base_z + 1.62,
+            ),
+            (0.06, 0.025, 0.15),
+            p["radiant_soft"],
+            r,
+            0.01,
+        )
+        lantern_bay.rotation_euler[2] = lantern_angle
+    cyl(
+        "Urithiru_Crown_LanternCornice",
+        (0, -0.04, crown_base_z + 1.86),
+        0.76,
+        0.11,
+        p["stone_dark"],
+        r,
+        24,
+        0.02,
+    )
+    cone(
+        "Urithiru_Roof_Beacon",
+        (0, -0.04, crown_base_z + 2.23),
+        0.28,
+        0.08,
+        0.64,
+        p["radiant_soft"],
+        r,
+        16,
+        0.018,
+    )
+    sphere(
+        "Urithiru_Roof_BeaconCap",
+        (0, -0.04, crown_base_z + 2.59),
+        (0.12, 0.12, 0.12),
+        p["radiant_soft"],
+        r,
+        12,
+        8,
+    )
+    cube(
+        "Urithiru_RadiantAssembly_Balcony",
+        (0, -1.42, crown_base_z + 0.88),
+        (0.74, 0.18, 0.065),
+        p["stone_light"],
+        r,
+        0.025,
+    )
+    torus(
+        "Urithiru_RadiantAssembly_BalconyInlay",
+        (0, -1.43, crown_base_z + 0.95),
+        0.34,
+        0.018,
+        p["radiant_soft"],
+        r,
+        (math.pi / 2, 0, 0),
+    )
 
-    forecourt_y = -4.48
+    forecourt_y = -4.54
+    cyl(
+        "Urithiru_Oathgate_Forecourt_TerrainSkirt",
+        (0, forecourt_y, 0.66),
+        1.30,
+        0.72,
+        p["stone_dark"],
+        r,
+        10,
+        0.07,
+    )
     cyl(
         "Urithiru_Oathgate_Forecourt",
-        (0, forecourt_y, 1.35),
-        0.78,
+        (0, forecourt_y, 1.06),
+        1.23,
         0.18,
         p["stone_light"],
         r,
@@ -1111,11 +1509,39 @@ def build_urithiru() -> None:
     )
     torus(
         "Urithiru_Oathgate_Forecourt_Inlay",
-        (0, forecourt_y, 1.45),
-        0.48,
-        0.035,
+        (0, forecourt_y, 1.16),
+        0.88,
+        0.026,
         p["brass"],
         r,
+    )
+    torus(
+        "Urithiru_Oathgate_Forecourt_InnerInlay",
+        (0, forecourt_y, 1.165),
+        0.49,
+        0.018,
+        p["radiant_soft"],
+        r,
+    )
+    cyl(
+        "Urithiru_Oathgate_ControlDais",
+        (0, forecourt_y, 1.17),
+        0.31,
+        0.20,
+        p["stone_dark"],
+        r,
+        10,
+        0.025,
+    )
+    cyl(
+        "Urithiru_Oathgate_ControlLight",
+        (0, forecourt_y, 1.35),
+        0.075,
+        0.18,
+        p["radiant_soft"],
+        r,
+        10,
+        0.012,
     )
     oathgate_destinations = (
         ("Panatham", "Panatham"),
@@ -1135,38 +1561,65 @@ def build_urithiru() -> None:
         )
         direction_x = math.cos(gate_angle)
         direction_y = math.sin(gate_angle)
-        platform_x = direction_x * 1.04
-        platform_y = forecourt_y + direction_y * 1.04
+        platform_x = direction_x * 0.92
+        platform_y = forecourt_y + direction_y * 0.92
         platform = cyl(
             f"Urithiru_Oathgate_Approach_{gate_slug}",
-            (platform_x, platform_y, 1.43),
-            0.17,
-            0.22,
+            (platform_x, platform_y, 1.16),
+            0.205,
+            0.14,
             city_surface["urithiru"],
             r,
             10,
             0.025,
         )
         platform["oathgate_destination"] = gate_label
+        platform["structure_type"] = "local_oathgate_portal"
+        platform["contains_destination_geometry"] = False
         spoke = cube(
             f"Urithiru_Oathgate_Spoke_{gate_slug}",
             (
-                direction_x * 0.67,
-                forecourt_y + direction_y * 0.67,
-                1.42,
+                direction_x * 0.61,
+                forecourt_y + direction_y * 0.61,
+                1.17,
             ),
-            (0.31, 0.045, 0.028),
+            (0.27, 0.052, 0.026),
             p["brass"],
             r,
             0.008,
         )
         spoke.rotation_euler[2] = gate_angle
+        torus(
+            f"Urithiru_Oathgate_PortalRing_{gate_slug}",
+            (platform_x, platform_y, 1.245),
+            0.125,
+            0.018,
+            p["radiant_soft"],
+            r,
+        )
+        threshold = cube(
+            f"Urithiru_Oathgate_Threshold_{gate_slug}",
+            (
+                platform_x - direction_x * 0.16,
+                platform_y - direction_y * 0.16,
+                1.215,
+            ),
+            (0.15, 0.032, 0.018),
+            p["brass"],
+            r,
+            0.006,
+        )
+        threshold.rotation_euler[2] = gate_angle
         cyl(
             f"Urithiru_Oathgate_Marker_{gate_slug}",
-            (platform_x, platform_y, 1.59),
-            0.055,
-            0.18,
-            p["cyan"],
+            (
+                platform_x + direction_x * 0.05,
+                platform_y + direction_y * 0.05,
+                1.36,
+            ),
+            0.045,
+            0.22,
+            p["radiant_soft"],
             r,
             8,
             0.012,
@@ -6306,6 +6759,7 @@ bpy.ops.export_scene.gltf(
     export_format="GLB",
     use_selection=True,
     export_apply=True,
+    export_extras=True,
     export_meshopt_compression_enable=True,
 )
 

@@ -89,17 +89,39 @@ const expectedKharbranthGeometry = [
   "Kharbranth_Civic_LoggiaBatch",
   "Kharbranth_Harbor_RopeworkBatch",
 ];
+const expectedUrithiruOathgates = [
+  ["Panatham", "Panatham"],
+  ["Rall_Elorim", "Rall Elorim"],
+  ["Shinovar", "Shinovar"],
+  ["Akinah", "Akinah"],
+  ["Azimir", "Azimir"],
+  ["Thaylen_City", "Thaylen City"],
+  ["Narak", "Narak"],
+  ["Kholinar", "Kholinar"],
+  ["Vedenar", "Vedenar"],
+  ["Kurth", "Kurth"],
+];
 const expectedModeledCities = [
   {
     name: "Urithiru",
     prefix: "Urithiru_",
-    minimumNodes: 140,
+    minimumNodes: 285,
     required: [
       "Urithiru_East_Window_01_01",
       "Urithiru_Monumental_East_Portal",
+      "Urithiru_Mountain_Embedded_Backbone",
+      "Urithiru_MountainCut_CeremonialApron",
+      "Urithiru_GrandTerrace_10",
+      "Urithiru_RadiantLightwell_10",
       "Urithiru_Crown_Rotunda",
+      "Urithiru_Crown_UpperRotunda",
+      "Urithiru_Crown_RadiantLantern",
+      "Urithiru_Oathgate_Forecourt_BridgeFoundation",
+      "Urithiru_Oathgate_Forecourt_TerrainSkirt",
       "Urithiru_Oathgate_Approach_Panatham",
       "Urithiru_Oathgate_Approach_Kholinar",
+      "Urithiru_Oathgate_PortalRing_Panatham",
+      "Urithiru_Oathgate_PortalRing_Kholinar",
     ],
   },
   {
@@ -221,6 +243,30 @@ try {
     );
   }
   console.log("✓ Urithiru Oathgates do not contain destination-city geometry");
+  const modeledUrithiruOathgates = [...names].filter((name) =>
+    name.startsWith("Urithiru_Oathgate_Approach_"),
+  );
+  if (modeledUrithiruOathgates.length !== expectedUrithiruOathgates.length) {
+    throw new Error(
+      `Urithiru must contain exactly ten local Oathgate portals, found ${modeledUrithiruOathgates.length}`,
+    );
+  }
+  for (const [gateSlug, gateLabel] of expectedUrithiruOathgates) {
+    const nodeName = `Urithiru_Oathgate_Approach_${gateSlug}`;
+    const nodeIndex = nodeIndexByName.get(nodeName);
+    const extras =
+      nodeIndex === undefined ? undefined : gltf.nodes[nodeIndex]?.extras;
+    if (
+      extras?.oathgate_destination !== gateLabel ||
+      extras?.structure_type !== "local_oathgate_portal" ||
+      extras?.contains_destination_geometry !== false
+    ) {
+      throw new Error(
+        `${nodeName} is missing its local-portal destination metadata`,
+      );
+    }
+  }
+  console.log("✓ Ten named Urithiru Oathgates export as local portals");
   const missingKharbranthGeometry = expectedKharbranthGeometry.filter(
     (name) => !names.has(name),
   );
