@@ -10,9 +10,33 @@ import {
   resolveCrowdSeparation,
   sampleNavigationRoute,
   type NavigationObstacle,
+  type NavigationSurfaceConstraints,
 } from "./pedestrianNavigation";
 
 const cases = ["kharbranth", "shattered-plains", "purelake", "thaylen-city"];
+
+function surfaceTestContext() {
+  const location = locationById.get("thaylen-city")!;
+  const center = [
+    location.coordinates.x,
+    location.coordinates.z,
+  ] as const;
+  const profile = cityProfile(location.id, location.culture);
+  const layout = { buildings: [], modules: [] } as const;
+  return {
+    center,
+    create(surface?: NavigationSurfaceConstraints) {
+      return createNavigationField(
+        location.id,
+        profile,
+        center,
+        layout,
+        [],
+        surface,
+      );
+    },
+  };
+}
 
 describe("pedestrian navigation", () => {
   it("rotates authored landmark collision footprints with their render root", () => {
@@ -158,5 +182,118 @@ describe("pedestrian navigation", () => {
         ),
       ),
     ).toBeGreaterThan(0.01);
+  });
+
+  it("routes around a water hole that falls between grid nodes", () => {
+    const context = surfaceTestContext();
+    const baseline = context.create();
+    const baselineRoute = baseline.routes[0];
+    const segmentIndex = Math.floor(baselineRoute.points.length / 2);
+    const start = baselineRoute.points[segmentIndex - 1];
+    const end = baselineRoute.points[segmentIndex];
+    const waterHole = {
+      x: (start.x + end.x) / 2,
+      z: (start.z + end.z) / 2,
+    };
+    const isWalkable = (point: { x: number; z: number }) =>
+      Math.hypot(point.x - waterHole.x, point.z - waterHole.z) >= 0.03;
+
+    expect(isWalkable(start)).toBe(true);
+    expect(isWalkable(end)).toBe(true);
+
+    const field = context.create({ isWalkable });
+
+    expect(field.routes.length).toBeGreaterThan(0);
+    expect(isNavigationPositionValid(field, waterHole)).toBe(false);
+    for (const route of field.routes) {
+      for (let index = 1; index < route.points.length; index += 1) {
+        const edgeStart = route.points[index - 1];
+        const edgeEnd = route.points[index];
+        for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
+          expect(
+            isWalkable({
+              x: THREE.MathUtils.lerp(edgeStart.x, edgeEnd.x, progress),
+              z: THREE.MathUtils.lerp(edgeStart.z, edgeEnd.z, progress),
+            }),
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("disconnects grid edges that exceed the maximum step height", () => {
+    const context = surfaceTestContext();
+    const baseline = context.create();
+    const crossingEdge = baseline.routes
+      .flatMap((route) =>
+        route.points.slice(1).map((end, index) => ({
+          start: route.points[index],
+          end,
+        })),
+      )
+      .find(({ start, end }) => Math.abs(end.x - start.x) > 0.1)!;
+    const stepX = (crossingEdge.start.x + crossingEdge.end.x) / 2;
+    const heightAt = (point: { x: number }) =>
+      point.x < stepX ? 0 : 0.9;
+
+    expect(
+      Math.abs(heightAt(crossingEdge.end) - heightAt(crossingEdge.start)),
+    ).toBeGreaterThan(0.2);
+
+    const field = context.create({
+      heightAt,
+      maximumStepHeight: 0.2,
+      maximumSlope: Number.POSITIVE_INFINITY,
+    });
+
+    expect(field.routes.length).toBeGreaterThan(0);
+    for (const route of field.routes) {
+      for (let index = 1; index < route.points.length; index += 1) {
+        expect(
+          Math.abs(
+            heightAt(route.points[index]) -
+              heightAt(route.points[index - 1]),
+          ),
+        ).toBeLessThanOrEqual(0.2);
+      }
+    }
+  });
+
+  it("disconnects grid edges that exceed the maximum walkable slope", () => {
+    const context = surfaceTestContext();
+    const heightAt = (point: { x: number }) =>
+      (point.x - context.center[0]) * 3;
+    const maximumSlope = 0.5;
+    const field = context.create({
+      heightAt,
+      maximumStepHeight: Number.POSITIVE_INFINITY,
+      maximumSlope,
+    });
+
+    expect(field.routes.length).toBeGreaterThan(0);
+    for (const route of field.routes) {
+      for (let index = 1; index < route.points.length; index += 1) {
+        const start = route.points[index - 1];
+        const end = route.points[index];
+        const slope =
+          Math.abs(heightAt(end) - heightAt(start)) /
+          Math.hypot(end.x - start.x, end.z - start.z);
+        expect(slope).toBeLessThanOrEqual(maximumSlope);
+      }
+    }
+  });
+
+  it("preserves legacy routes when surface callbacks are omitted or permissive", () => {
+    const context = surfaceTestContext();
+    const legacy = context.create();
+    const permissive = context.create({
+      isWalkable: () => true,
+      heightAt: () => 42,
+      maximumStepHeight: 0,
+      maximumSlope: 0,
+    });
+
+    expect(permissive.routes).toEqual(legacy.routes);
+    expect(permissive.obstacles).toEqual(legacy.obstacles);
   });
 });

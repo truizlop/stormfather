@@ -18,6 +18,14 @@ export interface NavigationPoint {
   z: number;
 }
 
+export interface NavigationSurfaceConstraints {
+  isWalkable?: (point: NavigationPoint) => boolean;
+  heightAt?: (point: NavigationPoint) => number;
+  maximumStepHeight?: number;
+  /** Maximum vertical rise per horizontal unit. */
+  maximumSlope?: number;
+}
+
 export interface NavigationObstacle {
   id: string;
   x: number;
@@ -39,6 +47,7 @@ export interface NavigationField {
   profile: CityProfile;
   obstacles: readonly NavigationObstacle[];
   routes: readonly NavigationRoute[];
+  surface?: NavigationSurfaceConstraints;
 }
 
 const GRID_STEP = 0.16;
@@ -71,6 +80,15 @@ export function isPointClear(
   return obstacles.every(
     (obstacle) => !pointInObstacle(point, obstacle, clearance),
   );
+}
+
+function isSurfacePointWalkable(
+  point: NavigationPoint,
+  surface: NavigationSurfaceConstraints | undefined,
+) {
+  if (!surface) return true;
+  if (surface.isWalkable && !surface.isWalkable(point)) return false;
+  return !surface.heightAt || Number.isFinite(surface.heightAt(point));
 }
 
 export function isInsideWalkableDistrict(
@@ -225,35 +243,78 @@ function neighboringKeys(node: GridNode) {
 }
 
 function edgeIsClear(
-  start: GridNode,
-  end: GridNode,
+  start: NavigationPoint,
+  end: NavigationPoint,
   obstacles: readonly NavigationObstacle[],
+  surface: NavigationSurfaceConstraints | undefined,
 ) {
-  return [0.25, 0.5, 0.75].every((progress) =>
-    isPointClear(
-      {
-        x: THREE.MathUtils.lerp(start.x, end.x, progress),
-        z: THREE.MathUtils.lerp(start.z, end.z, progress),
-      },
-      obstacles,
-    ),
+  if (!surface) {
+    return [0.25, 0.5, 0.75].every((progress) =>
+      isPointClear(
+        {
+          x: THREE.MathUtils.lerp(start.x, end.x, progress),
+          z: THREE.MathUtils.lerp(start.z, end.z, progress),
+        },
+        obstacles,
+      ),
+    );
+  }
+
+  const samples = [0, 0.25, 0.5, 0.75, 1].map(
+    (progress): NavigationPoint => ({
+      x: THREE.MathUtils.lerp(start.x, end.x, progress),
+      z: THREE.MathUtils.lerp(start.z, end.z, progress),
+    }),
   );
+  if (
+    !samples.every(
+      (point, index) =>
+        (!surface.isWalkable || surface.isWalkable(point)) &&
+        (index === 0 ||
+          index === samples.length - 1 ||
+          isPointClear(point, obstacles)),
+    )
+  ) {
+    return false;
+  }
+  if (!surface.heightAt) return true;
+
+  const heights = samples.map(surface.heightAt);
+  if (!heights.every(Number.isFinite)) return false;
+  const maximumStepHeight =
+    surface.maximumStepHeight ?? Number.POSITIVE_INFINITY;
+  const maximumSlope = surface.maximumSlope ?? Number.POSITIVE_INFINITY;
+  return samples.slice(1).every((point, index) => {
+    const previous = samples[index];
+    const heightDelta = Math.abs(heights[index + 1] - heights[index]);
+    const horizontalDistance = Math.hypot(
+      point.x - previous.x,
+      point.z - previous.z,
+    );
+    return (
+      heightDelta <= maximumStepHeight &&
+      (horizontalDistance === 0 ||
+        heightDelta / horizontalDistance <= maximumSlope)
+    );
+  });
 }
 
 function walkableNeighborKeys(
   node: GridNode,
   nodes: Map<string, GridNode>,
   obstacles: readonly NavigationObstacle[],
+  surface: NavigationSurfaceConstraints | undefined,
 ) {
   return neighboringKeys(node).filter((key) => {
     const neighbor = nodes.get(key);
-    return neighbor && edgeIsClear(node, neighbor, obstacles);
+    return neighbor && edgeIsClear(node, neighbor, obstacles, surface);
   });
 }
 
 function largestConnectedComponent(
   nodes: Map<string, GridNode>,
   obstacles: readonly NavigationObstacle[],
+  surface: NavigationSurfaceConstraints | undefined,
 ) {
   const unvisited = new Set(nodes.keys());
   let largest: GridNode[] = [];
@@ -271,6 +332,7 @@ function largestConnectedComponent(
         node,
         nodes,
         obstacles,
+        surface,
       )) {
         if (!unvisited.has(neighborKey)) continue;
         unvisited.delete(neighborKey);
@@ -288,6 +350,7 @@ function shortestGridPath(
   start: GridNode,
   end: GridNode,
   obstacles: readonly NavigationObstacle[],
+  surface: NavigationSurfaceConstraints | undefined,
 ) {
   const queue = [start.key];
   const visited = new Set([start.key]);
@@ -301,6 +364,7 @@ function shortestGridPath(
       node,
       nodes,
       obstacles,
+      surface,
     )) {
       if (!allowed.has(neighborKey) || visited.has(neighborKey)) continue;
       visited.add(neighborKey);
@@ -338,6 +402,7 @@ function kharbranthRalinsaRoutes(
   center: readonly [number, number],
   profile: Pick<CityProfile, "radius">,
   obstacles: readonly NavigationObstacle[],
+  surface: NavigationSurfaceConstraints | undefined,
 ) {
   return Array.from({ length: 6 }, (_, tier): NavigationRoute | null => {
     const roadOffset = kharbranthRoadOffset(tier);
@@ -369,9 +434,20 @@ function kharbranthRalinsaRoutes(
       };
     });
     if (
-      !points.every((point) =>
-        isPointClear(point, obstacles, PEDESTRIAN_ENVIRONMENT_CLEARANCE),
-      )
+      !points.every(
+        (point) =>
+          isSurfacePointWalkable(point, surface) &&
+          isPointClear(
+            point,
+            obstacles,
+            PEDESTRIAN_ENVIRONMENT_CLEARANCE,
+          ),
+      ) ||
+      !points
+        .slice(1)
+        .every((point, index) =>
+          edgeIsClear(points[index], point, obstacles, surface),
+        )
     ) {
       return null;
     }
@@ -389,6 +465,7 @@ export function createNavigationField(
   center: readonly [number, number],
   layout: DistrictLayout,
   landmarkObstacles: readonly NavigationObstacle[] = [],
+  surface?: NavigationSurfaceConstraints,
 ): NavigationField {
   const obstacles = [
     ...layoutNavigationObstacles(layout),
@@ -409,7 +486,8 @@ export function createNavigationField(
       };
       if (
         !isInsideWalkableDistrict(locationId, profile, center, point) ||
-        !isPointClear(point, obstacles)
+        !isPointClear(point, obstacles) ||
+        !isSurfacePointWalkable(point, surface)
       ) {
         continue;
       }
@@ -418,7 +496,7 @@ export function createNavigationField(
     }
   }
 
-  const component = largestConnectedComponent(nodes, obstacles);
+  const component = largestConnectedComponent(nodes, obstacles, surface);
   const allowed = new Set(component.map((node) => node.key));
   const routes: NavigationRoute[] = [];
   for (let routeIndex = 0; routeIndex < 10; routeIndex += 1) {
@@ -444,6 +522,7 @@ export function createNavigationField(
       start,
       end,
       obstacles,
+      surface,
     );
     const points = rawPath.map(({ x, z }) => ({ x, z }));
     const length = routeLength(points);
@@ -457,7 +536,7 @@ export function createNavigationField(
 
   const authoredKharbranthRoutes =
     locationId === "kharbranth"
-      ? kharbranthRalinsaRoutes(center, profile, obstacles)
+      ? kharbranthRalinsaRoutes(center, profile, obstacles, surface)
       : [];
 
   return {
@@ -469,6 +548,7 @@ export function createNavigationField(
       authoredKharbranthRoutes.length > 0
         ? authoredKharbranthRoutes
         : routes,
+    ...(surface ? { surface } : {}),
   };
 }
 
@@ -513,7 +593,9 @@ export function isNavigationPositionValid(
       field.profile,
       field.center,
       point,
-    ) && isPointClear(point, field.obstacles)
+    ) &&
+    isPointClear(point, field.obstacles) &&
+    isSurfacePointWalkable(point, field.surface)
   );
 }
 
