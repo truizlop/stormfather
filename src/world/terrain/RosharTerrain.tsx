@@ -25,6 +25,7 @@ import {
   detailedLocationSurface,
   type DetailedLocationId,
 } from "./locationSurface";
+import { THAYLEN_CITY_TERRAIN_PATCH } from "./thaylenTerrainPatch";
 
 const landPolygons: readonly (readonly GeographyPoint[])[] = [
   mainlandOutline,
@@ -171,12 +172,25 @@ function fillPolygon(
   }
 }
 
-function createLandMaskTexture(width: number, height: number) {
+function createLandMaskTexture(
+  width: number,
+  height: number,
+  focusedLocationId?: DetailedLocationId,
+) {
   const data = new Uint8Array(width * height * 4);
   for (let offset = 3; offset < data.length; offset += 4) data[offset] = 255;
   landPolygons.forEach((polygon) =>
     fillPolygon(data, width, height, polygon, 255),
   );
+  if (focusedLocationId === "thaylen-city") {
+    fillPolygon(
+      data,
+      width,
+      height,
+      THAYLEN_CITY_TERRAIN_PATCH,
+      255,
+    );
+  }
   inlandWaterPolygons.forEach((water) =>
     fillPolygon(data, width, height, water.points, 0),
   );
@@ -302,8 +316,13 @@ function TerrainSurface() {
     [focusedLocationId, mobile],
   );
   const alphaMap = useMemo(
-    () => createLandMaskTexture(mobile ? 640 : 1280, mobile ? 336 : 672),
-    [mobile],
+    () =>
+      createLandMaskTexture(
+        mobile ? 640 : 1280,
+        mobile ? 336 : 672,
+        focusedLocationId,
+      ),
+    [focusedLocationId, mobile],
   );
   const bumpMap = useMemo(() => {
     const copy = stone.clone();

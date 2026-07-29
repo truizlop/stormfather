@@ -9,10 +9,11 @@ import {
   landmarkRotationY,
 } from "./cities/landmarkMetrics";
 import { cityProfile } from "./cities/profiles";
+import { landmarkHarborWaterShift } from "./terrain/landmarkWaterDatum";
 import {
-  landmarkHarborNodeUsesWaterDatum,
-  landmarkHarborWaterShift,
-} from "./terrain/landmarkWaterDatum";
+  landmarkChildVerticalShift,
+  landmarkPresentationNodeIsHidden,
+} from "./terrain/landmarkTerrainDatum";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
@@ -100,15 +101,20 @@ function LandmarkInstance({
     const copy = source.clone(true);
     copy.position.set(0, 0, 0);
     copy.rotation.set(0, 0, 0);
+    for (const child of copy.children) {
+      child.position.y += landmarkChildVerticalShift(
+        locationId,
+        child.name,
+        harborWaterShift,
+      );
+      if (
+        landmarkPresentationNodeIsHidden(locationId, child.name)
+      ) {
+        child.visible = false;
+      }
+    }
     copy.traverse((object) => {
       const mesh = object as THREE.Mesh;
-      if (
-        mesh.isMesh &&
-        harborWaterShift !== 0 &&
-        landmarkHarborNodeUsesWaterDatum(locationId, object.name)
-      ) {
-        object.position.y += harborWaterShift;
-      }
       if (
         object.name === "Shinovar_Grass_Valley" ||
         object.name === "Purelake_Water_Shelf" ||
