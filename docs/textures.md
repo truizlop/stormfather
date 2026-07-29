@@ -28,6 +28,44 @@ muted terracotta, ochre, teal, ivory, and dusty rose, with fine crem ridges and
 weather staining. It is tinted and repeated across small facade modules rather
 than used as a literal wall.
 
+## `public/textures/kharbranth-plaster-subtle.jpg`
+
+Prompt summary: a seamless, low-contrast pale mineral plaster scan with fine
+lime-and-stone grain, restrained hand-troweled variation and a barely visible
+salt patina. It is neutral enough to preserve Kharbranth’s culturally important
+terracotta, ochre, teal and ivory dyes.
+
+## `public/textures/kharbranth-facade-realistic.jpg`
+
+Prompt summary: a neutral, straight-on facade atlas with six recessed square
+stormglass windows, pale stone lintels and sills, a narrow timber door, a
+weathered balcony ledge, patinated brackets and one ordinary bronze bell. It
+adds realistic distant detail while the authored meshes continue to provide
+true doors, windows, balconies and collision geometry at street distance.
+
+## `public/textures/kharbranth-vista-depth.png`
+
+Prompt summary: a grayscale depth interpretation of the accepted Kharbranth
+harbor composition. Foreground docks and lower wards are nearest, the terraced
+city recedes through middle gray, and sea, sky and distant cliff forms fall
+toward black. A subdivided Three.js plane consumes it as displacement so the
+photographic city LOD has real relief before the authored street geometry takes
+over.
+
+## `public/textures/kharbranth-residents-depth.png`
+
+Prompt summary: a grayscale figure-depth study derived from the original
+five-role Kharbranth resident lineup. It is applied at deliberately shallow
+displacement under the exact color reference, adding portrait parallax without
+changing the generated faces, garments, props, or composition.
+
+## `public/textures/rosharan-skin-microdetail.png`
+
+Prompt summary: a seamless neutral grayscale micro-height field of subtle pores,
+fine creases, and tiny natural variation. It is used only at very low bump scale
+on the Blender Studio CC0 anatomical residents; material color continues to
+define varied Rosharan complexions.
+
 ## `public/textures/rosharan-cloth-albedo.jpg`
 
 Prompt summary: a seamless, low-contrast handwoven linen/wool field with fine

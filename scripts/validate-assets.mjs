@@ -58,8 +58,17 @@ const expectedTextures = [
   "purelake-caustics.jpg",
   "roshar-crem-macro.jpg",
   "kharbranth-plaster-realistic.jpg",
+  "kharbranth-plaster-subtle.jpg",
+  "kharbranth-facade-realistic.jpg",
   "kharbranth-stone-realistic.jpg",
   "rosharan-cloth-realistic.jpg",
+  "kharbranth-vista-depth.png",
+  "kharbranth-residents-depth.png",
+  "rosharan-skin-microdetail.png",
+];
+const expectedReferences = [
+  "kharbranth-concept.jpg",
+  "kharbranth-residents.jpg",
 ];
 
 try {
@@ -98,6 +107,15 @@ try {
     }
   }
   console.log(`✓ ${expectedTextures.length} generated runtime textures`);
+  for (const referenceName of expectedReferences) {
+    const reference = await stat(resolve("public/reference", referenceName));
+    if (reference.size < 64 * 1024) {
+      throw new Error(
+        `Reference ${referenceName} is unexpectedly small: ${reference.size} bytes`,
+      );
+    }
+  }
+  console.log(`✓ ${expectedReferences.length} generated fidelity references`);
 } catch (error) {
   console.error(`✗ Missing or invalid landmark kit at ${modelPath}`);
   console.error(error instanceof Error ? error.message : error);

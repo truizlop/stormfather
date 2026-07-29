@@ -107,12 +107,30 @@ without baked directional light, text, objects, logos or watermarks.
 - `public/textures/kharbranth-plaster-realistic.jpg`: pale neutral
   mineral plaster with fine aggregate, hairline cracks, chipped substrate, rain
   streaks, salt bloom and crem deposits.
+- `public/textures/kharbranth-plaster-subtle.jpg`: low-contrast pale lime and
+  stone plaster with fine aggregate, hand-troweled variation and restrained salt
+  patina. It replaces the first plaster scan in the facade albedo channel while
+  retaining the stronger source for micro-surface reference.
+- `public/textures/kharbranth-facade-realistic.jpg`: a straight-on neutral
+  facade atlas with six deeply recessed square stormglass windows, stone lintels,
+  a narrow timber door, a timber ledge, patinated brackets and an ordinary bell.
+  It supplies distant architectural information without adding thousands of
+  mobile-cost geometry nodes.
 - `public/textures/kharbranth-stone-realistic.jpg`: worn dark coastal paving with
   fitted slabs, mineral joints, chips, damp tonal variation and pale deposits.
 - `public/textures/rosharan-cloth-realistic.jpg`: desaturated indigo-gray
   handwoven cloth with irregular fibers, repaired stitches, salt wear and sparse
   ochre thread.
+- `public/textures/rosharan-skin-microdetail.png`: a neutral, seamless
+  grayscale pore and fine-crease height field for extremely restrained skin
+  bump on the CC0 anatomical bases.
+- `public/textures/kharbranth-vista-depth.png`: a grayscale city-depth
+  interpretation preserving the accepted harbor camera, with docks nearest and
+  sky, sea and distant cliff forms receding.
+- `public/textures/kharbranth-residents-depth.png`: a shallow grayscale
+  resident-depth interpretation used under the exact five-role color lineup.
 
-These files were generated through built-in ImageGen, then converted to stripped,
-web-sized JPEG assets with ImageMagick. They are consumed as albedo and/or fine
-bump detail; code-native material color retains cultural variation.
+These files were generated through built-in ImageGen, then prepared as stripped,
+web-sized JPEG material scans or PNG displacement fields. They are consumed as
+albedo, roughness, fine bump detail, or shallow relief; code-native material
+color retains cultural variation.
