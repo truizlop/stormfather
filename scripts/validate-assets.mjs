@@ -129,6 +129,9 @@ const expectedModeledCities = [
     prefix: "Kholinar_",
     minimumNodes: 185,
     required: [
+      "Kholinar_TerrainCradle_Surface",
+      "Kholinar_TerrainCradle_Transition",
+      "Kholinar_TerrainCradle_OutcropBatch",
       "Kholinar_EasternWard_01_Building",
       "Kholinar_CityGate_01_GateLintel",
       "Kholinar_Palace_MainGallery",
@@ -141,6 +144,9 @@ const expectedModeledCities = [
     prefix: "Azimir_",
     minimumNodes: 105,
     required: [
+      "Azimir_TerrainCradle_Surface",
+      "Azimir_TerrainCradle_Transition",
+      "Azimir_TerrainCradle_OutcropBatch",
       "Azimir_ClerkQuarter_01_Building",
       "Azimir_BronzePalace_Building",
       "Azimir_GrandMarket_Piazza",
@@ -159,13 +165,23 @@ const expectedModeledCities = [
     name: "Shinovar",
     prefix: "Shinovar_",
     minimumNodes: 105,
-    required: ["Shinovar_FarmHome_01_Building"],
+    required: [
+      "Shinovar_TerrainCradle_Valley_Surface",
+      "Shinovar_TerrainCradle_Valley_Transition",
+      "Shinovar_TerrainCradle_Valley_OutcropBatch",
+      "Shinovar_FarmHome_01_Building",
+    ],
   },
   {
     name: "Akinah",
     prefix: "Akinah_",
     minimumNodes: 155,
-    required: ["Akinah_RuinQuarter_1_02_Building"],
+    required: [
+      "Akinah_TerrainCradle_Island_Surface",
+      "Akinah_TerrainCradle_Island_Transition",
+      "Akinah_TerrainCradle_Island_OutcropBatch",
+      "Akinah_RuinQuarter_1_02_Building",
+    ],
   },
   {
     name: "Thaylen City",

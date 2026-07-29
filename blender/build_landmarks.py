@@ -456,6 +456,194 @@ def prism(name, points, height, mat, parent=None, z=0):
     return finish(obj, mat, 0.12)
 
 
+def natural_terrain_cradle(
+    name: str,
+    outline: list[tuple[float, float]],
+    top_z: float,
+    shoulder_drop: float,
+    toe_drop: float,
+    cap_mat: bpy.types.Material,
+    shoulder_mat: bpy.types.Material,
+    toe_mat: bpy.types.Material,
+    parent: bpy.types.Object,
+    outer_scale: float = 1.18,
+    shoulder_scale: float = 1.08,
+    edge_subdivisions: int = 1,
+    phase: float = 0,
+) -> list[tuple[float, float, float]]:
+    """Create a terrain-seated cap and an irregular, buried transition skirt.
+
+    Landmark roots are placed against a sampled terrain datum in the runtime.
+    A thin cylinder or rectangular slab exposes that single datum immediately:
+    its edge either floats or clips as soon as the surrounding terrain slopes.
+    These nested rings keep the authored walkable cap exact, then descend below
+    the root origin through asymmetric shoulders and a ragged toe that can
+    overlap the continental mesh without presenting a hard display-base edge.
+    """
+
+    if len(outline) < 3:
+        raise ValueError(f"{name} terrain cradle needs at least three points")
+    if edge_subdivisions < 1:
+        raise ValueError(f"{name} edge subdivisions must be positive")
+
+    dense_outline: list[tuple[float, float]] = []
+    for index, start in enumerate(outline):
+        end = outline[(index + 1) % len(outline)]
+        for subdivision in range(edge_subdivisions):
+            progress = subdivision / edge_subdivisions
+            dense_outline.append(
+                (
+                    start[0] + (end[0] - start[0]) * progress,
+                    start[1] + (end[1] - start[1]) * progress,
+                )
+            )
+
+    signed_area = sum(
+        dense_outline[index][0]
+        * dense_outline[(index + 1) % len(dense_outline)][1]
+        - dense_outline[(index + 1) % len(dense_outline)][0]
+        * dense_outline[index][1]
+        for index in range(len(dense_outline))
+    )
+    ordered = (
+        dense_outline
+        if signed_area > 0
+        else list(reversed(dense_outline))
+    )
+    center_x = sum(point[0] for point in ordered) / len(ordered)
+    center_y = sum(point[1] for point in ordered) / len(ordered)
+
+    surface_vertices = [(center_x, center_y, top_z)] + [
+        (x, y, top_z) for x, y in ordered
+    ]
+    surface_faces = [
+        (0, index + 1, (index + 1) % len(ordered) + 1)
+        for index in range(len(ordered))
+    ]
+    surface_mesh = bpy.data.meshes.new(f"{name}_Surface_Mesh")
+    surface_mesh.from_pydata(surface_vertices, [], surface_faces)
+    surface_mesh.update()
+    surface = bpy.data.objects.new(f"{name}_Surface", surface_mesh)
+    assets.objects.link(surface)
+    surface.parent = parent
+    surface["walkable_surface"] = True
+    finish(surface, cap_mat)
+
+    inner_ring = [(x, y, top_z) for x, y in ordered]
+    shoulder_ring: list[tuple[float, float, float]] = []
+    toe_ring: list[tuple[float, float, float]] = []
+    for index, (x, y) in enumerate(ordered):
+        dx = x - center_x
+        dy = y - center_y
+        shoulder_variation = (
+            math.sin(index * 2.173 + phase) * 0.038
+            + math.cos(index * 0.773 - phase) * 0.017
+        )
+        point_shoulder_scale = shoulder_scale + shoulder_variation
+        shoulder_ring.append(
+            (
+                center_x + dx * point_shoulder_scale,
+                center_y + dy * point_shoulder_scale,
+                top_z
+                - shoulder_drop
+                * (0.82 + 0.16 * math.sin(index * 1.371 + phase)),
+            )
+        )
+
+        toe_variation = (
+            math.sin(index * 1.917 + phase * 1.3) * 0.075
+            + math.cos(index * 0.613 - phase) * 0.032
+        )
+        point_scale = outer_scale + toe_variation
+        toe_ring.append(
+            (
+                center_x + dx * point_scale,
+                center_y + dy * point_scale,
+                top_z
+                - toe_drop
+                * (0.9 + 0.13 * math.cos(index * 1.217 + phase)),
+            )
+        )
+
+    ring_count = len(ordered)
+    transition_vertices = inner_ring + shoulder_ring + toe_ring
+    transition_faces: list[tuple[int, ...]] = []
+    for index in range(ring_count):
+        following = (index + 1) % ring_count
+        transition_faces.append(
+            (
+                index,
+                ring_count + index,
+                ring_count + following,
+                following,
+            )
+        )
+    for index in range(ring_count):
+        following = (index + 1) % ring_count
+        transition_faces.append(
+            (
+                ring_count + index,
+                2 * ring_count + index,
+                2 * ring_count + following,
+                ring_count + following,
+            )
+        )
+
+    transition_mesh = bpy.data.meshes.new(f"{name}_Transition_Mesh")
+    transition_mesh.from_pydata(
+        transition_vertices,
+        [],
+        transition_faces,
+    )
+    transition_mesh.materials.append(shoulder_mat)
+    transition_mesh.materials.append(toe_mat)
+    for polygon_index, polygon in enumerate(transition_mesh.polygons):
+        polygon.material_index = 0 if polygon_index < ring_count else 1
+        polygon.use_smooth = False
+    transition_mesh.update()
+    transition = bpy.data.objects.new(
+        f"{name}_Transition",
+        transition_mesh,
+    )
+    assets.objects.link(transition)
+    transition.parent = parent
+    transition["terrain_support"] = True
+    return toe_ring
+
+
+def terrain_cradle_outcrops(
+    name: str,
+    toe_ring: list[tuple[float, float, float]],
+    mat: bpy.types.Material,
+    parent: bpy.types.Object,
+    stride: int,
+    size: float,
+) -> bpy.types.Object | None:
+    """Break the cradle toe into readable natural strata, not a smooth disk."""
+
+    outcrops: list[bpy.types.Object] = []
+    for outcrop_index, point_index in enumerate(
+        range(0, len(toe_ring), stride)
+    ):
+        x, y, z = toe_ring[point_index]
+        variation = 0.82 + 0.24 * math.sin(point_index * 1.73 + size)
+        outcrops.append(
+            rock(
+                f"{name}_Outcrop_{outcrop_index + 1:02d}",
+                (x, y, z + size * 0.16),
+                (
+                    size * variation,
+                    size * (0.62 + 0.17 * math.cos(point_index * 1.11)),
+                    size * (0.38 + 0.13 * math.sin(point_index * 0.91)),
+                ),
+                mat,
+                parent,
+                1,
+            )
+        )
+    return join_meshes(f"{name}_OutcropBatch", outcrops, parent)
+
+
 def join_meshes(name, objects, parent=None):
     """Join decorative primitives into one draw-call-friendly authored mesh."""
 
@@ -3266,13 +3454,28 @@ def build_kholinar() -> None:
         (-4.18, -2.0),
         (-4.78, 0.35),
     ]
-    prism(
-        "Kholinar_City_Rock",
+    kholinar_toe = natural_terrain_cradle(
+        "Kholinar_TerrainCradle",
         outline,
-        0.66,
+        0.67,
+        0.34,
+        1.12,
+        p["stone"],
+        p["stone_dark"],
         p["stone_dark"],
         r,
-        0.34,
+        1.34,
+        1.09,
+        3,
+        0.8,
+    )
+    terrain_cradle_outcrops(
+        "Kholinar_TerrainCradle",
+        kholinar_toe,
+        p["stone"],
+        r,
+        3,
+        0.68,
     )
 
     district_plateaus = (
@@ -3873,21 +4076,39 @@ def build_azimir() -> None:
         pixel: tuple[float, float],
     ) -> tuple[float, float]:
         return ((pixel[0] - 300) / 50, (420 - pixel[1]) * 0.014)
-    cube(
-        "Azimir_CivicPlatform",
-        (0, 0, 0.3),
-        (5.2, 4.7, 0.3),
+
+    azimir_civic_outline = [
+        (-4.76, -4.68),
+        (4.76, -4.68),
+        (5.18, -4.28),
+        (5.18, 4.28),
+        (4.76, 4.68),
+        (-4.76, 4.68),
+        (-5.18, 4.28),
+        (-5.18, -4.28),
+    ]
+    azimir_toe = natural_terrain_cradle(
+        "Azimir_TerrainCradle",
+        azimir_civic_outline,
+        0.6,
+        0.3,
+        1.02,
         city_surface["azimir"],
+        p["ochre"],
+        p["earth"],
         r,
-        0.08,
+        1.43,
+        1.18,
+        4,
+        1.9,
     )
-    cube(
-        "Azimir_CivicPlatform_LowerSkirt",
-        (0, 0, 0.12),
-        (5.02, 4.52, 0.16),
-        p["stone_dark"],
+    terrain_cradle_outcrops(
+        "Azimir_TerrainCradle",
+        azimir_toe,
+        p["earth"],
         r,
-        0.055,
+        4,
+        0.52,
     )
 
     for side, (x, y, width, depth) in enumerate(
@@ -4338,7 +4559,38 @@ def build_purelake() -> None:
 def build_shinovar() -> None:
     r = root("Landmark_Shinovar", (5, 8, 0))
     runtime_scale = (4.8 * 2) / 8.797
-    cyl("Shinovar_Grass_Valley", (0, 0, 0.18), 5.4, 0.36, p["grass"], r, 40)
+    shinovar_valley_outline = [
+        (
+            math.cos(2 * math.pi * index / 24)
+            * (5.18 + 0.17 * math.sin(index * 1.73)),
+            math.sin(2 * math.pi * index / 24)
+            * (4.44 + 0.14 * math.cos(index * 1.27)),
+        )
+        for index in range(24)
+    ]
+    shinovar_toe = natural_terrain_cradle(
+        "Shinovar_TerrainCradle_Valley",
+        shinovar_valley_outline,
+        0.36,
+        0.22,
+        0.78,
+        p["grass"],
+        p["grass"],
+        p["grass"],
+        r,
+        1.5,
+        1.24,
+        1,
+        2.6,
+    )
+    terrain_cradle_outcrops(
+        "Shinovar_TerrainCradle_Valley",
+        shinovar_toe,
+        p["earth"],
+        r,
+        3,
+        0.4,
+    )
     for i in range(7):
         field = cube(
             f"Shinovar_Field_{i + 1}",
@@ -4451,7 +4703,38 @@ def build_shinovar() -> None:
 def build_akinah() -> None:
     r = root("Landmark_Akinah", (19, 8, 0))
     runtime_scale = (4.6 * 2) / 10.2
-    cyl("Akinah_Island", (0, 0, 0.28), 5.1, 0.56, city_surface["akinah"], r, 32, 0.16)
+    akinah_island_outline = [
+        (
+            math.cos(2 * math.pi * index / 28)
+            * (5.14 + 0.13 * math.sin(index * 1.67 + 0.4)),
+            math.sin(2 * math.pi * index / 28)
+            * (5.02 + 0.16 * math.cos(index * 1.31 - 0.2)),
+        )
+        for index in range(28)
+    ]
+    akinah_toe = natural_terrain_cradle(
+        "Akinah_TerrainCradle_Island",
+        akinah_island_outline,
+        0.56,
+        0.38,
+        1.18,
+        city_surface["akinah"],
+        p["stone_dark"],
+        p["stone_dark"],
+        r,
+        1.37,
+        1.1,
+        1,
+        3.1,
+    )
+    terrain_cradle_outcrops(
+        "Akinah_TerrainCradle_Island",
+        akinah_toe,
+        city_surface["akinah"],
+        r,
+        2,
+        0.72,
+    )
     defense_plinths = []
     for i in range(22):
         angle = 2 * math.pi * i / 22
