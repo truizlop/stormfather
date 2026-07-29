@@ -10,6 +10,7 @@ import { WorldTraffic } from "./WorldTraffic";
 import { CityActivities } from "./actors/CityActivities";
 import { LivingPopulation } from "./actors/LivingPopulation";
 import { ReactiveFlora } from "./actors/ReactiveFlora";
+import { WindrunnerPatrols } from "./actors/WindrunnerPatrols";
 import { CountryFrontiers } from "./cartography/CountryFrontiers";
 import { RosharEcology } from "./ecology";
 import {
@@ -103,6 +104,7 @@ export function WorldScene() {
       <ReactiveFlora />
       <CityActivities />
       <LivingPopulation />
+      <WindrunnerPatrols />
       <RosharEcology />
       <Highstorm />
       <WorldLabels />
