@@ -55,6 +55,7 @@ function mapSources(
 interface LocatedPlaceInput {
   id: string;
   canonicalName: string;
+  parentLocationId?: string;
   kind: GazetteerKind;
   category?: GazetteerCategory;
   nationOrRegion: string;
@@ -80,6 +81,7 @@ function located(input: LocatedPlaceInput): GazetteerPlace {
   return {
     id: input.id,
     canonicalName: input.canonicalName,
+    parentLocationId: input.parentLocationId,
     kind: input.kind,
     category: input.category ?? defaultGazetteerCategory(input.kind),
     nationOrRegion: input.nationOrRegion,
@@ -540,6 +542,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "azimir",
     canonicalName: "Azimir",
+    parentLocationId: "azir",
     kind: "city",
     nationOrRegion: "Azir",
     minimumLod: "region",
@@ -1086,6 +1089,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "akinah",
     canonicalName: "Akinah",
+    parentLocationId: "aimia",
     kind: "ruin",
     nationOrRegion: "Aimia",
     minimumLod: "city",
