@@ -12,6 +12,7 @@ import { CityActivities } from "./actors/CityActivities";
 import { LivingPopulation } from "./actors/LivingPopulation";
 import { ReactiveFlora } from "./actors/ReactiveFlora";
 import { CountryFrontiers } from "./cartography/CountryFrontiers";
+import { RosharEcology } from "./ecology";
 import {
   gazetteerById,
   gazetteerMarkerWorld,
@@ -104,6 +105,7 @@ export function WorldScene() {
       <ReactiveFlora />
       <CityActivities />
       <LivingPopulation />
+      <RosharEcology />
       <Highstorm />
       <WorldLabels />
       <SimulationClock />
