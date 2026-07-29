@@ -18,6 +18,7 @@ import {
   stormProximity,
   stormXAtTime,
 } from "../weather/storm";
+import { settlementWaterY } from "./locationSurface";
 
 const coastlinePolygons: readonly (readonly GeographyPoint[])[] = [
   mainlandOutline,
@@ -651,13 +652,18 @@ function PurelakeSurface() {
     material.current.uniforms.uDrain.value = drain;
     material.current.uniforms.uNight.value = state.nightMode ? 1 : 0;
     group.current.scale.set(1 - drain * 0.1, 1, 1 - drain * 0.08);
-    group.current.position.y = 0.08 - drain * 0.045;
+    group.current.position.y =
+      settlementWaterY("purelake", state.simulationTime) ?? 0;
   });
 
   return (
     <group
       ref={group}
-      position={[purelakeCenter[0], 0.08, purelakeCenter[1]]}
+      position={[
+        purelakeCenter[0],
+        settlementWaterY("purelake", 0) ?? 0,
+        purelakeCenter[1],
+      ]}
     >
       <mesh
         geometry={geometry}
@@ -691,20 +697,15 @@ const harborCoordinates: Record<
   {
     center: readonly [number, number];
     scale: readonly [number, number];
-    surfaceY: number;
   }
 > = {
   kharbranth: {
     center: [11.02, 22.29],
     scale: [4.7, 2.42],
-    // Harbor water shares the ocean datum; sampling the mountainous city
-    // anchor lifted the old patch through several blocks of architecture.
-    surfaceY: -0.16,
   },
   "thaylen-city": {
     center: [9.56, 27.08],
     scale: [6.4, 3.35],
-    surfaceY: -0.16,
   },
 };
 
@@ -747,8 +748,10 @@ function SelectedHarborSurface() {
       stormXAtTime(state.simulationTime),
       harbor.center[0],
     );
+    const waterY =
+      settlementWaterY(selectedId, state.simulationTime) ?? 0;
     surface.current.position.y =
-      harbor.surfaceY +
+      waterY +
       Math.sin(clock.elapsedTime * (0.7 + proximity * 1.4)) *
         (0.008 + proximity * 0.018);
     surface.current.rotation.z =
@@ -758,12 +761,14 @@ function SelectedHarborSurface() {
     material.current.uniforms.uNight.value = state.nightMode ? 1 : 0;
     if (foam.current) {
       const breathing = 1 + Math.sin(clock.elapsedTime * 0.94) * 0.018;
+      foam.current.position.y = surface.current.position.y + 0.035;
       foam.current.scale.set(breathing, 1, breathing);
       foam.current.rotation.y = Math.sin(clock.elapsedTime * 0.21) * 0.035;
     }
   });
 
   const harbor = harborCoordinates[selectedId];
+  const waterY = settlementWaterY(selectedId, 0) ?? 0;
   if (
     !harbor ||
     (detailLevel !== "city" && detailLevel !== "street")
@@ -780,7 +785,7 @@ function SelectedHarborSurface() {
       <mesh
         ref={surface}
         rotation-x={-Math.PI / 2}
-        position-y={harbor.surfaceY}
+        position-y={waterY}
         renderOrder={3}
         receiveShadow
       >
@@ -794,7 +799,7 @@ function SelectedHarborSurface() {
           side={THREE.DoubleSide}
         />
       </mesh>
-      <group ref={foam} position-y={harbor.surfaceY + 0.035}>
+      <group ref={foam} position-y={waterY + 0.035}>
         <Line
           points={foamPoints}
           color="#c0f4eb"
