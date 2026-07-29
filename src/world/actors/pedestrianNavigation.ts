@@ -91,6 +91,43 @@ function isSurfacePointWalkable(
   return !surface.heightAt || Number.isFinite(surface.heightAt(point));
 }
 
+function memoizedSurfaceConstraints(
+  surface: NavigationSurfaceConstraints | undefined,
+) {
+  if (!surface) return undefined;
+  const walkability = new Map<string, boolean>();
+  const heights = new Map<string, number>();
+  const keyFor = (point: NavigationPoint) =>
+    `${point.x.toFixed(5)}:${point.z.toFixed(5)}`;
+  return {
+    ...surface,
+    ...(surface.isWalkable
+      ? {
+          isWalkable: (point: NavigationPoint) => {
+            const key = keyFor(point);
+            const cached = walkability.get(key);
+            if (cached !== undefined) return cached;
+            const result = surface.isWalkable!(point);
+            walkability.set(key, result);
+            return result;
+          },
+        }
+      : {}),
+    ...(surface.heightAt
+      ? {
+          heightAt: (point: NavigationPoint) => {
+            const key = keyFor(point);
+            const cached = heights.get(key);
+            if (cached !== undefined) return cached;
+            const result = surface.heightAt!(point);
+            heights.set(key, result);
+            return result;
+          },
+        }
+      : {}),
+  } satisfies NavigationSurfaceConstraints;
+}
+
 export function isInsideWalkableDistrict(
   locationId: string,
   profile: Pick<CityProfile, "radius">,
@@ -467,6 +504,10 @@ export function createNavigationField(
   landmarkObstacles: readonly NavigationObstacle[] = [],
   surface?: NavigationSurfaceConstraints,
 ): NavigationField {
+  // Route construction revisits the same grid vertices and quarter-edge
+  // samples thousands of times. Keep this cache local to one build so the
+  // expensive terrain sampler is deduplicated without growing during frames.
+  const routeSurface = memoizedSurfaceConstraints(surface);
   const obstacles = [
     ...layoutNavigationObstacles(layout),
     ...landmarkObstacles,
@@ -487,7 +528,7 @@ export function createNavigationField(
       if (
         !isInsideWalkableDistrict(locationId, profile, center, point) ||
         !isPointClear(point, obstacles) ||
-        !isSurfacePointWalkable(point, surface)
+        !isSurfacePointWalkable(point, routeSurface)
       ) {
         continue;
       }
@@ -496,7 +537,11 @@ export function createNavigationField(
     }
   }
 
-  const component = largestConnectedComponent(nodes, obstacles, surface);
+  const component = largestConnectedComponent(
+    nodes,
+    obstacles,
+    routeSurface,
+  );
   const allowed = new Set(component.map((node) => node.key));
   const routes: NavigationRoute[] = [];
   for (let routeIndex = 0; routeIndex < 10; routeIndex += 1) {
@@ -522,7 +567,7 @@ export function createNavigationField(
       start,
       end,
       obstacles,
-      surface,
+      routeSurface,
     );
     const points = rawPath.map(({ x, z }) => ({ x, z }));
     const length = routeLength(points);
@@ -536,7 +581,12 @@ export function createNavigationField(
 
   const authoredKharbranthRoutes =
     locationId === "kharbranth"
-      ? kharbranthRalinsaRoutes(center, profile, obstacles, surface)
+      ? kharbranthRalinsaRoutes(
+          center,
+          profile,
+          obstacles,
+          routeSurface,
+        )
       : [];
 
   return {

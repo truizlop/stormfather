@@ -4,6 +4,10 @@ import { createDistrictLayout } from "../cities/districtLayout";
 import { cityProfile } from "../cities/profiles";
 import { locationById } from "../locations";
 import {
+  DETAILED_LOCATION_IDS,
+  detailedLocationSurface,
+} from "../terrain/locationSurface";
+import {
   createNavigationField,
   isNavigationPositionValid,
   landmarkNavigationObstacles,
@@ -39,6 +43,45 @@ function surfaceTestContext() {
 }
 
 describe("pedestrian navigation", () => {
+  it("finds a valid authored-floor route for every detailed destination", () => {
+    for (const locationId of DETAILED_LOCATION_IDS) {
+      const location = locationById.get(locationId)!;
+      const center = [
+        location.coordinates.x,
+        location.coordinates.z,
+      ] as const;
+      const profile = cityProfile(location.id, location.culture);
+      const surface = detailedLocationSurface(locationId)!;
+      const field = createNavigationField(
+        locationId,
+        profile,
+        center,
+        { buildings: [], modules: [] },
+        [],
+        {
+          isWalkable: ({ x, z }) =>
+            surface.containsWalkablePoint(x, z, "pedestrian"),
+          heightAt: ({ x, z }) =>
+            surface.walkableY(x, z, "pedestrian"),
+          maximumStepHeight: surface.maximumStepHeight,
+          maximumSlope: surface.maximumWalkSlope,
+        },
+      );
+
+      expect(
+        field.routes.length,
+        `${locationId} should expose a connected pedestrian floor`,
+      ).toBeGreaterThan(0);
+      for (const route of field.routes) {
+        expect(
+          route.points.every(({ x, z }) =>
+            surface.containsWalkablePoint(x, z, "pedestrian"),
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+
   it("rotates authored landmark collision footprints with their render root", () => {
     const scene = new THREE.Group();
     const root = new THREE.Group();

@@ -13,6 +13,7 @@ import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
 import { metersToLocal } from "../scale";
 import { localSurfaceY } from "../terrain/localSurface";
+import { detailedLocationSurface } from "../terrain/locationSurface";
 import type { Culture, DetailLevel, WorldLocation } from "../types";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import { createDistrictLayout } from "../cities/districtLayout";
@@ -1011,6 +1012,18 @@ function ActiveLivingPopulation({
     profile,
     scene,
   ]);
+  const navigationSurface = useMemo(() => {
+    const surface = detailedLocationSurface(fallbackLocation.id);
+    if (!surface) return undefined;
+    return {
+      isWalkable: ({ x, z }: { x: number; z: number }) =>
+        surface.containsWalkablePoint(x, z, "pedestrian"),
+      heightAt: ({ x, z }: { x: number; z: number }) =>
+        surface.walkableY(x, z, "pedestrian"),
+      maximumStepHeight: surface.maximumStepHeight,
+      maximumSlope: surface.maximumWalkSlope,
+    };
+  }, [fallbackLocation.id]);
   const navigation = useMemo(
     () =>
       createNavigationField(
@@ -1019,8 +1032,16 @@ function ActiveLivingPopulation({
         center,
         layout,
         landmarkObstacles,
+        navigationSurface,
       ),
-    [center, fallbackLocation.id, landmarkObstacles, layout, profile],
+    [
+      center,
+      fallbackLocation.id,
+      landmarkObstacles,
+      layout,
+      navigationSurface,
+      profile,
+    ],
   );
 
   const streetCast =
