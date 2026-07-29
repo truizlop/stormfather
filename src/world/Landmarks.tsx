@@ -98,6 +98,13 @@ function LandmarkInstance({
         object.name === "Purelake_Water_Shelf" ||
         object.name === "ThaylenCity_HarborBasin" ||
         object.name === "Urithiru_Mountain_Base" ||
+        object.name === "Urithiru_Mountain_Embrace_North" ||
+        object.name === "Urithiru_Mountain_Embrace_South" ||
+        object.name === "Urithiru_Mountain_Cleft_North" ||
+        object.name === "Urithiru_Mountain_Cleft_South" ||
+        object.name === "Urithiru_MountainCut_CeremonialApron" ||
+        object.name.startsWith("Urithiru_MountainCut_RetainingWing_") ||
+        object.name === "Urithiru_LowerRetainingButtressBatch" ||
         object.name.startsWith("Kharbranth_Mountain_")
       ) {
         object.visible = false;
@@ -150,10 +157,18 @@ function LandmarkInstance({
             if (
               objectName.includes("urithiru_mountain_") ||
               objectName.includes("western_mountain") ||
-              objectName.includes("terrain_seated_foundation")
+              objectName.includes("terrain_seated_foundation") ||
+              objectName.includes("mountaincut_ceremonialapron") ||
+              objectName.includes("mountaincut_retainingwing") ||
+              objectName.includes("lowerretainingbuttress") ||
+              objectName.includes("forecourt_bridgefoundation") ||
+              objectName.includes("forecourt_terrainskirt")
             ) {
-              material.color.set("#625f54");
+              material.color.set("#746d60");
               material.map = null;
+              material.bumpScale = 0.012;
+              material.emissive?.set("#171711");
+              material.emissiveIntensity = 0.14;
             }
             if (materialName.includes("city_urithiru")) {
               material.color.multiplyScalar(0.68);
