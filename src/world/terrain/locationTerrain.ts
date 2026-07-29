@@ -312,9 +312,8 @@ export function applyLocationTerrainCradles(
         (cradle) => cradle.id === focusedLocationId,
       )
     : LOCATION_TERRAIN_CRADLES;
-  let selectedCradle: LocationTerrainCradle | undefined;
-  let selectedInfluence = 0;
-  let selectedCoreDistance = Number.POSITIVE_INFINITY;
+  let weightedHeight = 0;
+  let totalWeight = 0;
   for (const cradle of candidates) {
     const influence = locationTerrainInfluenceAt(cradle, x, z);
     if (influence <= 0) continue;
@@ -324,34 +323,36 @@ export function applyLocationTerrainCradles(
       cradle.coreRadiusX,
       cradle.coreRadiusZ,
     );
-    if (
-      influence > selectedInfluence ||
-      (Math.abs(influence - selectedInfluence) < 0.000001 &&
-        coreDistance < selectedCoreDistance)
-    ) {
-      selectedCradle = cradle;
-      selectedInfluence = influence;
-      selectedCoreDistance = coreDistance;
-    }
-  }
-  if (!selectedCradle) return naturalHeight;
-
-  const anchorNaturalHeight = naturalHeightAt(
-    selectedCradle.center[0],
-    selectedCradle.center[1],
-  );
-  const target = localCradleTarget(
-    selectedCradle,
-    x,
-    z,
-    anchorNaturalHeight,
-  );
-  if (selectedCradle.kind === "mountain") {
-    return Math.max(
-      naturalHeight,
-      naturalHeight +
-        Math.max(0, target - naturalHeight) * selectedInfluence,
+    const anchorNaturalHeight = naturalHeightAt(
+      cradle.center[0],
+      cradle.center[1],
     );
+    const target = localCradleTarget(
+      cradle,
+      x,
+      z,
+      anchorNaturalHeight,
+    );
+    const candidateHeight =
+      cradle.kind === "mountain"
+        ? Math.max(
+            naturalHeight,
+            naturalHeight +
+              Math.max(0, target - naturalHeight) * influence,
+          )
+        : naturalHeight + (target - naturalHeight) * influence;
+    // Overlapping settlement influences must not elect a winner with a hard
+    // nearest-core tie-break. That produced a one-unit cliff along the
+    // Kharbranth/Thaylen overlap. A Gaussian ownership field keeps each city
+    // dominant at its own center and blends continuously through the shared
+    // coastal corridor. Influence remains part of the weight, so every cradle
+    // still returns smoothly to the untouched heightfield at its outer edge.
+    const ownershipWeight =
+      influence * Math.exp(-4.5 * coreDistance * coreDistance);
+    weightedHeight += candidateHeight * ownershipWeight;
+    totalWeight += ownershipWeight;
   }
-  return naturalHeight + (target - naturalHeight) * selectedInfluence;
+  return totalWeight > 1e-9
+    ? weightedHeight / totalWeight
+    : naturalHeight;
 }

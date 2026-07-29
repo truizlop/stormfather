@@ -169,4 +169,66 @@ describe("authored location terrain cradles", () => {
       ),
     ).toBeGreaterThan(OCEAN_WATER_HEIGHT + 0.35);
   });
+
+  it("blends overlapping coastal cradles without a global terrain seam", () => {
+    const kharbranth = LOCATION_TERRAIN_CRADLES.find(
+      (cradle) => cradle.id === "kharbranth",
+    )!;
+    const thaylen = LOCATION_TERRAIN_CRADLES.find(
+      (cradle) => cradle.id === "thaylen-city",
+    )!;
+    const midpointX =
+      (kharbranth.center[0] + thaylen.center[0]) / 2;
+    const midpointZ =
+      (kharbranth.center[1] + thaylen.center[1]) / 2;
+    const sampleStep = 0.002;
+
+    for (const [sampleX, sampleZ] of [
+      [midpointX, midpointZ],
+      // Browser-visible seam reported by the regression audit before the
+      // ownership blend replaced the hard nearest-core election.
+      [12.91, 23.92],
+    ] as const) {
+      const samples = Array.from({ length: 41 }, (_, index) =>
+        terrainHeightAt(
+          sampleX,
+          sampleZ + (index - 20) * sampleStep,
+        ),
+      );
+      const maximumAdjacentStep = Math.max(
+        ...samples.slice(1).map((height, index) =>
+          Math.abs(height - samples[index]),
+        ),
+      );
+      expect(maximumAdjacentStep, `${sampleX}, ${sampleZ}`).toBeLessThan(
+        0.02,
+      );
+    }
+    expect(
+      Math.abs(
+        terrainHeightAt(
+          kharbranth.center[0],
+          kharbranth.center[1],
+        ) -
+          terrainHeightAt(
+            kharbranth.center[0],
+            kharbranth.center[1],
+            "kharbranth",
+          ),
+      ),
+    ).toBeLessThan(0.12);
+    expect(
+      Math.abs(
+        terrainHeightAt(
+          thaylen.center[0],
+          thaylen.center[1],
+        ) -
+          terrainHeightAt(
+            thaylen.center[0],
+            thaylen.center[1],
+            "thaylen-city",
+          ),
+      ),
+    ).toBeLessThan(0.12);
+  });
 });
