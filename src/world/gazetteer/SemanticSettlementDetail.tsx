@@ -215,6 +215,8 @@ function SettlementArchitecture({
           bumpScale={0.012}
           roughness={0.96}
           metalness={0.01}
+          emissive="#55483c"
+          emissiveIntensity={0.26}
           vertexColors
         />
       </instancedMesh>
@@ -231,6 +233,8 @@ function SettlementArchitecture({
           bumpScale={0.009}
           roughness={0.89}
           metalness={0.02}
+          emissive="#7d6754"
+          emissiveIntensity={0.38}
           vertexColors
         />
       </instancedMesh>
@@ -246,6 +250,8 @@ function SettlementArchitecture({
           bumpScale={0.008}
           roughness={0.86}
           metalness={0.035}
+          emissive="#72564e"
+          emissiveIntensity={0.32}
           vertexColors
         />
       </instancedMesh>
@@ -266,6 +272,8 @@ function SettlementArchitecture({
           bumpMap={woodBump}
           bumpScale={0.009}
           roughness={0.88}
+          emissive="#4a3025"
+          emissiveIntensity={0.18}
           vertexColors
         />
       </instancedMesh>
@@ -506,7 +514,11 @@ export function SemanticSettlementDetail({
   const compactViewport = useThree((state) => state.size.width < 720);
   const [masonrySource, masonryBumpSource, woodBumpSource, pavingSource] =
     useTexture([
-      `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
+      // The dark crem-stone scan is excellent ground cover but multiplies
+      // authored wall colors almost to black. A neutral plaster scan keeps
+      // each settlement's cultural palette legible while the microheight
+      // texture supplies the masonry relief.
+      `${import.meta.env.BASE_URL}textures/kharbranth-plaster-subtle.jpg`,
       `${import.meta.env.BASE_URL}textures/rosharan-masonry-microheight-v2.jpg`,
       `${import.meta.env.BASE_URL}textures/rosharan-stormwood-microheight-v2.jpg`,
       `${import.meta.env.BASE_URL}textures/shattered-paving-albedo.jpg`,
