@@ -767,6 +767,32 @@ def build_urithiru() -> None:
         r,
         1.13,
     )
+    lower_buttresses = []
+    for buttress_index in range(7):
+        angle = -0.92 + buttress_index * (1.84 / 6)
+        tangent = math.atan2(
+            tier_specs[0][1] * math.sin(angle),
+            tier_specs[0][0] * math.cos(angle),
+        )
+        buttress = cube(
+            f"Urithiru_LowerRetainingButtress_{buttress_index + 1:02d}",
+            (
+                tier_specs[0][0] * math.sin(angle) * 0.99,
+                -tier_specs[0][1] * math.cos(angle) - 0.12,
+                1.35,
+            ),
+            (0.115, 0.28, 0.34),
+            p["stone_dark"],
+            r,
+            0.025,
+        )
+        buttress.rotation_euler[2] = tangent
+        lower_buttresses.append(buttress)
+    join_meshes(
+        "Urithiru_LowerRetainingButtressBatch",
+        lower_buttresses,
+        r,
+    )
 
     tier_bottom = 1.02
     tier_tops: list[float] = []
@@ -1015,6 +1041,15 @@ def build_urithiru() -> None:
             r,
             0.018,
         )
+    approach_ramp = cube(
+        "Urithiru_Oathgate_ApproachRamp",
+        (0, -4.82, 1.14),
+        (1.38, 0.42, 0.055),
+        p["stone_light"],
+        r,
+        0.018,
+    )
+    approach_ramp.rotation_euler[0] = -0.075
 
     # The crown shifts from the stepped half-round massing into the cylindrical
     # lantern shown in the west and east concept elevations.
@@ -1140,6 +1175,16 @@ def build_urithiru() -> None:
 
 def build_oathgate() -> None:
     r = root("Landmark_Oathgate", (-9, -7, 0))
+    cyl(
+        "Oathgate_TerrainSkirt",
+        (0, 0, 0.13),
+        3.68,
+        0.42,
+        p["stone_dark"],
+        r,
+        10,
+        0.08,
+    )
     cyl("Oathgate_Decagonal_Dais", (0, 0, 0.35), 3.9, 0.7, p["stone_light"], r, 10, 0.12)
     cyl("Oathgate_Inlay", (0, 0, 0.72), 3.2, 0.08, p["slate"], r, 10, 0.02)
     torus("Oathgate_Brass_Ring", (0, 0, 0.79), 2.35, 0.075, p["brass"], r)
@@ -1164,6 +1209,18 @@ def build_oathgate() -> None:
             0.01,
         )
         ray.rotation_euler[2] = angle
+    for ramp_index, angle in enumerate(
+        (0, math.pi / 2, math.pi, math.pi * 1.5)
+    ):
+        ramp = cube(
+            f"Oathgate_CardinalRamp_{ramp_index + 1}",
+            (math.cos(angle) * 3.28, math.sin(angle) * 3.28, 0.31),
+            (0.58, 0.24, 0.055),
+            p["stone_light"],
+            r,
+            0.018,
+        )
+        ramp.rotation_euler[2] = angle
     cyl("Oathgate_Control_Room", (0, 0, 1.05), 0.85, 1.4, p["stone_dark"], r, 10, 0.08)
     cone("Oathgate_Control_Roof", (0, 0, 1.95), 1.1, 0.32, 0.55, p["brass"], r, 10, 0.04)
 
@@ -2504,6 +2561,27 @@ def build_kharbranth() -> None:
         r,
         0.045,
     )
+    cube(
+        "Kharbranth_Harbor_QuayFoundationSkirt",
+        (0, -4.14, 0.17),
+        (4.42, 0.46, 0.18),
+        p["kh_cliff"],
+        r,
+        0.035,
+    )
+    quay_buttresses = []
+    for buttress_index in range(9):
+        quay_buttresses.append(
+            cube(
+                f"Kharbranth_QuayButtress_{buttress_index + 1:02d}",
+                (-3.72 + buttress_index * 0.93, -4.6, 0.4),
+                (0.07, 0.15, 0.31),
+                p["kh_stone"],
+                r,
+                0.018,
+            )
+        )
+    join_meshes("Kharbranth_QuayButtressBatch", quay_buttresses, r)
     arcade = []
     for arch in range(14):
         x = -4.03 + arch * 0.62
@@ -2953,6 +3031,7 @@ def build_kholinar() -> None:
         ("WesternRavine", (1.05, 1.48), (0.16, 1.9), 0.33),
         ("NorthernRavine", (0, -0.72), (1.62, 0.16), 0),
     )
+    ravine_retaining = []
     for name, center, scale, angle in ravines:
         ravine = cube(
             f"Kholinar_{name}_Floor",
@@ -2963,6 +3042,43 @@ def build_kholinar() -> None:
             0.025,
         )
         ravine.rotation_euler[2] = angle
+        if scale[1] > scale[0]:
+            for side in (-1, 1):
+                wall = cube(
+                    f"Kholinar_{name}_RetainingWall_{side}",
+                    (
+                        center[0]
+                        + math.cos(angle) * (scale[0] + 0.075) * side,
+                        center[1]
+                        + math.sin(angle) * (scale[0] + 0.075) * side,
+                        0.79,
+                    ),
+                    (0.055, scale[1], 0.18),
+                    p["stone_dark"],
+                    r,
+                    0.018,
+                )
+                wall.rotation_euler[2] = angle
+                ravine_retaining.append(wall)
+        else:
+            for side in (-1, 1):
+                wall = cube(
+                    f"Kholinar_{name}_RetainingWall_{side}",
+                    (
+                        center[0]
+                        - math.sin(angle) * (scale[1] + 0.075) * side,
+                        center[1]
+                        + math.cos(angle) * (scale[1] + 0.075) * side,
+                        0.79,
+                    ),
+                    (scale[0], 0.055, 0.18),
+                    p["stone_dark"],
+                    r,
+                    0.018,
+                )
+                wall.rotation_euler[2] = angle
+                ravine_retaining.append(wall)
+    join_meshes("Kholinar_RavineRetainingWallBatch", ravine_retaining, r)
 
     windblades = (
         (-1.2, 2.95, -0.34, 0.92),
@@ -2985,6 +3101,7 @@ def build_kholinar() -> None:
         )
         blade.rotation_euler[2] = angle
 
+    bridge_abutments = []
     for index, (x, y, length, angle) in enumerate(
         (
             (-1.0, 1.1, 0.7, -0.28),
@@ -3004,6 +3121,22 @@ def build_kholinar() -> None:
             0.018,
         )
         bridge.rotation_euler[2] = angle
+        for side in (-1, 1):
+            abutment = cube(
+                f"Kholinar_RavineBridgeAbutment_{index + 1:02d}_{side}",
+                (
+                    x + math.cos(angle) * length * 0.88 * side,
+                    y + math.sin(angle) * length * 0.88 * side,
+                    0.96,
+                ),
+                (0.13, 0.16, 0.16),
+                p["stone_dark"],
+                r,
+                0.02,
+            )
+            abutment.rotation_euler[2] = angle
+            bridge_abutments.append(abutment)
+    join_meshes("Kholinar_RavineBridgeAbutmentBatch", bridge_abutments, r)
 
     # Named civic anchors and ten temples from the blueprint.
     temple_positions = tuple(
@@ -3295,6 +3428,14 @@ def build_azimir() -> None:
         r,
         0.08,
     )
+    cube(
+        "Azimir_CivicPlatform_LowerSkirt",
+        (0, 0, 0.12),
+        (5.02, 4.52, 0.16),
+        p["stone_dark"],
+        r,
+        0.055,
+    )
 
     for side, (x, y, width, depth) in enumerate(
         (
@@ -3327,6 +3468,7 @@ def build_azimir() -> None:
         ("SouthernFanWest", (-1.6, -2.75), (3.0, 0.12), math.radians(-66)),
         ("SouthernFanEast", (1.6, -2.75), (3.0, 0.12), math.radians(66)),
     )
+    avenue_curbs = []
     for name, center, scale, rotation in avenue_specs:
         avenue = cube(
             f"Azimir_Avenue_{name}",
@@ -3337,6 +3479,24 @@ def build_azimir() -> None:
             0.01,
         )
         avenue.rotation_euler[2] = rotation
+        normal_x = -math.sin(rotation)
+        normal_y = math.cos(rotation)
+        for side in (-1, 1):
+            curb = cube(
+                f"Azimir_Avenue_{name}_Curb_{side}",
+                (
+                    center[0] + normal_x * (scale[1] + 0.035) * side,
+                    center[1] + normal_y * (scale[1] + 0.035) * side,
+                    0.68,
+                ),
+                (scale[0], 0.025, 0.035),
+                p["brass"],
+                r,
+                0.008,
+            )
+            curb.rotation_euler[2] = rotation
+            avenue_curbs.append(curb)
+    join_meshes("Azimir_AvenueCurbBatch", avenue_curbs, r)
 
     bronze_palace = azimir_plan_point((306, 384))
     grand_market = azimir_plan_point((354, 473))
@@ -3571,6 +3731,7 @@ def build_purelake() -> None:
     door_half_height = 2.08 / (2 * 12 * runtime_scale)
     window_half = 0.78 / (2 * 12 * runtime_scale)
     cyl("Purelake_Water_Shelf", (0, 0, 0.08), 5.2, 0.16, p["water"], r, 48, 0)
+    hut_supports = []
     for i, (x, y, scale) in enumerate(
         [
             (-2.5, -1.4, 1),
@@ -3586,9 +3747,11 @@ def build_purelake() -> None:
     ):
         for sx in (-1, 1):
             for sy in (-1, 1):
+                stilt_x = x + sx * 0.4 * scale
+                stilt_y = y + sy * 0.34 * scale
                 cyl(
                     f"Purelake_Hut_{i}_Stilt_{sx}_{sy}",
-                    (x + sx * 0.4 * scale, y + sy * 0.34 * scale, 0.32),
+                    (stilt_x, stilt_y, 0.32),
                     0.06 * scale,
                     0.65,
                     city_surface["purelake"],
@@ -3596,6 +3759,39 @@ def build_purelake() -> None:
                     8,
                     0,
                 )
+                footing = cyl(
+                    f"Purelake_Hut_{i}_Footing_{sx}_{sy}",
+                    (stilt_x, stilt_y, 0.13),
+                    0.095 * scale,
+                    0.18,
+                    p["stone_dark"],
+                    r,
+                    8,
+                    0.01,
+                )
+                hut_supports.append(footing)
+        for sy in (-1, 1):
+            hut_supports.append(
+                cube(
+                    f"Purelake_Hut_{i}_CrossBrace_X_{sy}",
+                    (x, y + sy * 0.34 * scale, 0.37),
+                    (0.4 * scale, 0.025, 0.025),
+                    p["wood"],
+                    r,
+                    0.008,
+                )
+            )
+        for sx in (-1, 1):
+            hut_supports.append(
+                cube(
+                    f"Purelake_Hut_{i}_CrossBrace_Y_{sx}",
+                    (x + sx * 0.4 * scale, y, 0.37),
+                    (0.025, 0.34 * scale, 0.025),
+                    p["wood"],
+                    r,
+                    0.008,
+                )
+            )
         cube(f"Purelake_Hut_{i}_Floor", (x, y, 0.55), (0.65 * scale, 0.58 * scale, 0.12), city_surface["purelake"], r)
         sphere(f"Purelake_Hut_{i}_Rockbud", (x, y, 0.98), (0.78 * scale, 0.7 * scale, 0.55 * scale), city_surface["purelake"], r)
         cube(
@@ -3633,6 +3829,15 @@ def build_purelake() -> None:
                 r,
             )
             shell_rib.scale.y = 0.84
+        cube(
+            f"Purelake_Hut_{i}_DoorLanding",
+            (x, y - 0.79 * scale, 0.48),
+            (0.23 * scale, 0.22 * scale, 0.035),
+            p["wood"],
+            r,
+            0.012,
+        )
+    join_meshes("Purelake_HutSupportBatch", hut_supports, r)
     for i, (x, y, angle) in enumerate(((-3.4, 1.2, 0.2), (2.9, 1.1, -0.25), (0.1, 3.2, 0.08))):
         raft = cube(f"Purelake_Raft_{i}", (x, y, 0.28), (0.85, 0.34, 0.07), p["earth"], r, 0.025)
         raft.rotation_euler[2] = angle
@@ -3721,6 +3926,45 @@ def build_shinovar() -> None:
             p["earth"],
             2,
         )
+        path_distance = 0.62 * scale
+        path = cube(
+            f"Shinovar_FarmHome_{i + 1:02d}_Footpath",
+            (
+                x + math.sin(rotation) * path_distance,
+                y - math.cos(rotation) * path_distance,
+                0.39,
+            ),
+            (0.13 * scale, 0.34 * scale, 0.022),
+            p["earth"],
+            r,
+            0.012,
+        )
+        path.rotation_euler[2] = rotation
+    cube(
+        "Shinovar_IrrigationChannel",
+        (0, -3.58, 0.405),
+        (3.25, 0.1, 0.025),
+        p["water"],
+        r,
+        0.012,
+    )
+    irrigation_bridges = []
+    for bridge_index, x in enumerate((-2.4, -0.8, 0.8, 2.4)):
+        irrigation_bridges.append(
+            cube(
+                f"Shinovar_IrrigationFootbridge_{bridge_index + 1}",
+                (x, -3.58, 0.46),
+                (0.12, 0.2, 0.035),
+                p["wood"],
+                r,
+                0.012,
+            )
+        )
+    join_meshes(
+        "Shinovar_IrrigationFootbridgeBatch",
+        irrigation_bridges,
+        r,
+    )
     for fence in range(5):
         y = -3.15 + fence * 0.27
         for post in range(14):
@@ -3755,13 +3999,28 @@ def build_akinah() -> None:
     r = root("Landmark_Akinah", (19, 8, 0))
     runtime_scale = (4.6 * 2) / 10.2
     cyl("Akinah_Island", (0, 0, 0.28), 5.1, 0.56, city_surface["akinah"], r, 32, 0.16)
+    defense_plinths = []
     for i in range(22):
         angle = 2 * math.pi * i / 22
         radius = 4.45 + 0.18 * math.sin(i * 2.1)
         height = 1.7 + 0.65 * ((i * 7) % 5) / 4
+        spike_x = math.cos(angle) * radius
+        spike_y = math.sin(angle) * radius
+        defense_plinths.append(
+            cyl(
+                f"Akinah_Defense_Plinth_{i + 1:02d}",
+                (spike_x, spike_y, 0.58),
+                0.39,
+                0.24,
+                p["stone_dark"],
+                r,
+                8,
+                0.025,
+            )
+        )
         spike = cone(
             f"Akinah_Defense_Spike_{i + 1:02d}",
-            (math.cos(angle) * radius, math.sin(angle) * radius, height / 2 + 0.42),
+            (spike_x, spike_y, height / 2 + 0.42),
             0.34,
             0.025,
             height,
@@ -3770,6 +4029,7 @@ def build_akinah() -> None:
             6,
         )
         spike.rotation_euler[2] = angle
+    join_meshes("Akinah_DefensePlinthBatch", defense_plinths, r)
     for ring in range(3):
         radius = 0.9 + ring * 1.05
         count = 7 + ring * 3
@@ -3799,6 +4059,24 @@ def build_akinah() -> None:
             )
     cyl("Akinah_Hidden_Oathgate", (0, 0, 0.78), 1.2, 0.26, p["slate"], r, 10)
     torus("Akinah_Hidden_Ring", (0, 0, 0.93), 0.74, 0.06, p["cyan"], r)
+    oathgate_causeways = []
+    for causeway_index in range(8):
+        angle = 2 * math.pi * causeway_index / 8
+        causeway = cube(
+            f"Akinah_HiddenOathgate_Causeway_{causeway_index + 1}",
+            (math.cos(angle) * 1.68, math.sin(angle) * 1.68, 0.72),
+            (0.65, 0.075, 0.035),
+            p["stone_light"],
+            r,
+            0.012,
+        )
+        causeway.rotation_euler[2] = angle
+        oathgate_causeways.append(causeway)
+    join_meshes(
+        "Akinah_HiddenOathgateCausewayBatch",
+        oathgate_causeways,
+        r,
+    )
     for rubble_index in range(42):
         angle = rubble_index * 2.399963 + 0.4
         radius = 0.8 + ((rubble_index * 17) % 39) / 10
@@ -3844,6 +4122,7 @@ def build_thaylen_city() -> None:
         0,
     )
 
+    seawall_buttresses = []
     for wall_index in range(13):
         angle = -1.37 + wall_index * (2.74 / 12)
         x = math.sin(angle) * 4.78
@@ -3857,6 +4136,20 @@ def build_thaylen_city() -> None:
             0.055,
         )
         wall.rotation_euler[2] = -angle
+        buttress = cube(
+            f"ThaylenCity_SeawallButtress_{wall_index + 1:02d}",
+            (
+                x - math.sin(angle) * 0.24,
+                y - math.cos(angle) * 0.24,
+                0.72,
+            ),
+            (0.12, 0.34, 0.38),
+            p["stone_dark"],
+            r,
+            0.028,
+        )
+        buttress.rotation_euler[2] = -angle
+        seawall_buttresses.append(buttress)
         if wall_index % 3 == 0:
             cyl(
                 f"ThaylenCity_SeawallTower_{wall_index + 1:02d}",
@@ -3868,6 +4161,11 @@ def build_thaylen_city() -> None:
                 12,
                 0.035,
             )
+    join_meshes(
+        "ThaylenCity_SeawallButtressBatch",
+        seawall_buttresses,
+        r,
+    )
 
     for ring, (radius, count) in enumerate(((2.0, 12), (3.1, 17), (4.05, 20))):
         for index in range(count):
@@ -3932,6 +4230,14 @@ def build_thaylen_city() -> None:
     for dock_index in range(7):
         x = -2.25 + dock_index * 0.75
         dock_length = 1.25 + (dock_index % 3) * 0.26
+        cube(
+            f"ThaylenCity_Dock_{dock_index + 1}_StoneLanding",
+            (x, -3.34, 0.53),
+            (0.34, 0.23, 0.09),
+            p["stone_dark"],
+            r,
+            0.022,
+        )
         for plank in range(10):
             cube(
                 f"ThaylenCity_Dock_{dock_index + 1}_Plank_{plank + 1:02d}",
@@ -4047,6 +4353,7 @@ def build_shattered_plains() -> None:
             r,
             z,
         )
+    bridge_abutments = []
     for index, (x, y, _z, _scale, _angle) in enumerate(centers[1:18]):
         if x > 2.2 or index % 3 == 1:
             continue
@@ -4059,7 +4366,24 @@ def build_shattered_plains() -> None:
             r,
             0.02,
         )
-        bridge.rotation_euler[2] = math.atan2(y, x)
+        bridge_angle = math.atan2(y, x)
+        bridge.rotation_euler[2] = bridge_angle
+        for side_index, radial_fraction in enumerate((0.26, 0.88)):
+            abutment = cube(
+                f"ShatteredPlains_Bridge_{index + 1}_Abutment_{side_index + 1}",
+                (x * radial_fraction, y * radial_fraction, 1.42),
+                (0.13, 0.18, 0.18),
+                p["stone_dark"],
+                r,
+                0.022,
+            )
+            abutment.rotation_euler[2] = bridge_angle
+            bridge_abutments.append(abutment)
+    join_meshes(
+        "ShatteredPlains_BridgeAbutmentBatch",
+        bridge_abutments,
+        r,
+    )
     cyl("Stormseat_Central_Dais", (0, 0, 1.78), 0.62, 0.25, p["slate"], r, 10)
     torus("Stormseat_Oathgate_Ring", (0, 0, 1.94), 0.38, 0.045, p["cyan"], r)
     for ruin_index in range(10):
@@ -4088,7 +4412,27 @@ def build_shattered_plains() -> None:
             p["stone_dark"],
             2,
         )
+    cyl(
+        "Warcamp_TerrainSkirt",
+        (-4.8, 0, 0.64),
+        0.94,
+        0.42,
+        p["stone_dark"],
+        r,
+        16,
+        0.045,
+    )
     torus("Warcamp_Crater_Rim", (-4.8, 0, 0.85), 1.12, 0.22, p["stone_dark"], r)
+    warcamp_ramp = cube(
+        "Warcamp_ApproachRamp",
+        (-3.9, -0.65, 1.03),
+        (0.68, 0.16, 0.05),
+        p["stone_light"],
+        r,
+        0.018,
+    )
+    warcamp_ramp.rotation_euler[1] = -0.1
+    warcamp_ramp.rotation_euler[2] = -0.55
     for i in range(7):
         angle = 2 * math.pi * i / 7
         cube(
