@@ -318,9 +318,9 @@ export function createCitySilhouette(
     location.coordinates.x,
     location.coordinates.z,
   );
-  const positionScale = tier === "far" ? 0.16 : 0.68;
-  const horizontalScale = tier === "far" ? 0.34 : 0.67;
-  const verticalScale = tier === "far" ? 0.2 : 0.58;
+  const positionScale = tier === "far" ? 0.16 : 0.46;
+  const horizontalScale = tier === "far" ? 0.34 : 0.4;
+  const verticalScale = tier === "far" ? 0.2 : 0.34;
   const seeds = Array.from({ length: count }, (_, index) => {
     const raw = rawSeed(profile, style, index, count);
     const width = raw.width * horizontalScale;

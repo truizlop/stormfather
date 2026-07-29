@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { CityDetail } from "./cities/CityDetail";
 import { ProgressiveCityLod } from "./cities/ProgressiveCityLod";
 import { useAtlasStore } from "../store/useAtlasStore";
@@ -18,10 +19,10 @@ export function CityClusters() {
           nearWorldSpace
           near={
             location.id === selectedId ? (
-              <>
+              <Suspense fallback={null}>
                 <CityDetail />
                 <Landmarks />
-              </>
+              </Suspense>
             ) : null
           }
         />

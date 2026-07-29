@@ -271,13 +271,33 @@ function FadingNearLayer({
         ? mesh.material
         : [mesh.material];
       const clones = sources.map((source) => {
+        // Suspense resolving or a detail-level change can remount this pass
+        // while the previous clone is halfway through a fade. Carry the true
+        // authored values forward instead of treating that transient opacity
+        // as the new maximum.
+        const baseOpacity =
+          (source.userData.progressiveLodBaseOpacity as
+            | number
+            | undefined) ?? source.opacity;
+        const baseTransparent =
+          (source.userData.progressiveLodBaseTransparent as
+            | boolean
+            | undefined) ?? source.transparent;
+        const baseDepthWrite =
+          (source.userData.progressiveLodBaseDepthWrite as
+            | boolean
+            | undefined) ?? source.depthWrite;
         const material = source.clone();
+        material.userData.progressiveLodBaseOpacity = baseOpacity;
+        material.userData.progressiveLodBaseTransparent =
+          baseTransparent;
+        material.userData.progressiveLodBaseDepthWrite = baseDepthWrite;
         ownedMaterials.push(material);
         entries.push({
           material,
-          baseOpacity: source.opacity,
-          transparent: source.transparent,
-          depthWrite: source.depthWrite,
+          baseOpacity,
+          transparent: baseTransparent,
+          depthWrite: baseDepthWrite,
         });
         material.alphaHash = false;
         material.needsUpdate = true;
