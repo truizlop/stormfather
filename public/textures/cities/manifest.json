@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "assetRole": "sRGB albedo sheets for genuine modeled city geometry; never full-scene image relief",
+  "wrapMode": "repeat",
+  "assets": [
+    {
+      "id": "alethi-kholinar-stormstone-timber",
+      "file": "alethi-kholinar-stormstone-timber-atlas.jpg",
+      "intendedRoots": ["Landmark_Kholinar"],
+      "materialTokens": [
+        "SF_Stormworn_Basalt",
+        "SF_Crem_Stone",
+        "SF_Storm_Wood",
+        "Kholinar_Windwall",
+        "Kholinar_District"
+      ],
+      "repeatMeters": [4.8, 4.8]
+    },
+    {
+      "id": "azimir-ochre-inlay",
+      "file": "azimir-ochre-inlay-atlas.jpg",
+      "intendedRoots": ["Landmark_Azimir"],
+      "materialTokens": [
+        "SF_Crem_Ochre",
+        "SF_Surgeon_Ivory",
+        "SF_Blue_Slate",
+        "Azimir_Ministry",
+        "Azimir_ClerkQuarter"
+      ],
+      "repeatMeters": [5.0, 5.0]
+    },
+    {
+      "id": "urithiru-striated-stone",
+      "file": "urithiru-striated-stone-atlas.jpg",
+      "intendedRoots": [
+        "Landmark_Urithiru",
+        "Module_Urithiru_Gallery"
+      ],
+      "materialTokens": [
+        "SF_Windward_Stone",
+        "SF_Crem_Stone",
+        "SF_Stormworn_Basalt",
+        "Urithiru_Stratum",
+        "UrithiruGallery_Stratum"
+      ],
+      "repeatMeters": [7.0, 7.0]
+    },
+    {
+      "id": "shinovar-earthen-thatch",
+      "file": "shinovar-earthen-thatch-atlas.jpg",
+      "intendedRoots": ["Landmark_Shinovar"],
+      "materialTokens": [
+        "SF_Shin_Earth",
+        "SF_Storm_Wood",
+        "Shinovar_FarmHome",
+        "Shinovar_FieldFence"
+      ],
+      "repeatMeters": [4.0, 4.0]
+    },
+    {
+      "id": "purelake-stone-reed-stiltwood",
+      "file": "purelake-stone-reed-stiltwood-atlas.jpg",
+      "intendedRoots": [
+        "Landmark_Purelake",
+        "Module_Purelake_Jetty"
+      ],
+      "materialTokens": [
+        "SF_Crem_Stone",
+        "SF_Storm_Wood",
+        "SF_Shin_Earth",
+        "Purelake_Hut",
+        "PurelakeJetty"
+      ],
+      "repeatMeters": [3.6, 3.6]
+    },
+    {
+      "id": "akinah-salt-ruin-stone",
+      "file": "akinah-salt-ruin-stone-atlas.jpg",
+      "intendedRoots": ["Landmark_Akinah"],
+      "materialTokens": [
+        "SF_Stormworn_Basalt",
+        "SF_Blue_Slate",
+        "Akinah_RuinQuarter",
+        "Akinah_Defense_Spike"
+      ],
+      "repeatMeters": [6.0, 6.0]
+    },
+    {
+      "id": "thaylen-coastal-masonry-tile-dockwood",
+      "file": "thaylen-coastal-masonry-tile-dockwood-atlas.jpg",
+      "intendedRoots": [
+        "Landmark_ThaylenCity",
+        "Module_Thaylen_Warehouse"
+      ],
+      "materialTokens": [
+        "SF_Windward_Stone",
+        "SF_Blue_Slate",
+        "SF_Storm_Wood",
+        "SF_Painted_Plaster_Blue",
+        "ThaylenCity_MerchantQuarter",
+        "ThaylenCity_Dock"
+      ],
+      "repeatMeters": [4.5, 4.5]
+    },
+    {
+      "id": "shattered-plains-crem-fracture",
+      "file": "shattered-plains-crem-fracture-atlas.jpg",
+      "intendedRoots": ["Landmark_Shattered_Plains"],
+      "materialTokens": [
+        "SF_Wet_Plateau",
+        "SF_Stormworn_Basalt",
+        "SF_Crem_Stone",
+        "ShatteredPlains_Plateau",
+        "ShatteredPlains_Chasm"
+      ],
+      "repeatMeters": [7.5, 7.5]
+    }
+  ]
+}
