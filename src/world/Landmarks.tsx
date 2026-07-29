@@ -92,6 +92,7 @@ function LandmarkInstance({
       if (
         object.name === "Shinovar_Grass_Valley" ||
         object.name === "Purelake_Water_Shelf" ||
+        object.name === "ThaylenCity_HarborBasin" ||
         object.name.startsWith("Kharbranth_Mountain_")
       ) {
         object.visible = false;
@@ -139,24 +140,52 @@ function LandmarkInstance({
             lowerName.includes("water") ||
             lowerName.includes("light");
           if (!excludesTexture && "roughness" in material) {
-            const usePlaster =
-              rootName === "Landmark_Kharbranth" &&
-              lowerName.includes("plaster");
-            const useKharbranthStone =
-              rootName === "Landmark_Kharbranth" && !usePlaster;
-            material.bumpMap = usePlaster
-              ? plaster
-              : useKharbranthStone
-                ? kharbranthStone
-                : stone;
-            material.roughnessMap = usePlaster
-              ? plaster
-              : useKharbranthStone
-                ? kharbranthStone
-                : stone;
-            material.bumpScale = usePlaster ? 0.00042 : 0.0024;
-            material.roughness = Math.max(material.roughness ?? 0.8, 0.78);
-            material.metalness = Math.min(material.metalness ?? 0, 0.08);
+            const isAuthoredCitySurface =
+              material.name.toLowerCase().includes("sf_city_");
+            if (isAuthoredCitySurface && material.map) {
+              // City atlases are embedded by Blender and remain the albedo on
+              // actual meshes. Reusing their micro-contrast as a restrained
+              // bump keeps deployment self-contained without pretending the
+              // albedo is a calibrated normal map.
+              material.map.colorSpace = THREE.SRGBColorSpace;
+              material.map.anisotropy = 8;
+              material.bumpMap = material.map;
+              material.roughnessMap = null;
+              material.bumpScale = 0.0014;
+              material.roughness = Math.max(
+                material.roughness ?? 0.8,
+                0.84,
+              );
+              material.metalness = Math.min(
+                material.metalness ?? 0,
+                0.04,
+              );
+            } else {
+              const usePlaster =
+                rootName === "Landmark_Kharbranth" &&
+                lowerName.includes("plaster");
+              const useKharbranthStone =
+                rootName === "Landmark_Kharbranth" && !usePlaster;
+              material.bumpMap = usePlaster
+                ? plaster
+                : useKharbranthStone
+                  ? kharbranthStone
+                  : stone;
+              material.roughnessMap = usePlaster
+                ? plaster
+                : useKharbranthStone
+                  ? kharbranthStone
+                  : stone;
+              material.bumpScale = usePlaster ? 0.00042 : 0.0024;
+              material.roughness = Math.max(
+                material.roughness ?? 0.8,
+                0.78,
+              );
+              material.metalness = Math.min(
+                material.metalness ?? 0,
+                0.08,
+              );
+            }
             material.needsUpdate = true;
           }
           return material;
@@ -223,5 +252,3 @@ export function Landmarks() {
     </group>
   );
 }
-
-useGLTF.preload(MODEL_URL);

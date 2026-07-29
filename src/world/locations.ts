@@ -92,8 +92,12 @@ const locationData = [
     regionColor: "#575a59",
     accentColor: "#7ee7ed",
     description:
-      "A terraced tower-city built into the mountains, linked to the ancient capitals by Oathgates.",
-    facts: ["Layered stone strata", "Ten Oathgate platforms", "Sheltered above the storms"],
+      "A terraced tower-city built into the mountains, linked to ten distant destinations by local Oathgate portals.",
+    facts: [
+      "Layered stone strata",
+      "Ten destination-labelled Oathgates",
+      "Sheltered above the storms",
+    ],
     culture: "alethi",
     modelRoot: "Landmark_Urithiru",
     population: 42_000,
@@ -199,8 +203,12 @@ const locationData = [
     regionColor: "#65533b",
     accentColor: "#d7aa4f",
     description:
-      "Alethkar's capital gathers behind massive eastern windbreaks and a fortified palace.",
-    facts: ["The Sunwalk", "Concentric defenses", "Kholin palace complex"],
+      "Alethkar's capital fills three ravine-separated wards behind stormward walls, centered on the palace and its Sunwalk.",
+    facts: [
+      "The Sunwalk and Monastery Dais",
+      "Ten temple precincts",
+      "The Impossible Falls",
+    ],
     culture: "alethi",
     modelRoot: "Landmark_Kholinar",
     population: 280_000,
@@ -220,6 +228,7 @@ const locationData = [
       "A southern mercantile port built around sheltered water and far-reaching trade.",
     facts: ["Thaylenah", "Ocean trade", "Merchant fleets"],
     culture: "thaylen",
+    modelRoot: "Landmark_ThaylenCity",
     population: 95_000,
     activity: "Ships entering harbor",
   },

@@ -150,6 +150,7 @@ const authoredLandmarkLocations = new Set([
   "aimia",
   "kharbranth",
   "kholinar",
+  "thaylen-city",
 ]);
 
 export function usesProceduralArchitecture(locationId: string) {

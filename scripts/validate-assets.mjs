@@ -10,6 +10,7 @@ const expectedRoots = [
   "Landmark_Purelake",
   "Landmark_Shinovar",
   "Landmark_Akinah",
+  "Landmark_ThaylenCity",
   "Landmark_Shattered_Plains",
   "Landmark_Oathgate",
   "Actor_Alethi",
@@ -63,6 +64,16 @@ const expectedTextures = [
   "rosharan-cloth-realistic.jpg",
   "rosharan-skin-microdetail.png",
 ];
+const expectedCityTextures = [
+  "akinah-salt-ruin-stone-atlas.jpg",
+  "alethi-kholinar-stormstone-timber-atlas.jpg",
+  "azimir-ochre-inlay-atlas.jpg",
+  "purelake-stone-reed-stiltwood-atlas.jpg",
+  "shattered-plains-crem-fracture-atlas.jpg",
+  "shinovar-earthen-thatch-atlas.jpg",
+  "thaylen-coastal-masonry-tile-dockwood-atlas.jpg",
+  "urithiru-striated-stone-atlas.jpg",
+];
 const forbiddenRuntimeTokens = [
   "FidelityComparison",
   "KharbranthVistaLOD",
@@ -77,6 +88,78 @@ const expectedKharbranthGeometry = [
   "Kharbranth_CliffWard_FacadeAtlasBatch",
   "Kharbranth_Civic_LoggiaBatch",
   "Kharbranth_Harbor_RopeworkBatch",
+];
+const expectedModeledCities = [
+  {
+    name: "Urithiru",
+    prefix: "Urithiru_",
+    minimumNodes: 140,
+    required: [
+      "Urithiru_East_Window_01_01",
+      "Urithiru_Monumental_East_Portal",
+      "Urithiru_Crown_Rotunda",
+      "Urithiru_Oathgate_Approach_Panatham",
+      "Urithiru_Oathgate_Approach_Kholinar",
+    ],
+  },
+  {
+    name: "Kholinar",
+    prefix: "Kholinar_",
+    minimumNodes: 185,
+    required: [
+      "Kholinar_EasternWard_01_Building",
+      "Kholinar_CityGate_01_GateLintel",
+      "Kholinar_Palace_MainGallery",
+      "Kholinar_Temple_01_Jezerezeh_Dais",
+      "Kholinar_ImpossibleFalls_Water",
+    ],
+  },
+  {
+    name: "Azimir",
+    prefix: "Azimir_",
+    minimumNodes: 105,
+    required: [
+      "Azimir_ClerkQuarter_01_Building",
+      "Azimir_BronzePalace_Building",
+      "Azimir_GrandMarket_Piazza",
+      "Azimir_Hospital_Building",
+      "Azimir_WatchpostTower",
+      "Azimir_PathOfTheThunderclast",
+    ],
+  },
+  {
+    name: "Purelake",
+    prefix: "Purelake_",
+    minimumNodes: 125,
+    required: ["Purelake_Hut_0_Door"],
+  },
+  {
+    name: "Shinovar",
+    prefix: "Shinovar_",
+    minimumNodes: 105,
+    required: ["Shinovar_FarmHome_01_Building"],
+  },
+  {
+    name: "Akinah",
+    prefix: "Akinah_",
+    minimumNodes: 155,
+    required: ["Akinah_RuinQuarter_1_02_Building"],
+  },
+  {
+    name: "Thaylen City",
+    prefix: "ThaylenCity_",
+    minimumNodes: 300,
+    required: [
+      "ThaylenCity_MerchantQuarter_1_01_Building",
+      "ThaylenCity_Dock_1_Plank_01",
+    ],
+  },
+  {
+    name: "Shattered Plains and Stormseat",
+    prefix: "Stormseat_",
+    minimumNodes: 42,
+    required: ["Stormseat_RuinBuilding_01_Building"],
+  },
 ];
 
 try {
@@ -103,6 +186,41 @@ try {
   if (missing.length) {
     throw new Error(`Missing authored roots: ${missing.join(", ")}`);
   }
+  const nodeIndexByName = new Map(
+    gltf.nodes?.map((node, index) => [node.name, index]).filter(([name]) => name),
+  );
+  const urithiruIndex = nodeIndexByName.get("Landmark_Urithiru");
+  const destinationCityRoots = [
+    "Landmark_Kharbranth",
+    "Landmark_Kholinar",
+    "Landmark_Azimir",
+    "Landmark_Purelake",
+    "Landmark_Shinovar",
+    "Landmark_Akinah",
+    "Landmark_ThaylenCity",
+    "Landmark_Shattered_Plains",
+  ];
+  const descendantIndexes = new Set();
+  const pendingChildren =
+    urithiruIndex === undefined
+      ? []
+      : [...(gltf.nodes[urithiruIndex]?.children ?? [])];
+  while (pendingChildren.length) {
+    const childIndex = pendingChildren.pop();
+    if (childIndex === undefined || descendantIndexes.has(childIndex)) continue;
+    descendantIndexes.add(childIndex);
+    pendingChildren.push(...(gltf.nodes[childIndex]?.children ?? []));
+  }
+  const misplacedDestinationCities = destinationCityRoots.filter((rootName) => {
+    const rootIndex = nodeIndexByName.get(rootName);
+    return rootIndex !== undefined && descendantIndexes.has(rootIndex);
+  });
+  if (misplacedDestinationCities.length) {
+    throw new Error(
+      `Urithiru contains destination cities instead of local Oathgates: ${misplacedDestinationCities.join(", ")}`,
+    );
+  }
+  console.log("✓ Urithiru Oathgates do not contain destination-city geometry");
   const missingKharbranthGeometry = expectedKharbranthGeometry.filter(
     (name) => !names.has(name),
   );
@@ -119,6 +237,25 @@ try {
       `Kharbranth geometry is unexpectedly sparse: ${kharbranthNodeCount} named nodes`,
     );
   }
+  for (const city of expectedModeledCities) {
+    const missingCitySystems = city.required.filter(
+      (requiredName) => !names.has(requiredName),
+    );
+    if (missingCitySystems.length) {
+      throw new Error(
+        `${city.name} is missing required modeled systems ${missingCitySystems.join(", ")}`,
+      );
+    }
+    const cityNodeCount = [...names].filter((name) =>
+      name.startsWith(city.prefix),
+    ).length;
+    if (cityNodeCount < city.minimumNodes) {
+      throw new Error(
+        `${city.name} is unexpectedly sparse: ${cityNodeCount} named nodes`,
+      );
+    }
+    console.log(`✓ ${cityNodeCount} modeled ${city.name} nodes`);
+  }
 
   console.log(`✓ Roshar landmark kit: ${(model.size / 1024).toFixed(1)} KiB`);
   console.log(`✓ ${expectedRoots.length} expected landmark and actor roots`);
@@ -132,6 +269,25 @@ try {
     }
   }
   console.log(`✓ ${expectedTextures.length} generated runtime textures`);
+  for (const textureName of expectedCityTextures) {
+    const texture = await stat(
+      resolve("public/textures/cities", textureName),
+    );
+    if (texture.size < 64 * 1024) {
+      throw new Error(
+        `City texture ${textureName} is unexpectedly small: ${texture.size} bytes`,
+      );
+    }
+  }
+  const cityManifest = JSON.parse(
+    await readFile(resolve("public/textures/cities/manifest.json"), "utf8"),
+  );
+  if (cityManifest.assets?.length !== expectedCityTextures.length) {
+    throw new Error(
+      `City texture manifest has ${cityManifest.assets?.length ?? 0} entries; expected ${expectedCityTextures.length}`,
+    );
+  }
+  console.log(`✓ ${expectedCityTextures.length} city-specific material atlases`);
 
   const sourceFiles = (await readdir(resolve("src"), { recursive: true }))
     .filter((fileName) => /\.(css|ts|tsx)$/.test(fileName));

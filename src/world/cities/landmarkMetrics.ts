@@ -13,6 +13,7 @@ const landmarkPlanSize: Record<string, readonly [number, number]> = {
   Landmark_Purelake: [8.586, 6.23],
   Landmark_Shinovar: [8.797, 7.538],
   Landmark_Akinah: [10.2, 10.2],
+  Landmark_ThaylenCity: [10.8, 11.4],
   Landmark_Shattered_Plains: [12.14, 12],
   Landmark_Oathgate: [7.418, 7.757],
 };

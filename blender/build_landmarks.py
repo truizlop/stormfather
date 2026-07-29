@@ -218,6 +218,73 @@ p.update(
     }
 )
 
+city_surface = {
+    "kholinar": textured_material(
+        "SF_City_Kholinar_Stormstone_Timber",
+        (0.78, 0.72, 0.64),
+        "cities/alethi-kholinar-stormstone-timber-atlas.jpg",
+        0.01,
+        0.9,
+        0.12,
+    ),
+    "azimir": textured_material(
+        "SF_City_Azimir_Ochre_Inlay",
+        (0.94, 0.83, 0.65),
+        "cities/azimir-ochre-inlay-atlas.jpg",
+        0.01,
+        0.86,
+        0.1,
+    ),
+    "urithiru": textured_material(
+        "SF_City_Urithiru_Striated_Stone",
+        (0.88, 0.87, 0.82),
+        "cities/urithiru-striated-stone-atlas.jpg",
+        0.01,
+        0.88,
+        0.09,
+    ),
+    "shinovar": textured_material(
+        "SF_City_Shinovar_Earthen_Thatch",
+        (0.9, 0.82, 0.68),
+        "cities/shinovar-earthen-thatch-atlas.jpg",
+        0,
+        0.92,
+        0.1,
+    ),
+    "purelake": textured_material(
+        "SF_City_Purelake_Stone_Reed_Wood",
+        (0.92, 0.85, 0.67),
+        "cities/purelake-stone-reed-stiltwood-atlas.jpg",
+        0,
+        0.9,
+        0.11,
+    ),
+    "akinah": textured_material(
+        "SF_City_Akinah_Salt_Ruin_Stone",
+        (0.76, 0.8, 0.82),
+        "cities/akinah-salt-ruin-stone-atlas.jpg",
+        0.01,
+        0.93,
+        0.14,
+    ),
+    "thaylen": textured_material(
+        "SF_City_Thaylen_Coastal_Masonry",
+        (0.86, 0.84, 0.78),
+        "cities/thaylen-coastal-masonry-tile-dockwood-atlas.jpg",
+        0.01,
+        0.88,
+        0.11,
+    ),
+    "shattered": textured_material(
+        "SF_City_Shattered_Plains_Crem_Fracture",
+        (0.7, 0.66, 0.57),
+        "cities/shattered-plains-crem-fracture-atlas.jpg",
+        0.01,
+        0.94,
+        0.15,
+    ),
+}
+
 
 def link_asset(obj: bpy.types.Object) -> bpy.types.Object:
     for collection in list(obj.users_collection):
@@ -387,6 +454,12 @@ def join_meshes(name, objects, parent=None):
     meshes = [obj for obj in objects if obj and obj.type == "MESH"]
     if not meshes:
         return None
+    if len(meshes) == 1:
+        result = meshes[0]
+        result.name = name
+        if parent:
+            result.parent = parent
+        return result
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
         obj.select_set(True)
@@ -399,9 +472,218 @@ def join_meshes(name, objects, parent=None):
     return result
 
 
+def authored_city_block(
+    name: str,
+    location: tuple[float, float, float],
+    half_extents: tuple[float, float, float],
+    body_mat: bpy.types.Material,
+    roof_mat: bpy.types.Material,
+    parent: bpy.types.Object,
+    runtime_scale: float,
+    rotation: float = 0,
+    roof_style: str = "flat",
+    window_mat: bpy.types.Material | None = None,
+    door_mat: bpy.types.Material | None = None,
+    foundation_mat: bpy.types.Material | None = None,
+    facade_columns: int = 2,
+) -> bpy.types.Object:
+    """Author a compact city building against the shared real-world scale.
+
+    The block remains individually named for collision extraction while its
+    door, windows, frames, roof and cornices are joined into one decoration
+    mesh. This gives every culture true façade depth without multiplying web
+    draw calls by every sill and shutter.
+    """
+
+    x, y, base_z = location
+    width, depth, height = half_extents
+    window_mat = window_mat or p["glass_dark"]
+    door_mat = door_mat or p["wood"]
+    foundation_mat = foundation_mat or p["stone_dark"]
+    node = bpy.data.objects.new(f"{name}_Assembly", None)
+    assets.objects.link(node)
+    node.parent = parent
+    node.location = (x, y, base_z)
+    node.rotation_euler[2] = rotation
+
+    foundation_height = max(0.1, 0.85 / (12 * runtime_scale))
+    cube(
+        f"{name}_TerrainFoundation",
+        (0, 0.025, -foundation_height / 2 + 0.02),
+        (width * 1.05, depth * 1.05, foundation_height / 2),
+        foundation_mat,
+        node,
+        0.025,
+    )
+    cube(
+        f"{name}_Building",
+        (0, 0, height),
+        (width, depth, height),
+        body_mat,
+        node,
+        0.045,
+    )
+
+    details: list[bpy.types.Object] = []
+    meters_per_authored_unit = 12 * runtime_scale
+    door_half_width = 0.92 / (2 * meters_per_authored_unit)
+    door_half_height = 2.08 / (2 * meters_per_authored_unit)
+    window_half_width = 0.82 / (2 * meters_per_authored_unit)
+    window_half_height = 1.14 / (2 * meters_per_authored_unit)
+    full_height_meters = height * 2 * meters_per_authored_unit
+    floors = max(1, min(6, round(full_height_meters / 3.1)))
+    front_y = -depth - 0.018
+
+    details.append(
+        cube(
+            f"{name}_Door",
+            (0, front_y, door_half_height),
+            (door_half_width, 0.025, door_half_height),
+            door_mat,
+            node,
+            0.012,
+        )
+    )
+    details.append(
+        cube(
+            f"{name}_DoorLintel",
+            (0, front_y - 0.008, door_half_height * 2 + 0.025),
+            (door_half_width * 1.35, 0.026, 0.025),
+            roof_mat,
+            node,
+            0.008,
+        )
+    )
+
+    usable_width = width * 1.42
+    column_count = max(1, facade_columns)
+    for floor in range(floors):
+        window_z = (floor + 0.64) * (height * 2 / floors)
+        for column in range(column_count):
+            if column_count == 1:
+                window_x = 0
+            else:
+                window_x = (
+                    -usable_width / 2
+                    + usable_width * column / (column_count - 1)
+                )
+            if floor == 0 and abs(window_x) < door_half_width * 2.2:
+                continue
+            details.append(
+                cube(
+                    f"{name}_Window_{floor + 1}_{column + 1}",
+                    (window_x, front_y - 0.006, window_z),
+                    (window_half_width, 0.018, window_half_height),
+                    window_mat,
+                    node,
+                    0.008,
+                )
+            )
+            for side in (-1, 1):
+                details.append(
+                    cube(
+                        f"{name}_WindowFrame_{floor + 1}_{column + 1}_{side}",
+                        (
+                            window_x + side * (window_half_width + 0.016),
+                            front_y - 0.012,
+                            window_z,
+                        ),
+                        (0.012, 0.022, window_half_height * 1.16),
+                        roof_mat,
+                        node,
+                        0.006,
+                    )
+                )
+            details.append(
+                cube(
+                    f"{name}_WindowSill_{floor + 1}_{column + 1}",
+                    (
+                        window_x,
+                        front_y - 0.014,
+                        window_z - window_half_height - 0.018,
+                    ),
+                    (window_half_width * 1.3, 0.026, 0.016),
+                    roof_mat,
+                    node,
+                    0.006,
+                )
+            )
+
+    details.append(
+        cube(
+            f"{name}_Cornice",
+            (0, 0, height * 2 + 0.045),
+            (width * 1.07, depth * 1.07, 0.045),
+            roof_mat,
+            node,
+            0.018,
+        )
+    )
+    if roof_style == "dome":
+        details.append(
+            sphere(
+                f"{name}_RoofDome",
+                (0, 0, height * 2 + depth * 0.46),
+                (width * 1.03, depth * 1.03, depth * 0.48),
+                roof_mat,
+                node,
+                18,
+                9,
+            )
+        )
+    elif roof_style == "pitched":
+        roof = cone(
+            f"{name}_PitchedRoof",
+            (0, 0, height * 2 + depth * 0.56),
+            max(width, depth) * 1.28,
+            max(width, depth) * 0.16,
+            depth * 0.94,
+            roof_mat,
+            node,
+            4,
+            0.025,
+        )
+        roof.rotation_euler[2] = math.pi / 4
+        details.append(roof)
+    elif roof_style == "carapace":
+        details.append(
+            rock(
+                f"{name}_CarapaceRoof",
+                (0, 0.04, height * 2 + depth * 0.35),
+                (width * 1.08, depth * 1.05, depth * 0.38),
+                roof_mat,
+                node,
+                2,
+            )
+        )
+    else:
+        details.append(
+            cube(
+                f"{name}_FlatRoof",
+                (0, 0, height * 2 + 0.11),
+                (width * 1.04, depth * 1.04, 0.07),
+                roof_mat,
+                node,
+                0.02,
+            )
+        )
+
+    join_meshes(f"{name}_FacadeRoofBatch", details, node)
+    return node
+
+
 def build_urithiru() -> None:
     r = root("Landmark_Urithiru", (-22, -7, 0))
-    points = [
+    runtime_scale = (4.2 * 2) / 11.784
+    window_half_width = 0.86 / (2 * 12 * runtime_scale)
+    window_half_height = 1.18 / (2 * 12 * runtime_scale)
+    door_half_width = 1.15 / (2 * 12 * runtime_scale)
+    door_half_height = 2.35 / (2 * 12 * runtime_scale)
+
+    # The east elevation is local -Y, matching the reference sheet: the tower
+    # presents its monumental, rounded face to the Oathgate approaches while
+    # the west (+Y) elevation disappears into the mountain.
+    mountain_outline = [
         (-6, -3.8),
         (-4.8, -5),
         (-1.5, -5.8),
@@ -413,80 +695,446 @@ def build_urithiru() -> None:
         (-3.8, 4.5),
         (-5.7, 2.2),
     ]
-    prism("Urithiru_Mountain_Base", points, 1.4, p["stone_dark"], r, 0.65)
-    for i in range(12):
-        z = 1.15 + i * 0.55
-        width = 4.8 - i * 0.21
-        depth = 3.6 - i * 0.13
-        cube(
-            f"Urithiru_Stratum_{i + 1:02d}",
-            (0, -0.25 + i * 0.025, z),
-            (width, depth, 0.24),
-            p["stone_light"] if i % 3 == 1 else p["stone"],
-            r,
-            0.09,
-        )
-        cube(
-            f"Urithiru_Shadow_Band_{i + 1:02d}",
-            (0, -depth - 0.09, z + 0.16),
-            (width * 0.92, 0.07, 0.045),
-            p["stone_dark"],
-            r,
-            0.02,
-        )
-        if i < 11:
-            cube(
-                f"Urithiru_East_Window_{i + 1:02d}",
-                (0, -depth - 0.17, z),
-                (0.065, 0.035, 0.13),
-                p["cyan"],
-                r,
-                0.015,
+    prism(
+        "Urithiru_Mountain_Base",
+        mountain_outline,
+        1.4,
+        p["stone_dark"],
+        r,
+        0.65,
+    )
+    rock(
+        "Urithiru_Western_MountainMass",
+        (-0.85, 3.18, 2.12),
+        (4.82, 2.08, 2.48),
+        p["stone_dark"],
+        r,
+        2,
+    )
+    rock(
+        "Urithiru_Western_MountainRidge_North",
+        (-3.82, 3.18, 2.28),
+        (1.55, 1.82, 2.96),
+        p["stone_dark"],
+        r,
+        2,
+    )
+    rock(
+        "Urithiru_Western_MountainRidge_South",
+        (3.48, 3.35, 1.92),
+        (1.66, 1.62, 2.46),
+        p["stone_dark"],
+        r,
+        2,
+    )
+
+    def semicircular_plan(
+        half_width: float,
+        front_depth: float,
+        back_depth: float,
+        segments: int = 14,
+    ) -> list[tuple[float, float]]:
+        """Return Urithiru's flat-backed, east-facing semicircular plan."""
+
+        outline = [(-half_width, back_depth), (half_width, back_depth)]
+        outline.extend(
+            (
+                half_width * math.cos(math.pi * segment / segments),
+                -front_depth * math.sin(math.pi * segment / segments),
             )
-    cube("Urithiru_Central_Spine", (0, 0.15, 4.3), (0.42, 0.58, 3.25), p["slate"], r, 0.12)
-    for side in (-1, 1):
-        buttress = cube(
-            f"Urithiru_Buttress_{side}",
-            (side * 3.9, 0.8, 2.25),
-            (0.3, 2.5, 1.7),
+            for segment in range(segments + 1)
+        )
+        return outline
+
+    tier_specs = (
+        (5.20, 3.45, 2.46, 0.64),
+        (4.82, 3.21, 2.31, 0.62),
+        (4.42, 2.97, 2.16, 0.60),
+        (4.02, 2.72, 2.00, 0.58),
+        (3.61, 2.47, 1.83, 0.56),
+        (3.20, 2.21, 1.65, 0.54),
+        (2.78, 1.94, 1.47, 0.52),
+        (2.34, 1.65, 1.27, 0.50),
+        (1.91, 1.35, 1.05, 0.48),
+        (1.48, 1.03, 0.82, 0.46),
+    )
+    first_tier_plan = semicircular_plan(*tier_specs[0][:3])
+    prism(
+        "Urithiru_Terrain_Seated_Foundation",
+        first_tier_plan,
+        0.38,
+        p["stone_dark"],
+        r,
+        1.13,
+    )
+
+    tier_bottom = 1.02
+    tier_tops: list[float] = []
+    for tier_index, (width, front_depth, back_depth, tier_height) in enumerate(
+        tier_specs
+    ):
+        tier_number = tier_index + 1
+        tier_center = tier_bottom + tier_height / 2
+        tier_top = tier_bottom + tier_height
+        tier_tops.append(tier_top)
+        tier_plan = semicircular_plan(width, front_depth, back_depth)
+        prism(
+            f"Urithiru_Stratum_{tier_number:02d}",
+            tier_plan,
+            tier_height,
+            city_surface["urithiru"],
+            r,
+            tier_center,
+        )
+        prism(
+            f"Urithiru_Shadow_Band_{tier_number:02d}",
+            semicircular_plan(
+                width + 0.07,
+                front_depth + 0.07,
+                back_depth + 0.07,
+            ),
+            0.09,
             p["stone_dark"],
             r,
-            0.08,
+            tier_top - 0.045,
         )
-        buttress.rotation_euler[1] = side * 0.14
-    for i, angle in enumerate((0, math.pi / 2, math.pi, math.pi * 1.5)):
-        cone(
-            f"Urithiru_Crown_{i + 1}",
-            (math.cos(angle) * 1.05, math.sin(angle) * 0.8, 7.7),
-            0.28,
-            0.04,
-            1.2,
-            p["brass"],
+
+        # Repeated vertical recesses and arch heads give the east face the
+        # strongly ribbed, monumental cadence seen in both elevation studies.
+        window_count = max(3, 11 - tier_index)
+        facade_span = 1.72
+        facade_details: list[bpy.types.Object] = []
+        for window_index in range(window_count):
+            facade_angle = (
+                -facade_span / 2
+                + facade_span * window_index / max(1, window_count - 1)
+            )
+            outward_x = math.sin(facade_angle)
+            outward_y = -math.cos(facade_angle)
+            window_x = width * math.sin(facade_angle) + outward_x * 0.055
+            window_y = (
+                -front_depth * math.cos(facade_angle) + outward_y * 0.055
+            )
+            tangent = math.atan2(
+                front_depth * math.sin(facade_angle),
+                width * math.cos(facade_angle),
+            )
+            bay_half_width = max(window_half_width * 1.72, 0.105)
+            bay_half_height = max(window_half_height * 1.82, tier_height * 0.26)
+
+            bay = cube(
+                f"Urithiru_East_BayRecess_{tier_number:02d}_{window_index + 1:02d}",
+                (window_x, window_y, tier_center - 0.015),
+                (bay_half_width, 0.033, bay_half_height),
+                p["slate"],
+                r,
+                0.012,
+            )
+            bay.rotation_euler[2] = tangent
+            facade_details.append(bay)
+            arch = cyl(
+                f"Urithiru_East_BayArch_{tier_number:02d}_{window_index + 1:02d}",
+                (
+                    window_x,
+                    window_y,
+                    tier_center + bay_half_height - bay_half_width * 0.18,
+                ),
+                bay_half_width,
+                0.07,
+                p["slate"],
+                r,
+                16,
+                0.008,
+            )
+            arch.rotation_euler[0] = math.pi / 2
+            arch.rotation_euler[2] = tangent
+            facade_details.append(arch)
+
+            window = cube(
+                f"Urithiru_East_Window_{tier_number:02d}_{window_index + 1:02d}",
+                (
+                    window_x + outward_x * 0.014,
+                    window_y + outward_y * 0.014,
+                    tier_center - 0.012,
+                ),
+                (window_half_width, 0.025, window_half_height),
+                (
+                    p["cyan"]
+                    if (tier_index + window_index) % 5 == 0
+                    else p["glass_dark"]
+                ),
+                r,
+                0.01,
+            )
+            window.rotation_euler[2] = tangent
+            sill = cube(
+                f"Urithiru_East_WindowSill_{tier_number:02d}_{window_index + 1:02d}",
+                (
+                    window_x + outward_x * 0.018,
+                    window_y + outward_y * 0.018,
+                    tier_center - window_half_height - 0.022,
+                ),
+                (window_half_width * 1.34, 0.031, 0.018),
+                p["stone_light"],
+                r,
+                0.006,
+            )
+            sill.rotation_euler[2] = tangent
+            facade_details.append(sill)
+
+        for rib_index in range(window_count + 1):
+            rib_angle = (
+                -facade_span / 2
+                + facade_span * (rib_index - 0.5) / max(1, window_count - 1)
+            )
+            rib_angle = max(-0.94, min(0.94, rib_angle))
+            outward_x = math.sin(rib_angle)
+            outward_y = -math.cos(rib_angle)
+            rib_x = width * math.sin(rib_angle) + outward_x * 0.105
+            rib_y = -front_depth * math.cos(rib_angle) + outward_y * 0.105
+            tangent = math.atan2(
+                front_depth * math.sin(rib_angle),
+                width * math.cos(rib_angle),
+            )
+            rib = cube(
+                f"Urithiru_East_VerticalRib_{tier_number:02d}_{rib_index + 1:02d}",
+                (rib_x, rib_y, tier_center),
+                (0.034, 0.046, tier_height * 0.42),
+                p["stone_light"],
+                r,
+                0.01,
+            )
+            rib.rotation_euler[2] = tangent
+            facade_details.append(rib)
+
+        join_meshes(
+            f"Urithiru_East_FacadeDetailBatch_{tier_number:02d}",
+            facade_details,
             r,
-            8,
         )
-    cyl("Urithiru_Roof_Beacon", (0, 0, 8), 0.38, 0.5, p["cyan"], r, 12, 0.03)
+
+        cube(
+            f"Urithiru_East_GalleryLedge_{tier_number:02d}",
+            (0, -front_depth - 0.12, tier_bottom + 0.075),
+            (width * 0.76, 0.12, 0.035),
+            p["stone_dark"],
+            r,
+            0.008,
+        )
+        tier_bottom = tier_top + (0.11 if tier_index < 4 else 0.10)
+
+    # The broad east entrance is architectural in scale, with three
+    # human-scale doors set into it so the city never reads as a miniature.
+    entrance_front = -tier_specs[0][1] - 0.13
+    cube(
+        "Urithiru_Monumental_East_Portal",
+        (0, entrance_front, 1.86),
+        (0.67, 0.075, 0.71),
+        p["slate"],
+        r,
+        0.025,
+    )
+    entrance_arch = cyl(
+        "Urithiru_Monumental_East_Arch",
+        (0, entrance_front, 2.52),
+        0.67,
+        0.16,
+        p["slate"],
+        r,
+        24,
+        0.025,
+    )
+    entrance_arch.rotation_euler[0] = math.pi / 2
+    for side in (-1, 1):
+        cube(
+            f"Urithiru_Monumental_East_Pylon_{side}",
+            (side * 0.82, entrance_front + 0.015, 1.89),
+            (0.16, 0.19, 0.92),
+            city_surface["urithiru"],
+            r,
+            0.035,
+        )
+        cube(
+            f"Urithiru_Monumental_East_PylonCap_{side}",
+            (side * 0.82, entrance_front - 0.015, 2.82),
+            (0.23, 0.23, 0.08),
+            p["stone_light"],
+            r,
+            0.025,
+        )
+
+    for entrance_index, entrance_x in enumerate((-0.24, 0, 0.24)):
+        cube(
+            f"Urithiru_LowerEntrance_{entrance_index + 1}",
+            (
+                entrance_x,
+                entrance_front - 0.09,
+                1.17 + door_half_height,
+            ),
+            (door_half_width, 0.035, door_half_height),
+            p["glass_dark"],
+            r,
+            0.014,
+        )
+        for side in (-1, 1):
+            cube(
+                f"Urithiru_LowerEntranceJamb_{entrance_index + 1}_{side}",
+                (
+                    entrance_x + side * (door_half_width + 0.025),
+                    entrance_front - 0.11,
+                    1.17 + door_half_height,
+                ),
+                (0.018, 0.04, door_half_height * 1.18),
+                p["stone_light"],
+                r,
+                0.006,
+            )
+        cube(
+            f"Urithiru_LowerEntranceLintel_{entrance_index + 1}",
+            (
+                entrance_x,
+                entrance_front - 0.11,
+                1.17 + door_half_height * 2 + 0.022,
+            ),
+            (door_half_width * 1.35, 0.04, 0.018),
+            p["stone_light"],
+            r,
+            0.006,
+        )
+
+    for step_index in range(5):
+        cube(
+            f"Urithiru_East_EntranceStep_{step_index + 1:02d}",
+            (
+                0,
+                -3.82 - step_index * 0.22,
+                1.28 - step_index * 0.055,
+            ),
+            (0.92 + step_index * 0.12, 0.15, 0.055),
+            p["stone_light"],
+            r,
+            0.018,
+        )
+
+    # The crown shifts from the stepped half-round massing into the cylindrical
+    # lantern shown in the west and east concept elevations.
+    crown_base_z = tier_tops[-1] + 0.16
+    cyl(
+        "Urithiru_Crown_Rotunda",
+        (0, -0.04, crown_base_z + 0.28),
+        1.16,
+        0.56,
+        city_surface["urithiru"],
+        r,
+        32,
+        0.045,
+    )
+    for crown_index in range(12):
+        crown_angle = 2 * math.pi * crown_index / 12
+        crown_x = math.sin(crown_angle) * 1.115
+        crown_y = -0.04 - math.cos(crown_angle) * 1.115
+        crown_bay = cube(
+            f"Urithiru_Crown_VerticalBay_{crown_index + 1:02d}",
+            (crown_x, crown_y, crown_base_z + 0.29),
+            (0.072, 0.03, 0.205),
+            p["glass_dark"] if crown_index % 3 else p["cyan"],
+            r,
+            0.012,
+        )
+        crown_bay.rotation_euler[2] = crown_angle
+    cyl(
+        "Urithiru_Crown_Cornice",
+        (0, -0.04, crown_base_z + 0.59),
+        1.25,
+        0.12,
+        p["stone_dark"],
+        r,
+        32,
+        0.025,
+    )
+    cyl(
+        "Urithiru_Roof_Beacon",
+        (0, -0.04, crown_base_z + 0.91),
+        0.38,
+        0.52,
+        p["cyan"],
+        r,
+        16,
+        0.03,
+    )
+
+    forecourt_y = -4.48
     cyl(
         "Urithiru_Oathgate_Forecourt",
-        (0, -4.25, 1),
-        1.3,
-        0.28,
+        (0, forecourt_y, 1.35),
+        0.78,
+        0.18,
         p["stone_light"],
         r,
         10,
-        0.08,
+        0.06,
     )
-    for i in range(10):
-        angle = 2 * math.pi * i / 10
-        cyl(
-            f"Urithiru_Gate_Dais_{i + 1}",
-            (math.cos(angle) * 0.85, -4.25 + math.sin(angle) * 0.85, 1.25),
-            0.12,
-            0.36,
+    torus(
+        "Urithiru_Oathgate_Forecourt_Inlay",
+        (0, forecourt_y, 1.45),
+        0.48,
+        0.035,
+        p["brass"],
+        r,
+    )
+    oathgate_destinations = (
+        ("Panatham", "Panatham"),
+        ("Rall_Elorim", "Rall Elorim"),
+        ("Shinovar", "Shinovar"),
+        ("Akinah", "Akinah"),
+        ("Azimir", "Azimir"),
+        ("Thaylen_City", "Thaylen City"),
+        ("Narak", "Narak"),
+        ("Kholinar", "Kholinar"),
+        ("Vedenar", "Vedenar"),
+        ("Kurth", "Kurth"),
+    )
+    for gate_index, (gate_slug, gate_label) in enumerate(oathgate_destinations):
+        gate_angle = math.pi + 2 * math.pi * gate_index / len(
+            oathgate_destinations
+        )
+        direction_x = math.cos(gate_angle)
+        direction_y = math.sin(gate_angle)
+        platform_x = direction_x * 1.04
+        platform_y = forecourt_y + direction_y * 1.04
+        platform = cyl(
+            f"Urithiru_Oathgate_Approach_{gate_slug}",
+            (platform_x, platform_y, 1.43),
+            0.17,
+            0.22,
+            city_surface["urithiru"],
+            r,
+            10,
+            0.025,
+        )
+        platform["oathgate_destination"] = gate_label
+        spoke = cube(
+            f"Urithiru_Oathgate_Spoke_{gate_slug}",
+            (
+                direction_x * 0.67,
+                forecourt_y + direction_y * 0.67,
+                1.42,
+            ),
+            (0.31, 0.045, 0.028),
             p["brass"],
             r,
+            0.008,
+        )
+        spoke.rotation_euler[2] = gate_angle
+        cyl(
+            f"Urithiru_Oathgate_Marker_{gate_slug}",
+            (platform_x, platform_y, 1.59),
+            0.055,
+            0.18,
+            p["cyan"],
+            r,
             8,
-            0.025,
+            0.012,
         )
 
 
@@ -2060,106 +2708,881 @@ def build_kharbranth() -> None:
 
 def build_kholinar() -> None:
     r = root("Landmark_Kholinar", (19, -7, 0))
-    cyl("Kholinar_City_Rock", (0, 0, 0.35), 5.2, 0.7, p["stone_dark"], r, 32, 0.14)
-    for i in range(9):
-        angle = -1.1 + i * (2.2 / 8)
-        x, y = math.cos(angle) * 4.1, math.sin(angle) * 4.1
-        wall = cube(
-            f"Kholinar_Windwall_{i + 1}",
-            (x, y, 1.15),
-            (0.28, 0.95, 0.8),
-            p["stone_light"],
+    runtime_scale = (4.8 * 2) / 10.2
+
+    # Register readable anchors from the supplied 858 × 1320 plan into the
+    # authored city footprint. The main plan (rather than the palace inset)
+    # spans approximately x=49…809 and y=190…966. It is explicitly south-up:
+    # plan-left/east is local -X and plan-top/south is local +Y.
+    def kholinar_plan_point(
+        pixel: tuple[float, float],
+    ) -> tuple[float, float]:
+        return ((pixel[0] - 429) / 80, (575 - pixel[1]) / 82)
+
+    # The supplied city blueprint is south-up. Keep that authored orientation:
+    # positive local Y is south, negative local Y is north, east is local -X.
+    outline = [
+        (-4.7, 2.45),
+        (-3.15, 4.15),
+        (-0.7, 4.75),
+        (1.9, 4.42),
+        (4.35, 3.05),
+        (4.72, 0.55),
+        (4.2, -1.75),
+        (2.45, -3.9),
+        (0, -4.85),
+        (-2.45, -4.0),
+        (-4.18, -2.0),
+        (-4.78, 0.35),
+    ]
+    prism(
+        "Kholinar_City_Rock",
+        outline,
+        0.66,
+        p["stone_dark"],
+        r,
+        0.34,
+    )
+
+    district_plateaus = (
+        (
+            "Eastern",
+            [(-4.35, 2.35), (-3.0, 3.82), (-0.72, 4.35), (-0.58, 0.72), (-3.45, -0.32)],
+        ),
+        (
+            "Western",
+            [(0.72, 4.25), (3.95, 2.75), (4.15, 0.22), (3.2, -0.6), (0.48, 0.72)],
+        ),
+        (
+            "Northern",
+            [(-3.45, -0.82), (-0.1, -0.25), (3.25, -0.75), (2.15, -3.55), (0, -4.45), (-2.25, -3.58)],
+        ),
+    )
+    for name, points in district_plateaus:
+        prism(
+            f"Kholinar_{name}_DistrictPlateau",
+            points,
+            0.22,
+            city_surface["kholinar"],
             r,
-            0.09,
+            0.76,
         )
-        wall.rotation_euler[2] = angle
-        if i % 2 == 0:
-            cyl(
-                f"Kholinar_Watchtower_{i + 1}",
-                (math.cos(angle) * 4.2, math.sin(angle) * 4.2, 1.7),
-                0.58,
-                2.4,
-                p["stone"],
+
+    def wall_between(
+        name: str,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        gated: bool,
+    ) -> None:
+        sx, sy = start
+        ex, ey = end
+        dx, dy = ex - sx, ey - sy
+        length = math.hypot(dx, dy)
+        angle = math.atan2(dy, dx)
+        midpoint = ((sx + ex) / 2, (sy + ey) / 2)
+        gap = min(0.58, length * 0.28) if gated else 0
+
+        def wall_segment(
+            segment_name: str,
+            center: tuple[float, float],
+            segment_length: float,
+        ) -> None:
+            wall = cube(
+                segment_name,
+                (center[0], center[1], 1.18),
+                (segment_length / 2, 0.18, 0.5),
+                city_surface["kholinar"],
                 r,
-                12,
+                0.055,
             )
-            cone(
-                f"Kholinar_Watchtower_Roof_{i + 1}",
-                (math.cos(angle) * 4.2, math.sin(angle) * 4.2, 3.05),
-                0.76,
-                0.08,
-                0.48,
+            wall.rotation_euler[2] = angle
+
+        if gated:
+            direction = (dx / length, dy / length)
+            segment_length = (length - gap) / 2
+            offset = (gap + segment_length) / 2
+            wall_segment(
+                f"{name}_LeftWall",
+                (
+                    midpoint[0] - direction[0] * offset,
+                    midpoint[1] - direction[1] * offset,
+                ),
+                segment_length,
+            )
+            wall_segment(
+                f"{name}_RightWall",
+                (
+                    midpoint[0] + direction[0] * offset,
+                    midpoint[1] + direction[1] * offset,
+                ),
+                segment_length,
+            )
+            normal = (-direction[1], direction[0])
+            for side in (-1, 1):
+                tower_x = midpoint[0] + direction[0] * gap * 0.58 * side
+                tower_y = midpoint[1] + direction[1] * gap * 0.58 * side
+                cyl(
+                    f"{name}_GateTower_{side}",
+                    (tower_x, tower_y, 1.48),
+                    0.24,
+                    1.42,
+                    city_surface["kholinar"],
+                    r,
+                    10,
+                    0.035,
+                )
+            lintel = cube(
+                f"{name}_GateLintel",
+                (midpoint[0], midpoint[1], 1.72),
+                (gap * 0.62, 0.23, 0.14),
                 p["brass"],
                 r,
-                12,
+                0.025,
             )
-    for ring in range(3):
-        radius = 3 - ring * 0.75
-        for j in range(8 - ring):
-            angle = 2 * math.pi * j / (8 - ring) + ring * 0.31
-            height = 0.45 + 0.16 * ((j + ring) % 3)
-            cube(
-                f"Kholinar_Block_{ring}_{j}",
-                (math.cos(angle) * radius, math.sin(angle) * radius, 0.75 + height),
-                (0.45, 0.42, height),
-                p["terracotta"] if j % 3 == 0 else p["stone"],
+            lintel.rotation_euler[2] = angle
+            gate_mark = cube(
+                f"{name}_GateStormwardMark",
+                (
+                    midpoint[0] + normal[0] * 0.205,
+                    midpoint[1] + normal[1] * 0.205,
+                    1.44,
+                ),
+                (0.07, 0.018, 0.2),
+                p["cyan"],
                 r,
-                0.06,
+                0.01,
             )
-    cyl("Kholinar_Palace_Core", (0, 0, 2), 1.18, 3.3, p["slate"], r, 10, 0.08)
-    for i in range(6):
-        angle = 2 * math.pi * i / 6
+            gate_mark.rotation_euler[2] = angle
+        else:
+            wall_segment(name, midpoint, length)
+
+    gate_edges = {0, 2, 4, 6, 7, 9, 11}
+    for index, start in enumerate(outline):
+        end = outline[(index + 1) % len(outline)]
+        wall_between(
+            f"Kholinar_CityGate_{index + 1:02d}"
+            if index in gate_edges
+            else f"Kholinar_PerimeterWall_{index + 1:02d}",
+            start,
+            end,
+            index in gate_edges,
+        )
+
+    for index, point in enumerate(outline[::2]):
+        cyl(
+            f"Kholinar_PerimeterWatchtower_{index + 1:02d}",
+            (point[0], point[1], 1.62),
+            0.31,
+            1.7,
+            city_surface["kholinar"],
+            r,
+            12,
+            0.04,
+        )
         cone(
-            f"Kholinar_Palace_Spire_{i + 1}",
-            (math.cos(angle) * 0.72, math.sin(angle) * 0.72, 4),
-            0.25,
-            0.03,
-            1.8,
+            f"Kholinar_PerimeterWatchtowerRoof_{index + 1:02d}",
+            (point[0], point[1], 2.58),
+            0.42,
+            0.05,
+            0.32,
             p["brass"],
             r,
-            8,
+            12,
+            0.025,
         )
-    cyl("Kholinar_Palace_Light", (0, 0, 4.5), 0.24, 0.48, p["cyan"], r, 12)
-    cube("Kholinar_Sunwalk", (-2.7, 0.2, 1.25), (2.2, 0.22, 0.16), p["stone_light"], r)
-    cyl("Kholinar_Monastery_Dais", (-4.6, -0.14, 0.85), 1.05, 0.52, p["stone_light"], r, 10)
+
+    # Three dense lobes follow the street fields shown between the city's
+    # wind-carved ravines, rather than the rejected generic concentric rings.
+    districts = (
+        ("Eastern", (-2.45, 1.85), 2.05, 1.72, 24, -0.18),
+        ("Western", (2.35, 1.82), 2.0, 1.7, 24, 0.18),
+        ("Northern", (0, -2.35), 2.55, 1.62, 28, 0),
+    )
+    for district_index, (
+        district_name,
+        center,
+        radius_x,
+        radius_y,
+        count,
+        angle_bias,
+    ) in enumerate(districts):
+        for index in range(count):
+            angle = index * 2.399963 + district_index * 0.41
+            band = 0.32 + 0.6 * math.sqrt(((index * 37 + 11) % 101) / 100)
+            x = center[0] + math.cos(angle) * radius_x * band
+            y = center[1] + math.sin(angle) * radius_y * band
+            half_height = 0.26 + ((index + district_index) % 5) * 0.045
+            authored_city_block(
+                f"Kholinar_{district_name}Ward_{index + 1:02d}",
+                (x, y, 0.88),
+                (
+                    0.21 + (index % 3) * 0.028,
+                    0.19 + ((index + 1) % 3) * 0.026,
+                    half_height,
+                ),
+                city_surface["kholinar"],
+                city_surface["kholinar"],
+                r,
+                runtime_scale,
+                angle + angle_bias,
+                "flat",
+                p["glass_dark"],
+                p["wood"],
+                p["stone_dark"],
+                2,
+            )
+
+        for road_index in range(4):
+            road_angle = road_index * math.pi / 4 + angle_bias
+            road = cube(
+                f"Kholinar_{district_name}WardRoad_{road_index + 1}",
+                (
+                    center[0] + math.cos(road_angle) * radius_x * 0.45,
+                    center[1] + math.sin(road_angle) * radius_y * 0.45,
+                    0.91,
+                ),
+                (radius_x * 0.48, 0.055, 0.022),
+                p["stone_light"],
+                r,
+                0.01,
+            )
+            road.rotation_euler[2] = road_angle
+
+    ravines = (
+        ("EasternRavine", (-1.08, 1.55), (0.16, 1.92), -0.34),
+        ("WesternRavine", (1.05, 1.48), (0.16, 1.9), 0.33),
+        ("NorthernRavine", (0, -0.72), (1.62, 0.16), 0),
+    )
+    for name, center, scale, angle in ravines:
+        ravine = cube(
+            f"Kholinar_{name}_Floor",
+            (center[0], center[1], 0.72),
+            (scale[0], scale[1], 0.055),
+            p["stone_dark"],
+            r,
+            0.025,
+        )
+        ravine.rotation_euler[2] = angle
+
+    windblades = (
+        (-1.2, 2.95, -0.34, 0.92),
+        (-0.78, 1.82, -0.27, 0.82),
+        (-0.72, 0.65, -0.18, 0.72),
+        (1.2, 2.9, 0.34, 0.95),
+        (0.78, 1.75, 0.27, 0.84),
+        (0.72, 0.52, 0.18, 0.76),
+        (-2.7, -0.65, -0.76, 0.72),
+        (2.62, -0.55, 0.76, 0.74),
+    )
+    for index, (x, y, angle, scale) in enumerate(windblades):
+        blade = rock(
+            f"Kholinar_Windblade_{index + 1:02d}",
+            (x, y, 1.55),
+            (0.18 * scale, 0.68 * scale, 0.82 * scale),
+            city_surface["kholinar"],
+            r,
+            2,
+        )
+        blade.rotation_euler[2] = angle
+
+    for index, (x, y, length, angle) in enumerate(
+        (
+            (-1.0, 1.1, 0.7, -0.28),
+            (1.0, 1.05, 0.7, 0.28),
+            (-1.3, -0.6, 0.62, 0.06),
+            (1.3, -0.55, 0.62, -0.06),
+            (0, 0.48, 0.6, 0),
+            (0, -1.2, 0.7, 0),
+        )
+    ):
+        bridge = cube(
+            f"Kholinar_RavineBridge_{index + 1:02d}",
+            (x, y, 1.04),
+            (length, 0.085, 0.06),
+            p["stone_light"],
+            r,
+            0.018,
+        )
+        bridge.rotation_euler[2] = angle
+
+    # Named civic anchors and ten temples from the blueprint.
+    temple_positions = tuple(
+        kholinar_plan_point(pixel)
+        for pixel in (
+            (382, 357),
+            (718, 486),
+            (428, 374),
+            (579, 607),
+            (396, 406),
+            (258, 447),
+            (500, 647),
+            (382, 488),
+            (637, 635),
+            (523, 760),
+        )
+    )
+    temple_names = (
+        "Jezerezeh",
+        "Nalan",
+        "Chanaranach",
+        "Vedeledev",
+        "Pailiah",
+        "Shalash",
+        "Battah",
+        "Kelek",
+        "Talenelat",
+        "Ishi",
+    )
+    for index, ((x, y), temple_name) in enumerate(
+        zip(temple_positions, temple_names)
+    ):
+        cyl(
+            f"Kholinar_Temple_{index + 1:02d}_{temple_name}_Dais",
+            (x, y, 1.02),
+            0.24,
+            0.2,
+            p["stone_light"],
+            r,
+            10,
+            0.025,
+        )
+        cone(
+            f"Kholinar_Temple_{index + 1:02d}_{temple_name}_Spire",
+            (x, y, 1.42),
+            0.18,
+            0.025,
+            0.62,
+            p["brass"] if index % 2 else city_surface["kholinar"],
+            r,
+            8,
+            0.02,
+        )
+
+    # Palace main level: a long fortified gallery, ballrooms and garrison
+    # entry aligned east-west, connected to the Monastery Dais by the Sunwalk.
+    palace_x, palace_y = kholinar_plan_point((433, 776))
+    cube(
+        "Kholinar_Palace_MainGallery",
+        (palace_x, palace_y, 1.35),
+        (1.62, 0.42, 0.46),
+        city_surface["kholinar"],
+        r,
+        0.055,
+    )
+    for side in (-1, 1):
+        cube(
+            f"Kholinar_Palace_Ballroom_{side}",
+            (palace_x + side * 0.72, palace_y + 0.04, 1.56),
+            (0.48, 0.54, 0.56),
+            city_surface["kholinar"],
+            r,
+            0.05,
+        )
+        cube(
+            f"Kholinar_Palace_GuestWing_{side}",
+            (palace_x + side * 1.42, palace_y + 0.06, 1.36),
+            (0.42, 0.36, 0.42),
+            city_surface["kholinar"],
+            r,
+            0.045,
+        )
+    cyl(
+        "Kholinar_Palace_GrandGarrisonEntry",
+        (palace_x, palace_y + 0.12, 2.05),
+        0.3,
+        0.68,
+        p["brass"],
+        r,
+        10,
+        0.035,
+    )
+    cone(
+        "Kholinar_Palace_StormlightCrown",
+        (palace_x, palace_y + 0.12, 2.58),
+        0.28,
+        0.025,
+        0.55,
+        p["cyan"],
+        r,
+        10,
+        0.02,
+    )
+
+    monastery_x, monastery_y = kholinar_plan_point((353, 756))
+    sunwalk_dx = palace_x - monastery_x
+    sunwalk_dy = palace_y - monastery_y
+    sunwalk_length = math.hypot(sunwalk_dx, sunwalk_dy)
+    sunwalk = cube(
+        "Kholinar_Sunwalk",
+        (
+            (monastery_x + palace_x) / 2,
+            (monastery_y + palace_y) / 2,
+            1.3,
+        ),
+        (sunwalk_length / 2, 0.11, 0.09),
+        city_surface["kholinar"],
+        r,
+        0.025,
+    )
+    sunwalk.rotation_euler[2] = math.atan2(sunwalk_dy, sunwalk_dx)
+    cyl(
+        "Kholinar_Monastery_Dais",
+        (monastery_x, monastery_y, 1.08),
+        0.72,
+        0.34,
+        p["stone_light"],
+        r,
+        16,
+        0.045,
+    )
+    for index in range(7):
+        angle = 2 * math.pi * index / 7
+        cyl(
+            f"Kholinar_MonasteryDais_Cell_{index + 1}",
+            (
+                monastery_x + math.cos(angle) * 0.45,
+                monastery_y + math.sin(angle) * 0.45,
+                1.32,
+            ),
+            0.12,
+            0.38,
+            city_surface["kholinar"],
+            r,
+            8,
+            0.02,
+        )
+    cube(
+        "Kholinar_KingsChapel",
+        (
+            monastery_x + (palace_x - monastery_x) * 0.44,
+            monastery_y - 0.42,
+            1.22,
+        ),
+        (0.32, 0.24, 0.32),
+        city_surface["kholinar"],
+        r,
+        0.04,
+    )
+
+    market_x, market_y = kholinar_plan_point((429, 606))
+    for shop in range(8):
+        x = market_x - 1.65 + shop * 0.47
+        cube(
+            f"Kholinar_MarketRow_Shop_{shop + 1:02d}",
+            (x, market_y, 1.14 + (shop % 2) * 0.05),
+            (0.2, 0.3, 0.28 + (shop % 2) * 0.05),
+            city_surface["kholinar"],
+            r,
+            0.035,
+        )
+    dueling_x, dueling_y = kholinar_plan_point((430, 508))
+    torus(
+        "Kholinar_DuelingArena",
+        (dueling_x, dueling_y, 1.04),
+        0.48,
+        0.12,
+        p["stone_light"],
+        r,
+    )
+    theater_x, theater_y = kholinar_plan_point((236, 430))
+    cyl(
+        "Kholinar_TheaterSquare",
+        (theater_x, theater_y, 1.0),
+        0.5,
+        0.16,
+        p["stone_light"],
+        r,
+        18,
+        0.025,
+    )
+    park_x, park_y = kholinar_plan_point((511, 791))
+    cyl(
+        "Kholinar_SunmakerPark",
+        (park_x, park_y, 0.98),
+        0.48,
+        0.12,
+        p["leaf"],
+        r,
+        16,
+        0.02,
+    )
+    monument_x, monument_y = kholinar_plan_point((682, 443))
+    cone(
+        "Kholinar_LanacinMonument",
+        (monument_x, monument_y, 1.55),
+        0.2,
+        0.025,
+        1.18,
+        p["brass"],
+        r,
+        10,
+        0.025,
+    )
+    insight_x, insight_y = kholinar_plan_point((447, 526))
+    authored_city_block(
+        "Kholinar_DevotaryOfInsight",
+        (insight_x, insight_y, 0.88),
+        (0.46, 0.34, 0.44),
+        city_surface["kholinar"],
+        p["brass"],
+        r,
+        runtime_scale,
+        0.45,
+        "dome",
+        p["cyan"],
+        p["wood"],
+        p["stone_dark"],
+        3,
+    )
+    talenelat_x, talenelat_y = kholinar_plan_point((628, 648))
+    authored_city_block(
+        "Kholinar_OrderOfTalenelat",
+        (talenelat_x, talenelat_y, 0.88),
+        (0.42, 0.3, 0.38),
+        city_surface["kholinar"],
+        p["brass"],
+        r,
+        runtime_scale,
+        -0.35,
+        "flat",
+        p["glass_dark"],
+        p["wood"],
+        p["stone_dark"],
+        3,
+    )
+
+    falls_x, falls_y = kholinar_plan_point((708, 392))
+    for ledge in range(5):
+        cube(
+            f"Kholinar_ImpossibleFalls_Ledge_{ledge + 1}",
+            (
+                falls_x - ledge * 0.08,
+                falls_y - ledge * 0.2,
+                1.2 + ledge * 0.24,
+            ),
+            (0.34, 0.18, 0.055),
+            p["stone_dark"],
+            r,
+            0.025,
+        )
+    impossible_falls = cube(
+        "Kholinar_ImpossibleFalls_Water",
+        (falls_x + 0.12, falls_y - 0.37, 1.65),
+        (0.22, 0.025, 0.72),
+        p["water"],
+        r,
+        0.01,
+    )
+    impossible_falls.rotation_euler[1] = -0.12
 
 
 def build_azimir() -> None:
     r = root("Landmark_Azimir", (-21, 8, 0))
-    cyl("Azimir_Civic_Platform", (0, 0, 0.3), 5.2, 0.6, p["ochre"], r, 24, 0.12)
-    for i, (x, y, rotation) in enumerate(
-        ((0, 2.9, 0), (0, -2.9, 0), (2.9, 0, math.pi / 2), (-2.9, 0, math.pi / 2))
+    runtime_scale = (4.7 * 2) / 10.4
+
+    # The supplied 600 × 894 Azimir sheet has a 512 × 666 plan field inside
+    # its border. This transform registers the readable civic anchors to the
+    # rectangular authored model while keeping the clerk grid at true scale.
+    def azimir_plan_point(
+        pixel: tuple[float, float],
+    ) -> tuple[float, float]:
+        return ((pixel[0] - 300) / 50, (420 - pixel[1]) * 0.014)
+    cube(
+        "Azimir_CivicPlatform",
+        (0, 0, 0.3),
+        (5.2, 4.7, 0.3),
+        city_surface["azimir"],
+        r,
+        0.08,
+    )
+
+    for side, (x, y, width, depth) in enumerate(
+        (
+            (0, 4.62, 5.08, 0.13),
+            (0, -4.62, 5.08, 0.13),
+            (-5.12, 0, 0.13, 4.48),
+            (5.12, 0, 0.13, 4.48),
+        )
     ):
-        hall = cube(f"Azimir_Ministry_{i + 1}", (x, y, 1), (1.55, 0.62, 0.72), p["ivory"], r)
-        hall.rotation_euler[2] = rotation
-        roof = cube(f"Azimir_Ministry_Roof_{i + 1}", (x, y, 1.8), (1.72, 0.75, 0.14), p["slate"], r)
-        roof.rotation_euler[2] = rotation
-        for j in range(5):
-            offset = -1.05 + j * 0.52
-            cyl(
-                f"Azimir_Column_{i + 1}_{j + 1}",
-                (x + (offset if rotation == 0 else 0), y + (0 if rotation == 0 else offset), 0.95),
-                0.09,
-                1.25,
-                p["brass"],
+        cube(
+            f"Azimir_PerimeterWall_{side + 1}",
+            (x, y, 0.96),
+            (width, depth, 0.48),
+            city_surface["azimir"],
+            r,
+            0.04,
+        )
+
+    # The blueprint is defined by a rectilinear block field cut by ceremonial
+    # diagonal/radial avenues. Lay roads first, then exclude their footprint
+    # from the dense clerk and residential quarters.
+    avenue_specs = (
+        ("ImperialAxis", (0, 0), (0.2, 4.45), 0),
+        ("NorthwestSoutheast", (0, 0), (5.75, 0.16), math.radians(38)),
+        ("NortheastSouthwest", (0, 0), (5.75, 0.16), math.radians(-38)),
+        ("PalaceMarket", (0.55, 0.12), (3.5, 0.13), math.radians(-13)),
+        ("WatchpostCrossing", (-0.7, -1.35), (4.1, 0.13), math.radians(18)),
+        ("NorthernFanWest", (-1.55, 2.65), (3.05, 0.12), math.radians(67)),
+        ("NorthernFanEast", (1.55, 2.65), (3.05, 0.12), math.radians(-67)),
+        ("SouthernFanWest", (-1.6, -2.75), (3.0, 0.12), math.radians(-66)),
+        ("SouthernFanEast", (1.6, -2.75), (3.0, 0.12), math.radians(66)),
+    )
+    for name, center, scale, rotation in avenue_specs:
+        avenue = cube(
+            f"Azimir_Avenue_{name}",
+            (center[0], center[1], 0.64),
+            (scale[0], scale[1], 0.025),
+            p["stone_light"],
+            r,
+            0.01,
+        )
+        avenue.rotation_euler[2] = rotation
+
+    bronze_palace = azimir_plan_point((306, 384))
+    grand_market = azimir_plan_point((354, 473))
+    hospital = azimir_plan_point((386, 489))
+    watchpost = azimir_plan_point((311, 519))
+    thunderclast_path_center = azimir_plan_point((151, 544))
+    civic_reservations = (
+        (*bronze_palace, 0.9),
+        (*grand_market, 0.62),
+        (*hospital, 0.55),
+        (*watchpost, 0.5),
+        (*thunderclast_path_center, 0.62),
+    )
+
+    def inside_avenue_footprint(
+        x: float,
+        y: float,
+        center: tuple[float, float],
+        half_extents: tuple[float, float],
+        rotation: float,
+    ) -> bool:
+        dx = x - center[0]
+        dy = y - center[1]
+        local_x = dx * math.cos(rotation) + dy * math.sin(rotation)
+        local_y = -dx * math.sin(rotation) + dy * math.cos(rotation)
+        road_clearance = 0.1
+        return (
+            abs(local_x) <= half_extents[0] + road_clearance
+            and abs(local_y) <= half_extents[1] + road_clearance
+        )
+
+    clerk_index = 0
+    for row in range(11):
+        y = -4.05 + row * 0.79
+        for column in range(12):
+            x = -4.55 + column * 0.83
+            if any(
+                math.hypot(x - cx, y - cy) < radius
+                for cx, cy, radius in civic_reservations
+            ):
+                continue
+            if any(
+                inside_avenue_footprint(
+                    x,
+                    y,
+                    center,
+                    half_extents,
+                    rotation,
+                )
+                for _name, center, half_extents, rotation in avenue_specs
+            ):
+                continue
+            clerk_index += 1
+            rotation = ((row * 5 + column * 3) % 7 - 3) * 0.035
+            authored_city_block(
+                f"Azimir_ClerkQuarter_{clerk_index:02d}",
+                (x, y, 0.64),
+                (
+                    0.29 + (column % 3) * 0.025,
+                    0.25 + (row % 3) * 0.022,
+                    0.29 + ((row + column) % 5) * 0.042,
+                ),
+                city_surface["azimir"],
+                city_surface["azimir"],
                 r,
-                8,
-                0.02,
+                runtime_scale,
+                rotation,
+                "dome" if (row + column) % 11 == 0 else "flat",
+                p["glass_dark"],
+                p["wood"],
+                p["stone_dark"],
+                2,
             )
-    cyl("Azimir_Grand_Hall", (0, 0, 1.25), 1.45, 2, p["stone_light"], r, 24)
-    sphere("Azimir_Grand_Dome", (0, 0, 2.32), (1.5, 1.5, 0.8), p["teal"], r, 24, 12)
-    cyl("Azimir_Grand_Lantern", (0, 0, 3), 0.28, 0.55, p["brass"], r, 12)
-    cone("Azimir_Grand_Finial", (0, 0, 3.55), 0.32, 0.02, 0.7, p["cyan"], r, 8)
-    for i, x in enumerate((-1.65, 1.65)):
-        cyl(f"Azimir_Archive_{i + 1}", (x, 1.25, 1.45), 0.55, 2.5, p["terracotta"], r, 12)
-        cone(f"Azimir_Archive_Roof_{i + 1}", (x, 1.25, 2.9), 0.75, 0.08, 0.5, p["brass"], r, 12)
+    if clerk_index < 70:
+        raise RuntimeError(
+            f"Azimir clerk grid is unexpectedly sparse: {clerk_index} blocks"
+        )
+    print(f"  Azimir clerk grid: {clerk_index} blocks", flush=True)
+
+    # Bronze Palace, Grand Market, Hospital and Watchpost Tower follow the
+    # relative placement in the supplied plan.
+    cyl(
+        "Azimir_BronzePalace_Foundation",
+        (*bronze_palace, 0.92),
+        0.76,
+        0.32,
+        p["brass"],
+        r,
+        16,
+        0.04,
+    )
+    authored_city_block(
+        "Azimir_BronzePalace",
+        (*bronze_palace, 0.82),
+        (0.62, 0.52, 0.64),
+        city_surface["azimir"],
+        p["brass"],
+        r,
+        runtime_scale,
+        0,
+        "dome",
+        p["cyan"],
+        p["wood"],
+        p["stone_dark"],
+        4,
+    )
+    for ministry_index, angle in enumerate(
+        (0, math.pi / 2, math.pi, math.pi * 1.5)
+    ):
+        x = bronze_palace[0] + math.cos(angle) * 0.54
+        y = bronze_palace[1] + math.sin(angle) * 0.45
+        cyl(
+            f"Azimir_Palace_Ministry_{ministry_index + 1}",
+            (x, y, 1.78),
+            0.12,
+            0.42,
+            p["teal"],
+            r,
+            10,
+            0.018,
+        )
+
+    cyl(
+        "Azimir_GrandMarket_Piazza",
+        (*grand_market, 0.7),
+        0.55,
+        0.08,
+        p["stone_light"],
+        r,
+        20,
+        0.015,
+    )
+    for stall_index in range(10):
+        angle = 2 * math.pi * stall_index / 10
+        authored_city_block(
+            f"Azimir_GrandMarket_Arcade_{stall_index + 1:02d}",
+            (
+                grand_market[0] + math.cos(angle) * 0.43,
+                grand_market[1] + math.sin(angle) * 0.43,
+                0.72,
+            ),
+            (0.12, 0.1, 0.15),
+            city_surface["azimir"],
+            p["teal"],
+            r,
+            runtime_scale,
+            angle - math.pi / 2,
+            "flat",
+            p["glass_dark"],
+            p["wood"],
+            p["stone_dark"],
+            1,
+        )
+
+    authored_city_block(
+        "Azimir_Hospital",
+        (*hospital, 0.72),
+        (0.48, 0.34, 0.42),
+        p["ivory"],
+        city_surface["azimir"],
+        r,
+        runtime_scale,
+        0.12,
+        "dome",
+        p["glass_dark"],
+        p["wood"],
+        p["stone_dark"],
+        4,
+    )
+    cyl(
+        "Azimir_WatchpostTower",
+        (*watchpost, 1.45),
+        0.32,
+        1.65,
+        city_surface["azimir"],
+        r,
+        12,
+        0.045,
+    )
+    cone(
+        "Azimir_WatchpostTower_Roof",
+        (*watchpost, 2.42),
+        0.42,
+        0.04,
+        0.34,
+        p["brass"],
+        r,
+        12,
+        0.025,
+    )
+
+    thunderclast_path = cube(
+        "Azimir_PathOfTheThunderclast",
+        (*thunderclast_path_center, 0.7),
+        (1.25, 0.17, 0.035),
+        p["stone_light"],
+        r,
+        0.012,
+    )
+    thunderclast_path.rotation_euler[2] = 0.08
+    for footprint_index in range(7):
+        x = thunderclast_path_center[0] - 1.05 + footprint_index * 0.34
+        for side in (-1, 1):
+            print_mark = sphere(
+                f"Azimir_ThunderclastFootprint_{footprint_index + 1}_{side}",
+                (x, thunderclast_path_center[1] + side * 0.09, 0.75),
+                (0.1, 0.18, 0.025),
+                p["stone_dark"],
+                r,
+                10,
+                5,
+            )
+            print_mark.rotation_euler[2] = 0.08
+    rock(
+        "Azimir_DawnThunderclastStatue",
+        (
+            thunderclast_path_center[0] - 0.8,
+            thunderclast_path_center[1] - 0.2,
+            1.34,
+        ),
+        (0.42, 0.32, 0.82),
+        p["brass"],
+        r,
+        2,
+    )
 
 
 def build_purelake() -> None:
     r = root("Landmark_Purelake", (-8, 8, 0))
+    runtime_scale = (4.8 * 2) / 8.586
+    door_half_width = 0.92 / (2 * 12 * runtime_scale)
+    door_half_height = 2.08 / (2 * 12 * runtime_scale)
+    window_half = 0.78 / (2 * 12 * runtime_scale)
     cyl("Purelake_Water_Shelf", (0, 0, 0.08), 5.2, 0.16, p["water"], r, 48, 0)
     for i, (x, y, scale) in enumerate(
-        [(-2.5, -1.4, 1), (0.1, -1.8, 0.8), (2.35, -0.9, 1.15), (-1.2, 1.55, 0.9), (1.55, 1.65, 0.72)]
+        [
+            (-2.5, -1.4, 1),
+            (0.1, -1.8, 0.8),
+            (2.35, -0.9, 1.15),
+            (-1.2, 1.55, 0.9),
+            (1.55, 1.65, 0.72),
+            (-3.45, 0.45, 0.78),
+            (3.25, 1.25, 0.82),
+            (-0.25, 3.05, 0.7),
+            (0.45, 0.15, 0.68),
+        ]
     ):
         for sx in (-1, 1):
             for sy in (-1, 1):
@@ -2168,13 +3591,48 @@ def build_purelake() -> None:
                     (x + sx * 0.4 * scale, y + sy * 0.34 * scale, 0.32),
                     0.06 * scale,
                     0.65,
-                    p["earth"],
+                    city_surface["purelake"],
                     r,
                     8,
                     0,
                 )
-        cube(f"Purelake_Hut_{i}_Floor", (x, y, 0.55), (0.65 * scale, 0.58 * scale, 0.12), p["stone"], r)
-        sphere(f"Purelake_Hut_{i}_Rockbud", (x, y, 0.98), (0.78 * scale, 0.7 * scale, 0.55 * scale), p["stone_light"], r)
+        cube(f"Purelake_Hut_{i}_Floor", (x, y, 0.55), (0.65 * scale, 0.58 * scale, 0.12), city_surface["purelake"], r)
+        sphere(f"Purelake_Hut_{i}_Rockbud", (x, y, 0.98), (0.78 * scale, 0.7 * scale, 0.55 * scale), city_surface["purelake"], r)
+        cube(
+            f"Purelake_Hut_{i}_Door",
+            (x, y - 0.69 * scale, 0.67 + door_half_height),
+            (
+                door_half_width,
+                0.022,
+                door_half_height,
+            ),
+            p["wood"],
+            r,
+            0.01,
+        )
+        for side in (-1, 1):
+            cube(
+                f"Purelake_Hut_{i}_Window_{side}",
+                (
+                    x + side * 0.3 * scale,
+                    y - 0.685 * scale,
+                    0.98,
+                ),
+                (window_half, 0.018, window_half),
+                p["glass_dark"],
+                r,
+                0.008,
+            )
+        for rib in (-1, 0, 1):
+            shell_rib = torus(
+                f"Purelake_Hut_{i}_ShellRib_{rib + 2}",
+                (x, y, 0.99 + rib * 0.13 * scale),
+                0.56 * scale,
+                0.018,
+                city_surface["purelake"],
+                r,
+            )
+            shell_rib.scale.y = 0.84
     for i, (x, y, angle) in enumerate(((-3.4, 1.2, 0.2), (2.9, 1.1, -0.25), (0.1, 3.2, 0.08))):
         raft = cube(f"Purelake_Raft_{i}", (x, y, 0.28), (0.85, 0.34, 0.07), p["earth"], r, 0.025)
         raft.rotation_euler[2] = angle
@@ -2221,6 +3679,7 @@ def build_purelake() -> None:
 
 def build_shinovar() -> None:
     r = root("Landmark_Shinovar", (5, 8, 0))
+    runtime_scale = (4.8 * 2) / 8.797
     cyl("Shinovar_Grass_Valley", (0, 0, 0.18), 5.4, 0.36, p["grass"], r, 40)
     for i in range(7):
         field = cube(
@@ -2232,10 +3691,61 @@ def build_shinovar() -> None:
             0.015,
         )
         field.rotation_euler[2] = 0.08
-    for i, (x, y, scale) in enumerate(((-2.4, 1.1, 1), (-0.2, 1.7, 0.85), (2, 0.9, 1.15), (2.6, -1.1, 0.75))):
-        cube(f"Shinovar_Home_{i}", (x, y, 0.8), (0.78 * scale, 0.62 * scale, 0.62 * scale), p["earth"], r, 0.18)
-        roof = cone(f"Shinovar_Roof_{i}", (x, y, 1.62 * scale), 1.05 * scale, 0.12, 0.66 * scale, p["terracotta"], r, 4)
-        roof.rotation_euler[2] = math.pi / 4
+    homes = (
+        (-2.4, 1.1, 1, 0.08),
+        (-0.2, 1.7, 0.85, -0.16),
+        (2, 0.9, 1.15, 0.12),
+        (2.6, -1.1, 0.75, -0.08),
+        (-2.7, -0.65, 0.82, 0.18),
+        (-1.15, 0.15, 0.72, -0.1),
+        (0.65, -0.45, 0.88, 0.05),
+        (1.55, 2.65, 0.7, -0.22),
+    )
+    for i, (x, y, scale, rotation) in enumerate(homes):
+        authored_city_block(
+            f"Shinovar_FarmHome_{i + 1:02d}",
+            (x, y, 0.2),
+            (
+                0.58 * scale,
+                0.46 * scale,
+                0.38 * scale,
+            ),
+            city_surface["shinovar"],
+            city_surface["shinovar"],
+            r,
+            runtime_scale,
+            rotation,
+            "pitched",
+            p["glass_dark"],
+            p["wood"],
+            p["earth"],
+            2,
+        )
+    for fence in range(5):
+        y = -3.15 + fence * 0.27
+        for post in range(14):
+            x = -3.1 + post * 0.48
+            cyl(
+                f"Shinovar_FieldFence_{fence + 1}_{post + 1}",
+                (x, y, 0.53),
+                0.025,
+                0.62,
+                p["wood"],
+                r,
+                7,
+                0,
+            )
+        rail = cyl(
+            f"Shinovar_FieldFenceRail_{fence + 1}",
+            (0, y, 0.57),
+            0.022,
+            6.45,
+            p["wood"],
+            r,
+            7,
+            0,
+        )
+        rail.rotation_euler[1] = math.pi / 2
     for i, (x, y, scale) in enumerate(((-3.6, -0.9, 1), (-3.2, 2.9, 0.8), (0.8, 3.1, 1.1), (3.7, 2.3, 0.92), (3.8, -2.7, 0.76))):
         cyl(f"Shinovar_Tree_{i}_Trunk", (x, y, scale), 0.14 * scale, 2 * scale, p["earth"], r, 10)
         sphere(f"Shinovar_Tree_{i}_Crown", (x, y, 2.35 * scale), (0.8 * scale, 0.75 * scale, 0.95 * scale), p["leaf"], r, 14, 8)
@@ -2243,7 +3753,8 @@ def build_shinovar() -> None:
 
 def build_akinah() -> None:
     r = root("Landmark_Akinah", (19, 8, 0))
-    cyl("Akinah_Island", (0, 0, 0.28), 5.1, 0.56, p["stone_dark"], r, 32, 0.16)
+    runtime_scale = (4.6 * 2) / 10.2
+    cyl("Akinah_Island", (0, 0, 0.28), 5.1, 0.56, city_surface["akinah"], r, 32, 0.16)
     for i in range(22):
         angle = 2 * math.pi * i / 22
         radius = 4.45 + 0.18 * math.sin(i * 2.1)
@@ -2254,7 +3765,7 @@ def build_akinah() -> None:
             0.34,
             0.025,
             height,
-            p["stone_light"],
+            city_surface["akinah"],
             r,
             6,
         )
@@ -2267,23 +3778,251 @@ def build_akinah() -> None:
                 continue
             angle = 2 * math.pi * i / count + ring * 0.2
             height = 0.5 + 0.18 * ((i + 2 * ring) % 3)
-            block = cube(
-                f"Akinah_Ruin_{ring}_{i}",
-                (math.cos(angle) * radius, math.sin(angle) * radius, 0.48 + height),
+            authored_city_block(
+                f"Akinah_RuinQuarter_{ring + 1}_{i + 1:02d}",
+                (
+                    math.cos(angle) * radius,
+                    math.sin(angle) * radius,
+                    0.57,
+                ),
                 (0.32, 0.24, height),
-                p["stone"],
+                city_surface["akinah"],
+                city_surface["akinah"],
                 r,
-                0.06,
+                runtime_scale,
+                angle - math.pi / 2,
+                "flat",
+                p["glass_dark"],
+                p["stone_dark"],
+                p["stone_dark"],
+                2,
             )
-            block.rotation_euler[2] = angle
     cyl("Akinah_Hidden_Oathgate", (0, 0, 0.78), 1.2, 0.26, p["slate"], r, 10)
     torus("Akinah_Hidden_Ring", (0, 0, 0.93), 0.74, 0.06, p["cyan"], r)
+    for rubble_index in range(42):
+        angle = rubble_index * 2.399963 + 0.4
+        radius = 0.8 + ((rubble_index * 17) % 39) / 10
+        rock(
+            f"Akinah_SaltRubble_{rubble_index + 1:02d}",
+            (
+                math.cos(angle) * radius,
+                math.sin(angle) * radius,
+                0.6 + (rubble_index % 3) * 0.035,
+            ),
+            (
+                0.09 + (rubble_index % 5) * 0.025,
+                0.07 + ((rubble_index + 2) % 4) * 0.022,
+                0.06 + ((rubble_index + 1) % 3) * 0.025,
+            ),
+            city_surface["akinah"],
+            r,
+            1,
+        )
+
+
+def build_thaylen_city() -> None:
+    r = root("Landmark_ThaylenCity", (47, 8, 0))
+    runtime_scale = (4.7 * 2) / 10.8
+    cyl(
+        "ThaylenCity_CoastalFoundation",
+        (0, 0.55, 0.26),
+        5.25,
+        0.52,
+        city_surface["thaylen"],
+        r,
+        40,
+        0.1,
+    )
+    cyl(
+        "ThaylenCity_HarborBasin",
+        (0, -3.55, 0.49),
+        2.45,
+        0.08,
+        p["water"],
+        r,
+        32,
+        0,
+    )
+
+    for wall_index in range(13):
+        angle = -1.37 + wall_index * (2.74 / 12)
+        x = math.sin(angle) * 4.78
+        y = -0.35 + math.cos(angle) * 4.35
+        wall = cube(
+            f"ThaylenCity_Seawall_{wall_index + 1:02d}",
+            (x, y, 0.92),
+            (0.5, 0.19, 0.56),
+            city_surface["thaylen"],
+            r,
+            0.055,
+        )
+        wall.rotation_euler[2] = -angle
+        if wall_index % 3 == 0:
+            cyl(
+                f"ThaylenCity_SeawallTower_{wall_index + 1:02d}",
+                (x, y, 1.4),
+                0.31,
+                1.45,
+                p["stone"],
+                r,
+                12,
+                0.035,
+            )
+
+    for ring, (radius, count) in enumerate(((2.0, 12), (3.1, 17), (4.05, 20))):
+        for index in range(count):
+            angle = 2 * math.pi * index / count + ring * 0.19
+            if math.sin(angle) < -0.62 and radius > 2.5:
+                continue
+            half_height = 0.27 + ((index + ring) % 5) * 0.045
+            authored_city_block(
+                f"ThaylenCity_MerchantQuarter_{ring + 1}_{index + 1:02d}",
+                (
+                    math.cos(angle) * radius,
+                    math.sin(angle) * radius + 0.48,
+                    0.53,
+                ),
+                (
+                    0.24 + (index % 3) * 0.035,
+                    0.22 + ((index + 1) % 3) * 0.03,
+                    half_height,
+                ),
+                city_surface["thaylen"],
+                city_surface["thaylen"],
+                r,
+                runtime_scale,
+                angle - math.pi / 2,
+                "pitched",
+                p["glass_dark"],
+                p["wood"],
+                p["stone_dark"],
+                2,
+            )
+
+    cyl(
+        "ThaylenCity_ExchangeHall",
+        (0, 0.78, 1.45),
+        0.92,
+        1.95,
+        city_surface["thaylen"],
+        r,
+        16,
+        0.055,
+    )
+    sphere(
+        "ThaylenCity_ExchangeDome",
+        (0, 0.78, 2.55),
+        (1.02, 1.02, 0.54),
+        p["copper"],
+        r,
+        20,
+        10,
+    )
+    for entrance in range(5):
+        x = -0.52 + entrance * 0.26
+        cube(
+            f"ThaylenCity_ExchangeDoor_{entrance + 1}",
+            (x, -0.155, 0.86),
+            (0.075, 0.035, 0.19),
+            p["wood"],
+            r,
+            0.012,
+        )
+
+    for dock_index in range(7):
+        x = -2.25 + dock_index * 0.75
+        dock_length = 1.25 + (dock_index % 3) * 0.26
+        for plank in range(10):
+            cube(
+                f"ThaylenCity_Dock_{dock_index + 1}_Plank_{plank + 1:02d}",
+                (
+                    x,
+                    -3.45 - plank * dock_length / 10,
+                    0.58 + (plank % 3) * 0.004,
+                ),
+                (0.31, dock_length / 22, 0.025),
+                city_surface["thaylen"],
+                r,
+                0.008,
+            )
+        for piling in range(4):
+            cyl(
+                f"ThaylenCity_Dock_{dock_index + 1}_Piling_{piling + 1}",
+                (
+                    x + (-0.26 if piling % 2 == 0 else 0.26),
+                    -3.65 - (piling // 2) * dock_length * 0.62,
+                    0.28,
+                ),
+                0.035,
+                0.72,
+                p["wood"],
+                r,
+                8,
+                0,
+            )
+        if dock_index % 2 == 0:
+            cyl(
+                f"ThaylenCity_DockCraneMast_{dock_index + 1}",
+                (x + 0.38, -3.32, 1.15),
+                0.045,
+                1.65,
+                p["wood"],
+                r,
+                9,
+                0,
+            )
+            boom = cyl(
+                f"ThaylenCity_DockCraneBoom_{dock_index + 1}",
+                (x + 0.72, -3.32, 1.78),
+                0.035,
+                0.82,
+                p["wood"],
+                r,
+                9,
+                0,
+            )
+            boom.rotation_euler[1] = math.pi / 2
+
+    for boat_index in range(6):
+        x = -1.9 + boat_index * 0.74
+        y = -4.65 - (boat_index % 2) * 0.42
+        hull = cone(
+            f"ThaylenCity_MerchantShip_{boat_index + 1}_Hull",
+            (x, y, 0.54),
+            0.25,
+            0.08,
+            1.12,
+            p["wood"],
+            r,
+            8,
+            0.02,
+        )
+        hull.rotation_euler[0] = math.pi / 2
+        cyl(
+            f"ThaylenCity_MerchantShip_{boat_index + 1}_Mast",
+            (x, y, 1.08),
+            0.025,
+            1.2,
+            p["wood"],
+            r,
+            8,
+            0,
+        )
+        cube(
+            f"ThaylenCity_MerchantShip_{boat_index + 1}_Sail",
+            (x + 0.13, y, 1.25),
+            (0.18, 0.015, 0.34),
+            p["cloth_red"] if boat_index % 2 else p["cloth_blue"],
+            r,
+            0.01,
+        )
 
 
 def build_shattered_plains() -> None:
     random.seed(9981)
     r = root("Landmark_Shattered_Plains", (33, 8, 0))
-    cyl("ShatteredPlains_Chasm_Floor", (0, 0, 0.05), 6, 0.1, p["stone_dark"], r, 48, 0)
+    runtime_scale = (4.4 * 2) / 12.14
+    cyl("ShatteredPlains_Chasm_Floor", (0, 0, 0.05), 6, 0.1, city_surface["shattered"], r, 48, 0)
     centers = [(0, 0, 1, 0.95, 0)]
     for ring, radius, count in ((1, 1.65, 8), (2, 3.35, 12), (3, 5, 16)):
         for i in range(count):
@@ -2304,7 +4043,7 @@ def build_shattered_plains() -> None:
             f"ShatteredPlains_Plateau_{index + 1:02d}",
             points,
             1.35 + 0.25 * (index % 3),
-            p["stone_light"] if index % 5 == 0 else p["stone"],
+            city_surface["shattered"],
             r,
             z,
         )
@@ -2323,6 +4062,32 @@ def build_shattered_plains() -> None:
         bridge.rotation_euler[2] = math.atan2(y, x)
     cyl("Stormseat_Central_Dais", (0, 0, 1.78), 0.62, 0.25, p["slate"], r, 10)
     torus("Stormseat_Oathgate_Ring", (0, 0, 1.94), 0.38, 0.045, p["cyan"], r)
+    for ruin_index in range(10):
+        angle = 2 * math.pi * ruin_index / 10 + 0.18
+        radius = 0.92 + (ruin_index % 2) * 0.28
+        authored_city_block(
+            f"Stormseat_RuinBuilding_{ruin_index + 1:02d}",
+            (
+                math.cos(angle) * radius,
+                math.sin(angle) * radius,
+                1.7,
+            ),
+            (
+                0.18 + (ruin_index % 3) * 0.025,
+                0.14 + ((ruin_index + 1) % 3) * 0.02,
+                0.2 + (ruin_index % 4) * 0.045,
+            ),
+            city_surface["shattered"],
+            city_surface["shattered"],
+            r,
+            runtime_scale,
+            angle - math.pi / 2,
+            "flat",
+            p["glass_dark"],
+            p["stone_dark"],
+            p["stone_dark"],
+            2,
+        )
     torus("Warcamp_Crater_Rim", (-4.8, 0, 0.85), 1.12, 0.22, p["stone_dark"], r)
     for i in range(7):
         angle = 2 * math.pi * i / 7
@@ -4106,6 +5871,7 @@ for label, builder in (
     ("Purelake", build_purelake),
     ("Shinovar", build_shinovar),
     ("Akinah", build_akinah),
+    ("Thaylen City", build_thaylen_city),
     ("Shattered Plains", build_shattered_plains),
     ("detail modules", build_detail_modules),
     ("fidelity modules", build_fidelity_modules),
@@ -4132,7 +5898,7 @@ ground.name = "Preview_Basalt_Table"
 ground.scale = (34, 22, 1)
 ground.data.materials.append(p["stone_dark"])
 for y in (-7, 8):
-    for x in (-22, -9, 5, 19, 33):
+    for x in (-22, -9, 5, 19, 33, 47):
         if not any(
             abs(obj.location.x - x) < 0.1
             and abs(obj.location.y - y) < 0.1
@@ -4196,6 +5962,7 @@ bpy.ops.export_scene.gltf(
     export_format="GLB",
     use_selection=True,
     export_apply=True,
+    export_meshopt_compression_enable=True,
 )
 
 bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH), compress=True)
