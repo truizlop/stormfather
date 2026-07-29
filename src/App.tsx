@@ -1,17 +1,40 @@
 import { Canvas } from "@react-three/fiber";
 import { useProgress } from "@react-three/drei";
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { AtlasUI } from "./ui/AtlasUI";
 import { WorldScene } from "./world/WorldScene";
 
 function LoadingOverlay() {
   const { active, progress } = useProgress();
+  const loadStarted = useRef(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  useEffect(() => {
+    if (active) {
+      loadStarted.current = true;
+      return;
+    }
+    if (loadStarted.current && progress >= 99.5) {
+      setInitialLoadComplete(true);
+    }
+  }, [active, progress]);
+
   if (!active) return null;
   return (
-    <div className="loading-overlay" role="status">
+    <div
+      className={`loading-overlay ${
+        initialLoadComplete ? "is-background-load" : ""
+      }`}
+      role="status"
+      aria-live="polite"
+    >
       <span className="loading-mark" aria-hidden="true" />
-      <p>Charting the highstorm</p>
+      <p>
+        {initialLoadComplete
+          ? "Resolving local detail"
+          : "Charting the highstorm"}
+      </p>
       <strong>{Math.round(progress)}%</strong>
     </div>
   );

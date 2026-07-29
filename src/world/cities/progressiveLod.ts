@@ -318,16 +318,22 @@ export function createCitySilhouette(
     location.coordinates.x,
     location.coordinates.z,
   );
+  const positionScale = tier === "far" ? 0.16 : 0.68;
+  const horizontalScale = tier === "far" ? 0.34 : 0.67;
+  const verticalScale = tier === "far" ? 0.2 : 0.58;
   const seeds = Array.from({ length: count }, (_, index) => {
     const raw = rawSeed(profile, style, index, count);
-    const x = location.coordinates.x + raw.x;
-    const z = location.coordinates.z + raw.z;
+    const width = raw.width * horizontalScale;
+    const depth = raw.depth * horizontalScale;
+    const height = raw.height * verticalScale;
+    const x = location.coordinates.x + raw.x * positionScale;
+    const z = location.coordinates.z + raw.z * positionScale;
     const contact = footprintContactAt(
       location.id,
       x,
       z,
-      raw.width,
-      raw.depth,
+      width,
+      depth,
       raw.rotation,
     );
     const skirt = tier === "far" ? 0.14 : 0.08;
@@ -335,21 +341,16 @@ export function createCitySilhouette(
       x,
       y: contact.y,
       z,
-      width: raw.width,
-      depth: raw.depth,
-      height: raw.height,
+      width,
+      depth,
+      height,
       rotation: raw.rotation,
-      foundationWidth: raw.width * 1.12,
-      foundationDepth: raw.depth * 1.12,
+      foundationWidth: width * 1.12,
+      foundationDepth: depth * 1.12,
       foundationDrop: contact.foundationDrop + skirt,
-      color:
-        tier === "far"
-          ? location.regionColor
-          : profile.palette[index % profile.palette.length],
+      color: profile.palette[index % profile.palette.length],
       roofColor:
-        tier === "far"
-          ? location.accentColor
-          : profile.roofPalette[index % profile.roofPalette.length],
+        profile.roofPalette[index % profile.roofPalette.length],
     };
   });
 

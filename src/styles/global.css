@@ -1209,6 +1209,43 @@ input:focus-visible {
   animation: chart-spin 2.2s ease-in-out infinite;
 }
 
+.loading-overlay.is-background-load {
+  inset: auto 18px 18px auto;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "mark message"
+    "mark progress";
+  align-items: center;
+  justify-items: start;
+  min-width: 178px;
+  padding: 10px 14px;
+  border: 1px solid rgba(192, 155, 80, 0.48);
+  border-radius: 3px;
+  background: rgba(5, 19, 25, 0.9);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+.loading-overlay.is-background-load .loading-mark {
+  grid-area: mark;
+  width: 18px;
+  height: 18px;
+  margin-right: 12px;
+}
+
+.loading-overlay.is-background-load p {
+  grid-area: message;
+  margin: 0 0 2px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.loading-overlay.is-background-load strong {
+  grid-area: progress;
+}
+
 @keyframes chart-spin {
   50% {
     border-color: var(--stormlight);

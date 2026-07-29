@@ -75,10 +75,30 @@ describe("progressive city LOD", () => {
     expect(mid.estimatedDrawCalls).toBe(3);
   });
 
+  it("keeps far cartographic massing compact while mid detail grows toward the authored footprint", () => {
+    const far = createCitySilhouette("kharbranth", "far");
+    const mid = createCitySilhouette("kharbranth", "mid");
+    const farSpread = Math.max(
+      ...far.seeds.map((seed) =>
+        Math.hypot(seed.x - far.center[0], seed.z - far.center[2]),
+      ),
+    );
+    const midSpread = Math.max(
+      ...mid.seeds.map((seed) =>
+        Math.hypot(seed.x - mid.center[0], seed.z - mid.center[2]),
+      ),
+    );
+    expect(farSpread).toBeLessThan(1);
+    expect(midSpread).toBeGreaterThan(farSpread * 2);
+    expect(Math.max(...far.seeds.map((seed) => seed.height))).toBeLessThan(
+      Math.max(...mid.seeds.map((seed) => seed.height)),
+    );
+  });
+
   it("builds city-specific silhouettes instead of a generic replacement", () => {
     const urithiru = createCitySilhouette("urithiru", "far");
     const purelake = createCitySilhouette("purelake", "far");
-    const kharbranth = createCitySilhouette("kharbranth", "far");
+    const kharbranth = createCitySilhouette("kharbranth", "mid");
 
     expect(urithiru.style).toBe("tower");
     expect(purelake.style).toBe("lake");

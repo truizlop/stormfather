@@ -46,7 +46,12 @@ function applyLayerOpacity(
 ) {
   if (group) group.visible = weight > HIDDEN_WEIGHT;
   for (const material of materials) {
-    if (material) material.opacity = weight;
+    if (!material) continue;
+    const wasTransparent = material.transparent;
+    material.opacity = weight;
+    material.transparent = weight < 0.999;
+    material.depthWrite = weight >= 0.985;
+    if (material.transparent !== wasTransparent) material.needsUpdate = true;
   }
 }
 
@@ -172,10 +177,11 @@ function SilhouetteLayer({
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
           ref={foundationMaterial}
-          alphaHash
           vertexColors
           roughness={0.96}
           metalness={0.01}
+          emissive="#5f513e"
+          emissiveIntensity={0.34}
         />
       </instancedMesh>
       <instancedMesh
@@ -187,10 +193,11 @@ function SilhouetteLayer({
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
           ref={bodyMaterial}
-          alphaHash
           vertexColors
           roughness={0.9}
           metalness={0.02}
+          emissive="#796049"
+          emissiveIntensity={0.46}
         />
       </instancedMesh>
       <instancedMesh
@@ -202,10 +209,11 @@ function SilhouetteLayer({
         <RoofGeometry style={silhouette.profile.roof} />
         <meshStandardMaterial
           ref={roofMaterial}
-          alphaHash
           vertexColors
           roughness={0.84}
           metalness={0.035}
+          emissive="#765d43"
+          emissiveIntensity={0.38}
         />
       </instancedMesh>
     </group>
@@ -226,9 +234,15 @@ function applyNearOpacity(
 ) {
   if (group) group.visible = weight > HIDDEN_WEIGHT;
   for (const entry of entries) {
+    const wasTransparent = entry.material.transparent;
     entry.material.opacity = entry.baseOpacity * weight;
-    entry.material.transparent = entry.transparent;
-    entry.material.depthWrite = entry.depthWrite;
+    entry.material.transparent =
+      entry.transparent || weight < 0.999;
+    entry.material.depthWrite =
+      entry.depthWrite && weight >= 0.985;
+    if (entry.material.transparent !== wasTransparent) {
+      entry.material.needsUpdate = true;
+    }
   }
 }
 
@@ -265,9 +279,7 @@ function FadingNearLayer({
           transparent: source.transparent,
           depthWrite: source.depthWrite,
         });
-        if (!source.transparent) {
-          material.alphaHash = true;
-        }
+        material.alphaHash = false;
         material.needsUpdate = true;
         return material;
       });
@@ -318,7 +330,7 @@ export interface ProgressiveCityLodProps {
 
 /**
  * Three-tier city renderer: one-draw-family far and mid silhouettes crossfade
- * into the detailed local city. Alpha hashing avoids transparent sorting pops.
+ * into the detailed local city with a short, conventional alpha blend.
  */
 export function ProgressiveCityLod({
   locationId,
