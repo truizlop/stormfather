@@ -3,6 +3,7 @@ import { useAtlasStore } from "../../store/useAtlasStore";
 import type { DetailLevel } from "../types";
 import { placeableGazetteer } from "./catalog";
 import {
+  gazetteerMarkerWorld,
   gazetteerMarkerY,
   isGazetteerPlaceVisibleAtLod,
   isWithinGazetteerFocus,
@@ -65,14 +66,16 @@ function GazetteerMarker({
   if (place.world === null) {
     return null;
   }
-  const [x, z] = place.world;
+  const markerWorld = gazetteerMarkerWorld(place);
+  if (!markerWorld) return null;
+  const [x, z] = markerWorld;
   const scale = selected ? 1.45 : 1;
   const color = markerColor[place.kind];
 
   return (
     <group
       name={`Gazetteer_${place.id}`}
-      position={[x, gazetteerMarkerY(place), z]}
+      position={[x, gazetteerMarkerY(place, markerWorld), z]}
       scale={scale}
       userData={{ gazetteerId: place.id, visualization: place.visualization }}
       onClick={(event) => {

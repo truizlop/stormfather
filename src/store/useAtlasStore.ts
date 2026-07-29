@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { DetailLevel } from "../world/types";
+import { gazetteerById } from "../world/gazetteer/catalog";
 
 interface AtlasState {
   selectedId: string;
@@ -56,14 +57,18 @@ export const useAtlasStore = create<AtlasState>((set) => ({
       locationPanelOpen: true,
     })),
   focusGazetteerPlace: (id) =>
-    set((state) => ({
-      selectedGazetteerId: id,
-      travelEpoch: state.travelEpoch + 1,
-      stormMode: false,
-      menuOpen: false,
-      searchOpen: false,
-      locationPanelOpen: true,
-    })),
+    set((state) => {
+      const place = gazetteerById.get(id);
+      return {
+        selectedId: place?.parentLocationId ?? state.selectedId,
+        selectedGazetteerId: id,
+        travelEpoch: state.travelEpoch + 1,
+        stormMode: false,
+        menuOpen: false,
+        searchOpen: false,
+        locationPanelOpen: true,
+      };
+    }),
   setSimulationTime: (simulationTime) => set({ simulationTime }),
   togglePlaying: () => set((state) => ({ isPlaying: !state.isPlaying })),
   setPlaying: (isPlaying) => set({ isPlaying }),

@@ -11,6 +11,25 @@ const detailRank: Record<DetailLevel, number> = {
 
 const waterKinds = new Set<GazetteerKind>(["lake", "river", "sea", "ocean", "strait"]);
 
+interface CityPlanCalibration {
+  origin: readonly [number, number];
+  localUnitsPerPixel: readonly [number, number];
+  landmarkScale: number;
+}
+
+const cityPlanCalibrations: Record<string, CityPlanCalibration> = {
+  "kholinar-city-plan": {
+    origin: [429, 575],
+    localUnitsPerPixel: [1 / 80, 1 / 82],
+    landmarkScale: (4.8 * 2) / 10.799,
+  },
+  "azimir-city-plan": {
+    origin: [300, 420],
+    localUnitsPerPixel: [1 / 50, 0.014],
+    landmarkScale: (4.7 * 2) / 10.4,
+  },
+};
+
 export function isGazetteerPlaceVisibleAtLod(
   place: GazetteerPlace,
   detailLevel: DetailLevel,
@@ -22,14 +41,50 @@ export function isGazetteerPlaceVisibleAtLod(
   );
 }
 
-export function gazetteerMarkerY(place: GazetteerPlace) {
+/**
+ * Resolve a place to the point where its marker is actually drawn. Continental
+ * sources use their world point directly; readable city-plan pixels are
+ * registered into the selected authored city model.
+ */
+export function gazetteerMarkerWorld(
+  place: GazetteerPlace,
+): readonly [number, number] | null {
+  if (place.world === null) return null;
+  const placement = place.placementReference;
+  const calibration = placement
+    ? cityPlanCalibrations[placement.mapId]
+    : undefined;
+  if (!placement || !calibration) return place.world;
+  return [
+    place.world[0] +
+      (placement.pixel[0] - calibration.origin[0]) *
+        calibration.localUnitsPerPixel[0] *
+        calibration.landmarkScale,
+    place.world[1] +
+      (placement.pixel[1] - calibration.origin[1]) *
+        calibration.localUnitsPerPixel[1] *
+        calibration.landmarkScale,
+  ];
+}
+
+export function gazetteerMarkerY(
+  place: GazetteerPlace,
+  markerWorld = gazetteerMarkerWorld(place),
+) {
   if (place.world === null) {
     return 0;
   }
   if (waterKinds.has(place.kind)) {
     return 0.24;
   }
-  return terrainHeightAt(place.world[0], place.world[1]) + 0.18;
+  const cityPlan = place.placementReference
+    ? cityPlanCalibrations[place.placementReference.mapId]
+    : undefined;
+  if (cityPlan) {
+    return terrainHeightAt(place.world[0], place.world[1]) + 2.8;
+  }
+  const [x, z] = markerWorld ?? place.world;
+  return terrainHeightAt(x, z) + 0.18;
 }
 
 export function isWithinGazetteerFocus(
@@ -40,10 +95,11 @@ export function isWithinGazetteerFocus(
   if (!focusWorld || place.world === null) {
     return true;
   }
+  const markerWorld = gazetteerMarkerWorld(place) ?? place.world;
   return (
     Math.hypot(
-      place.world[0] - focusWorld[0],
-      place.world[1] - focusWorld[1],
+      markerWorld[0] - focusWorld[0],
+      markerWorld[1] - focusWorld[1],
     ) <= maxDistance
   );
 }

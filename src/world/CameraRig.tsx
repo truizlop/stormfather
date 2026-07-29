@@ -6,7 +6,7 @@ import type { MapControls as MapControlsImpl } from "three-stdlib";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { kharbranthRoadOffset } from "./cities/landmarkMetrics";
 import { detailFromDistance } from "./coordinates";
-import { gazetteerById } from "./gazetteer";
+import { gazetteerById, gazetteerMarkerWorld } from "./gazetteer";
 import { locationById } from "./locations";
 import { localSurfaceY } from "./terrain/localSurface";
 import { terrainHeightAt } from "./terrain/terrainHeight";
@@ -119,7 +119,10 @@ export function CameraRig() {
     const gazetteerPlace = selectedGazetteerId
       ? gazetteerById.get(selectedGazetteerId)
       : undefined;
-    if (!location && !gazetteerPlace?.world) return;
+    const gazetteerWorld = gazetteerPlace
+      ? gazetteerMarkerWorld(gazetteerPlace)
+      : null;
+    if (!location && !gazetteerWorld) return;
     if (transition.current.progress < 1) {
       transition.current.progress = Math.min(
         1,
@@ -127,23 +130,36 @@ export function CameraRig() {
       );
       const t = transition.current.progress;
       const eased = t * t * (3 - 2 * t);
-      const targetY = gazetteerPlace?.world
-        ? terrainHeightAt(gazetteerPlace.world[0], gazetteerPlace.world[1])
+      const targetY = gazetteerWorld
+        ? terrainHeightAt(gazetteerWorld[0], gazetteerWorld[1])
         : 0;
-      const destination = gazetteerPlace?.world
-        ? new THREE.Vector3(
-            gazetteerPlace.world[0] + (viewportWidth < 720 ? 9 : 7),
-            targetY + (viewportWidth < 720 ? 16 : 12),
-            gazetteerPlace.world[1] + (viewportWidth < 720 ? 12 : 9),
-          )
-        : new THREE.Vector3(...location!.camera.position);
-      const target = gazetteerPlace?.world
-        ? new THREE.Vector3(
-            gazetteerPlace.world[0],
-            targetY + 0.3,
-            gazetteerPlace.world[1],
-          )
-        : new THREE.Vector3(...location!.camera.target);
+      let destination = new THREE.Vector3(...location!.camera.position);
+      let target = new THREE.Vector3(...location!.camera.target);
+      if (gazetteerWorld && gazetteerPlace) {
+        const isStreetPlace = gazetteerPlace.minimumLod === "street";
+        const isRegionalPlace = gazetteerPlace.minimumLod === "region";
+        const offset = isStreetPlace
+          ? viewportWidth < 720
+            ? [6, 8, 7]
+            : [4, 6, 5]
+          : isRegionalPlace
+            ? viewportWidth < 720
+              ? [24, 34, 30]
+              : [18, 28, 22]
+            : viewportWidth < 720
+              ? [9, 16, 12]
+              : [7, 12, 9];
+        destination = new THREE.Vector3(
+          gazetteerWorld[0] + offset[0],
+          targetY + offset[1],
+          gazetteerWorld[1] + offset[2],
+        );
+        target = new THREE.Vector3(
+          gazetteerWorld[0],
+          targetY + (isStreetPlace ? 1.1 : 0.3),
+          gazetteerWorld[1],
+        );
+      }
       if (viewportWidth < 720 && location?.id === "roshar") {
         destination.set(target.x, target.y + 174, target.z + 48);
       }

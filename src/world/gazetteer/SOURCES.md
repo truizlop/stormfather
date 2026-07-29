@@ -38,3 +38,34 @@ This distinction prevents details such as Feverstone Keep or Uvara from being
 given invented map pins. It also keeps the Palanaeum and the Silent Gatherers'
 hospital unrendered: their containing complex is known, but neither has a
 distinct exterior that should masquerade as an independent city marker.
+
+## Shinovar monastery inset
+
+The Shinovar supplement uses the user-supplied 600 × 932 rendering of Isaac
+Stewart's official *Wind and Truth* interior map as a placement reference. The
+published original is 1347 × 2048 and identifies the ten Monasteries of Truth.
+
+- [Isaac Stewart, *Map of the Shin Monasteries*](https://coppermind.net/wiki/File:Map_of_Shin_Monasteries.jpg)
+- [Monastery of Truth overview and complete monastery list](https://coppermind.net/wiki/Monastery_of_Truth)
+- [Coppermind Shinovar category](https://coppermind.net/wiki/Category:Shinovar)
+- [Coppermind Shinovar geography](https://coppermind.net/wiki/Shinovar)
+
+Only fourteen clearly readable labels were transcribed: the Windrunner,
+Skybreaker, Dustbringer, Edgedancer, Truthwatcher, Lightweaver, Elsecaller,
+Willshaper, Stoneward, and Bondsmith monasteries; and Ayabiza, Mokdown, Koring,
+and Clearmount. Each links to its specific Coppermind entry as a naming and
+regional-location cross-check.
+
+The inset is not a surveyed projection and has no exact control points shared
+with the continental reference. `placementReference` therefore preserves each
+label's exact pixel on the supplied inset, while
+`shinovarMapPixelToReferencePixel` performs only an approximate affine
+registration for display. All fourteen resulting continental/world placements
+are intentionally marked `regional`, never `precise`.
+
+## Internal city plans
+
+Kholinar and Azimir also have audited local-plan supplements. Their exact
+in-plan pixels are preserved independently from their shared parent-city world
+anchors. See [CITY_PLAN_SOURCES.md](./CITY_PLAN_SOURCES.md) for the official
+map provenance, feature lists, exclusions, and placement policy.

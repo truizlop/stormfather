@@ -61,9 +61,29 @@ export interface GazetteerSource {
   url: string;
 }
 
+/**
+ * Auditable coordinates on a cited inset or city plan. These preserve relative
+ * placement without implying that an inset has been georeferenced precisely to
+ * the continental Roshar raster.
+ */
+export interface GazetteerPlacementReference {
+  mapId: string;
+  title: string;
+  pixel: readonly [number, number];
+  size: {
+    width: number;
+    height: number;
+  };
+}
+
 export interface GazetteerPlace {
   id: string;
   canonicalName: string;
+  /**
+   * Existing atlas destination whose authored local model contains this place.
+   * Selecting a plan-level feature loads that destination before focusing it.
+   */
+  parentLocationId?: string;
   kind: GazetteerKind;
   nationOrRegion: string;
   /**
@@ -80,6 +100,8 @@ export interface GazetteerPlace {
   referencePixel: readonly [number, number] | null;
   /** Stormfather world-space `[x, z]`, derived only from `referencePixel`. */
   world: readonly [number, number] | null;
+  /** Optional source-plan point retained independently of global placement. */
+  placementReference?: GazetteerPlacementReference;
   renderable: boolean;
   alternateNames?: readonly string[];
   sources: readonly GazetteerSource[];

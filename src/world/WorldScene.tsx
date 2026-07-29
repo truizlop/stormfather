@@ -12,7 +12,11 @@ import { CityActivities } from "./actors/CityActivities";
 import { LivingPopulation } from "./actors/LivingPopulation";
 import { ReactiveFlora } from "./actors/ReactiveFlora";
 import { CountryFrontiers } from "./cartography/CountryFrontiers";
-import { gazetteerById, GazetteerMarkers } from "./gazetteer";
+import {
+  gazetteerById,
+  gazetteerMarkerWorld,
+  GazetteerMarkers,
+} from "./gazetteer";
 import { locationById } from "./locations";
 import { RosharTerrain } from "./terrain/RosharTerrain";
 import { Highstorm } from "./weather/Highstorm";
@@ -29,9 +33,12 @@ export function WorldScene() {
   const selectedGazetteer = selectedGazetteerId
     ? gazetteerById.get(selectedGazetteerId)
     : undefined;
+  const selectedGazetteerWorld = selectedGazetteer
+    ? gazetteerMarkerWorld(selectedGazetteer)
+    : null;
   const focusWorld =
     detailLevel === "city" || detailLevel === "street"
-      ? selectedGazetteer?.world ??
+      ? selectedGazetteerWorld ??
         (selectedLocation
           ? ([
               selectedLocation.coordinates.x,

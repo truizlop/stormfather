@@ -1,8 +1,10 @@
 import type { DetailLevel } from "../types";
+import { cityPlanGazetteer } from "./cityPlans";
 import {
   referencePixelToGazetteerWorld,
   sourceMapPixelToReferencePixel,
 } from "./transform";
+import { shinovarGazetteer } from "./shinovar";
 import type {
   GazetteerCertainty,
   GazetteerKind,
@@ -1270,6 +1272,8 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     visualization: "lighthouse",
     coppermindSlug: "Puuli's_lighthouse",
   }),
+  ...shinovarGazetteer,
+  ...cityPlanGazetteer,
 ] as const;
 
 export const placeableGazetteer = rosharGazetteer.filter(
