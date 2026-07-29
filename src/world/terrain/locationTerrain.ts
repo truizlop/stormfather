@@ -1,4 +1,4 @@
-import { destinationAnchors } from "../cartography/geography";
+import { detailedLocationAnchors } from "../cartography/geography";
 import type { DetailedLocationId } from "./locationSurface";
 
 export type TerrainCradleKind =
@@ -105,7 +105,7 @@ const cradleInputs: readonly Omit<LocationTerrainCradle, "center">[] = [
 export const LOCATION_TERRAIN_CRADLES: readonly LocationTerrainCradle[] =
   cradleInputs.map((cradle) => ({
     ...cradle,
-    center: destinationAnchors[cradle.id],
+    center: detailedLocationAnchors[cradle.id],
   }));
 
 function clamp01(value: number) {

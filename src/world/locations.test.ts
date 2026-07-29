@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { gazetteerById, gazetteerMarkerWorld } from "./gazetteer";
 import { locationById } from "./locations";
+import { LOCATION_TERRAIN_CRADLES } from "./terrain/locationTerrain";
 
 describe("authored destination arrival framing", () => {
   it("centers the complete Shattered Plains footprint at city scale", () => {
@@ -20,4 +22,30 @@ describe("authored destination arrival framing", () => {
     expect(cameraDistance).toBeGreaterThan(11);
     expect(cameraDistance).toBeLessThan(28);
   });
+
+  it.each([
+    ["azir", "azimir"],
+    ["aimia", "akinah"],
+  ] as const)(
+    "co-registers the %s authored scene with the searched %s city",
+    (locationId, gazetteerId) => {
+      const location = locationById.get(locationId)!;
+      const place = gazetteerById.get(gazetteerId)!;
+      const marker = gazetteerMarkerWorld(place)!;
+      const cradle = LOCATION_TERRAIN_CRADLES.find(
+        (candidate) => candidate.id === locationId,
+      )!;
+
+      expect([location.coordinates.x, location.coordinates.z]).toEqual(
+        marker,
+      );
+      expect(cradle.center).toEqual(marker);
+      expect(
+        Math.hypot(
+          location.camera.target[0] - marker[0],
+          location.camera.target[2] - marker[1],
+        ),
+      ).toBeLessThan(0.02);
+    },
+  );
 });

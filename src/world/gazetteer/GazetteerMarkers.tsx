@@ -1199,7 +1199,17 @@ export function GazetteerMarkers({
           isSemanticSettlementDetailEligible(place, detailLevel)
         ) {
           return (
-            <Suspense key={place.id} fallback={null}>
+            <Suspense
+              key={place.id}
+              fallback={
+                <GazetteerMarker
+                  place={place}
+                  markerWorld={world}
+                  regionalClusterSize={regionalClusterSize}
+                  selected={selected}
+                />
+              }
+            >
               <SemanticSettlementDetail
                 place={place}
                 markerWorld={world}

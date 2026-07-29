@@ -1,4 +1,4 @@
-import { destinationAnchors } from "../cartography/geography";
+import { detailedLocationAnchors } from "../cartography/geography";
 import {
   KHARBRANTH_LANDMARK_SCALE,
   kharbranthRoadElevation,
@@ -227,7 +227,7 @@ function containsPoint(
 }
 
 function purelakeWaterHeight(simulationTime = 0) {
-  const centerX = destinationAnchors.purelake[0];
+  const centerX = detailedLocationAnchors.purelake[0];
   const drainage = preStormDrainage(
     stormXAtTime(simulationTime),
     centerX,
@@ -238,7 +238,7 @@ function purelakeWaterHeight(simulationTime = 0) {
 function createSurface(
   definition: SurfaceDefinition,
 ): DetailedLocationSurface {
-  const center = destinationAnchors[definition.id];
+  const center = detailedLocationAnchors[definition.id];
   return {
     id: definition.id,
     center,

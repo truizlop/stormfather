@@ -61,7 +61,10 @@ export const useAtlasStore = create<AtlasState>((set) => ({
     set((state) => {
       const place = gazetteerById.get(id);
       return {
-        selectedId: place?.parentLocationId ?? state.selectedId,
+        // Standalone gazetteer places have no authored parent scene. Reset to
+        // the neutral world selection so a previously visited detailed city
+        // is not force-rendered and simulated off-screen behind this search.
+        selectedId: place?.parentLocationId ?? "roshar",
         selectedGazetteerId: id,
         travelEpoch: state.travelEpoch + 1,
         stormMode: false,

@@ -20,14 +20,24 @@ describe("atlas selection recentering", () => {
     const focused = useAtlasStore.getState();
 
     expect(focused.selectedGazetteerId).toBe("vedenar");
-    expect(focused.selectedId).toBe("urithiru");
+    expect(focused.selectedId).toBe("roshar");
 
     focused.recenterSelection();
 
     const recentered = useAtlasStore.getState();
     expect(recentered.selectedGazetteerId).toBe("vedenar");
-    expect(recentered.selectedId).toBe("urithiru");
+    expect(recentered.selectedId).toBe("roshar");
     expect(recentered.travelEpoch).toBe(focused.travelEpoch + 1);
+  });
+
+  it("clears a stale authored parent when focusing a standalone city", () => {
+    useAtlasStore.setState({ selectedId: "kharbranth" });
+    useAtlasStore.getState().focusGazetteerPlace("hearthstone");
+
+    expect(useAtlasStore.getState()).toMatchObject({
+      selectedId: "roshar",
+      selectedGazetteerId: "hearthstone",
+    });
   });
 
   it("keeps a modeled gazetteer alias routed to its authored parent", () => {

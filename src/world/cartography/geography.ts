@@ -59,6 +59,29 @@ export const destinationAnchors = {
   "thaylen-city": referencePixelToWorld([1090, 970]),
 } as const;
 
+/**
+ * Physical centers of the nine authored close-detail scenes.
+ *
+ * Azir and Aimia are broad travel regions, while their GLB roots depict the
+ * specific cities of Azimir and Akinah. Keeping those city centers separate
+ * prevents a searched city from being framed at one point while its terrain,
+ * LOD proxies, architecture, and inhabitants render at the region label.
+ */
+export const detailedLocationAnchors = {
+  azir: referencePixelToWorld([
+    651.9543741951085,
+    738.3991578246096,
+  ]),
+  "shattered-plains": destinationAnchors["shattered-plains"],
+  urithiru: destinationAnchors.urithiru,
+  shinovar: destinationAnchors.shinovar,
+  purelake: destinationAnchors.purelake,
+  aimia: referencePixelToWorld([115, 700]),
+  kharbranth: destinationAnchors.kharbranth,
+  kholinar: destinationAnchors.kholinar,
+  "thaylen-city": destinationAnchors["thaylen-city"],
+} as const;
+
 export interface MountainRidge {
   id: string;
   points: readonly GeographyPoint[];

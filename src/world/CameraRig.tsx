@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import type { MapControls as MapControlsImpl } from "three-stdlib";
 import { useAtlasStore } from "../store/useAtlasStore";
+import { gazetteerArrivalOffset } from "./cameraArrival";
 import { kharbranthRoadOffset } from "./cities/landmarkMetrics";
 import { detailFromDistance } from "./coordinates";
 import { gazetteerById, gazetteerMarkerWorld } from "./gazetteer";
@@ -140,18 +141,10 @@ export function CameraRig() {
       let target = new THREE.Vector3(...location!.camera.target);
       if (gazetteerWorld && gazetteerPlace) {
         const isStreetPlace = gazetteerPlace.minimumLod === "street";
-        const isRegionalPlace = gazetteerPlace.minimumLod === "region";
-        const offset = isStreetPlace
-          ? viewportWidth < 720
-            ? [6, 8, 7]
-            : [4, 6, 5]
-          : isRegionalPlace
-            ? viewportWidth < 720
-              ? [24, 34, 30]
-              : [18, 28, 22]
-            : viewportWidth < 720
-              ? [9, 16, 12]
-              : [7, 12, 9];
+        const offset = gazetteerArrivalOffset(
+          gazetteerPlace,
+          viewportWidth < 720,
+        );
         destination = new THREE.Vector3(
           gazetteerWorld[0] + offset[0],
           targetY + offset[1],

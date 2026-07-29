@@ -1,8 +1,17 @@
 import type { EasterEgg, WorldLocation } from "./types";
-import { destinationAnchors } from "./cartography/geography";
+import {
+  destinationAnchors,
+  detailedLocationAnchors,
+} from "./cartography/geography";
 
 function coordinateFor(id: keyof typeof destinationAnchors) {
-  const [x, z] = destinationAnchors[id];
+  const detailAnchor =
+    id in detailedLocationAnchors
+      ? detailedLocationAnchors[
+          id as keyof typeof detailedLocationAnchors
+        ]
+      : undefined;
+  const [x, z] = detailAnchor ?? destinationAnchors[id];
   return { x, z };
 }
 
@@ -51,7 +60,10 @@ const locationData = [
     subtitle: "Heart of the Makabaki kingdoms",
     kind: "nation",
     coordinates: coordinateFor("azir"),
-    camera: { position: [-10, 22, 26], target: [-21, 1, 5] },
+    camera: {
+      position: [-7.95, 22, 29.74],
+      target: [-19.07, 1, 8.86],
+    },
     arrivalDetail: "city",
     regionColor: "#8d6335",
     accentColor: "#e0b05c",
@@ -171,7 +183,10 @@ const locationData = [
     subtitle: "The scoured western isles",
     kind: "island",
     coordinates: coordinateFor("aimia"),
-    camera: { position: [-45, 19, 20], target: [-55, 3.6, 5.5] },
+    camera: {
+      position: [-43.72, 19, 20.96],
+      target: [-53.44, 3.6, 6.4],
+    },
     arrivalDetail: "city",
     regionColor: "#3f4f55",
     accentColor: "#8bd3dc",
