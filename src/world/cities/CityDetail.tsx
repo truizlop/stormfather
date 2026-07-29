@@ -470,6 +470,8 @@ function ModuleInstance({
   foundationWidth,
   foundationDepth,
   foundationDrop,
+  masonryMicro,
+  stormwoodMicro,
 }: {
   name: string;
   position: [number, number, number];
@@ -478,6 +480,8 @@ function ModuleInstance({
   foundationWidth: number;
   foundationDepth: number;
   foundationDrop: number;
+  masonryMicro: THREE.Texture;
+  stormwoodMicro: THREE.Texture;
 }) {
   const { scene } = useGLTF(MODEL_URL);
   const clone = useMemo(() => {
@@ -491,10 +495,48 @@ function ModuleInstance({
       if (mesh.isMesh) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        const sourceMaterials = Array.isArray(mesh.material)
+          ? mesh.material
+          : [mesh.material];
+        const materials = sourceMaterials.map((sourceMaterial) => {
+          const material =
+            sourceMaterial.clone() as THREE.MeshStandardMaterial;
+          const lowerName =
+            `${object.name} ${material.name}`.toLowerCase();
+          const excludesMicroSurface =
+            /(glass|water|cyan|light|emissive)/.test(lowerName);
+          if (!excludesMicroSurface && "roughness" in material) {
+            const isStormwood =
+              /(wood|rope|timber|dock|balcony|shutter|door)/.test(
+                lowerName,
+              ) && !lowerName.includes("stone");
+            material.bumpMap = isStormwood
+              ? stormwoodMicro
+              : masonryMicro;
+            material.bumpScale = isStormwood ? 0.009 : 0.0055;
+            material.roughness = Math.max(
+              material.roughness ?? 0.8,
+              isStormwood ? 0.8 : 0.86,
+            );
+            material.metalness = Math.min(
+              material.metalness ?? 0,
+              0.06,
+            );
+          }
+          if (material.map) {
+            material.map.colorSpace = THREE.SRGBColorSpace;
+            material.map.anisotropy = 8;
+          }
+          material.needsUpdate = true;
+          return material;
+        });
+        mesh.material = Array.isArray(mesh.material)
+          ? materials
+          : materials[0];
       }
     });
     return copy;
-  }, [name, scene]);
+  }, [masonryMicro, name, scene, stormwoodMicro]);
   if (!clone) return null;
   return (
     <group position={position} rotation-y={rotation}>
@@ -524,6 +566,19 @@ function DistrictModules({
 }: {
   seeds: readonly ModuleSeed[];
 }) {
+  const [masonrySource, stormwoodSource] = useTexture([
+    `${import.meta.env.BASE_URL}textures/rosharan-masonry-microheight-v2.jpg`,
+    `${import.meta.env.BASE_URL}textures/rosharan-stormwood-microheight-v2.jpg`,
+  ]);
+  const masonryMicro = useMemo(
+    () => configureTexture(masonrySource, 5.6, THREE.NoColorSpace),
+    [masonrySource],
+  );
+  const stormwoodMicro = useMemo(
+    () => configureTexture(stormwoodSource, 4.8, THREE.NoColorSpace),
+    [stormwoodSource],
+  );
+
   return (
     <>
       {seeds.map((seed, index) => (
@@ -536,6 +591,8 @@ function DistrictModules({
           foundationWidth={seed.foundationWidth}
           foundationDepth={seed.foundationDepth}
           foundationDrop={seed.foundationDrop}
+          masonryMicro={masonryMicro}
+          stormwoodMicro={stormwoodMicro}
         />
       ))}
     </>
