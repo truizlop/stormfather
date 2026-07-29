@@ -18,6 +18,7 @@ interface AtlasState {
   toast: { title: string; message: string } | null;
   selectLocation: (id: string) => void;
   focusGazetteerPlace: (id: string) => void;
+  recenterSelection: () => void;
   setSimulationTime: (time: number) => void;
   togglePlaying: () => void;
   setPlaying: (playing: boolean) => void;
@@ -69,6 +70,18 @@ export const useAtlasStore = create<AtlasState>((set) => ({
         locationPanelOpen: true,
       };
     }),
+  recenterSelection: () =>
+    set((state) => ({
+      // Keep the exact gazetteer place selected. Re-selecting the modeled
+      // parent loses the searched city and used to send Vedenar back to
+      // Urithiru, Azimir back to generic Azir, and Akinah back to generic
+      // Aimia.
+      travelEpoch: state.travelEpoch + 1,
+      stormMode: false,
+      menuOpen: false,
+      searchOpen: false,
+      locationPanelOpen: true,
+    })),
   setSimulationTime: (simulationTime) => set({ simulationTime }),
   togglePlaying: () => set((state) => ({ isPlaying: !state.isPlaying })),
   setPlaying: (isPlaying) => set({ isPlaying }),

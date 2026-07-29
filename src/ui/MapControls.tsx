@@ -8,8 +8,10 @@ function zoom(factor: number) {
 }
 
 export function MapControls() {
-  const selectedId = useAtlasStore((state) => state.selectedId);
   const selectLocation = useAtlasStore((state) => state.selectLocation);
+  const recenterSelection = useAtlasStore(
+    (state) => state.recenterSelection,
+  );
   const frontiersVisible = useAtlasStore((state) => state.frontiersVisible);
   const toggleFrontiers = useAtlasStore((state) => state.toggleFrontiers);
 
@@ -40,7 +42,7 @@ export function MapControls() {
         <button
           type="button"
           aria-label="Reset north"
-          onClick={() => selectLocation(selectedId)}
+          onClick={recenterSelection}
         >
           <Navigation size={18} />
         </button>
@@ -54,7 +56,7 @@ export function MapControls() {
         <button
           type="button"
           aria-label="Center selected location"
-          onClick={() => selectLocation(selectedId)}
+          onClick={recenterSelection}
         >
           <Crosshair size={18} />
         </button>
