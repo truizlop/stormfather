@@ -182,33 +182,33 @@ function StormParticleWall() {
     <group>
       <StormParticleLayer
         band="rain"
-        count={mobile ? 1850 : 4100}
-        color="#a8c8d0"
-        opacity={mobile ? 0.72 : 0.66}
-        pointScale={mobile ? 2.5 : 2.9}
+        count={mobile ? 3200 : 7800}
+        color="#c4e1e6"
+        opacity={mobile ? 0.86 : 0.8}
+        pointScale={mobile ? 6.2 : 8}
       />
       <StormParticleLayer
         band="rain"
-        count={mobile ? 820 : 1900}
-        color="#d1dfe1"
-        opacity={0.48}
-        pointScale={mobile ? 1.75 : 2.05}
+        count={mobile ? 1450 : 3500}
+        color="#edf7f7"
+        opacity={0.62}
+        pointScale={mobile ? 4.5 : 5.8}
         position={[1.5, 1.1, -1.8]}
       />
       <StormParticleLayer
         band="spray"
-        count={mobile ? 620 : 1500}
-        color="#c5d7d8"
-        opacity={mobile ? 0.48 : 0.56}
-        pointScale={mobile ? 2.2 : 2.7}
+        count={mobile ? 1150 : 2800}
+        color="#d9e9e9"
+        opacity={mobile ? 0.64 : 0.7}
+        pointScale={mobile ? 4.8 : 6}
         position={[-1.3, 0, 0]}
       />
       <StormParticleLayer
         band="debris"
-        count={mobile ? 90 : 250}
-        color="#2c2925"
+        count={mobile ? 125 : 360}
+        color="#403b32"
         opacity={0.9}
-        pointScale={mobile ? 2.55 : 3.2}
+        pointScale={mobile ? 4.2 : 5.2}
         position={[-0.6, 0, 0]}
       />
       <mesh position={[-3.2, 0.045, 0]} rotation-x={-Math.PI / 2}>
@@ -285,9 +285,12 @@ const stormWallFragmentShader = /* glsl */ `
     float raggedTop = 0.86 + (fbm(vec2(vUv.x * 6.0, uTime * 0.025)) - 0.5) * 0.26;
     if (vUv.y > raggedTop || vUv.y < 0.008) discard;
 
-    vec3 charcoal = vec3(0.035, 0.075, 0.092);
-    vec3 slate = vec3(0.22, 0.31, 0.34);
-    vec3 spray = vec3(0.55, 0.64, 0.65);
+    // ACES compresses the low end aggressively. These values deliberately
+    // retain readable charcoal billows without turning an opaque wall into a
+    // featureless black cutout.
+    vec3 charcoal = vec3(0.14, 0.20, 0.23);
+    vec3 slate = vec3(0.40, 0.52, 0.56);
+    vec3 spray = vec3(0.72, 0.83, 0.84);
     float groundRoll = 1.0 - smoothstep(0.0, 0.24, vUv.y);
     vec3 color = mix(charcoal, slate, density * 0.72 + vRidge * 0.025);
     color = mix(color, spray, groundRoll * (0.28 + folded * 0.32));
@@ -295,6 +298,88 @@ const stormWallFragmentShader = /* glsl */ `
     color += vec3(0.62, 0.92, 1.0) * innerLightning;
     color *= 0.82 + density * 0.23;
     gl_FragColor = vec4(color, uOpacity);
+  }
+`;
+
+const stormCloudVertexShader = /* glsl */ `
+  varying vec3 vCloudPosition;
+  varying vec3 vCloudNormal;
+  varying vec3 vCloudColor;
+
+  void main() {
+    vec4 local = instanceMatrix * vec4(position, 1.0);
+    vec4 world = modelMatrix * local;
+    vCloudPosition = world.xyz;
+    vCloudNormal = normalize(
+      normalMatrix * mat3(instanceMatrix) * normal
+    );
+    vCloudColor = instanceColor;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`;
+
+const stormCloudFragmentShader = /* glsl */ `
+  uniform float uTime;
+  uniform float uFlash;
+  uniform float uBand;
+  varying vec3 vCloudPosition;
+  varying vec3 vCloudNormal;
+  varying vec3 vCloudColor;
+
+  float hash31(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+  }
+
+  float noise3(vec3 p) {
+    vec3 cell = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(
+        mix(hash31(cell), hash31(cell + vec3(1.0, 0.0, 0.0)), f.x),
+        mix(hash31(cell + vec3(0.0, 1.0, 0.0)), hash31(cell + vec3(1.0, 1.0, 0.0)), f.x),
+        f.y
+      ),
+      mix(
+        mix(hash31(cell + vec3(0.0, 0.0, 1.0)), hash31(cell + vec3(1.0, 0.0, 1.0)), f.x),
+        mix(hash31(cell + vec3(0.0, 1.0, 1.0)), hash31(cell + vec3(1.0, 1.0, 1.0)), f.x),
+        f.y
+      ),
+      f.z
+    );
+  }
+
+  float fbm3(vec3 p) {
+    float value = 0.0;
+    float amplitude = 0.56;
+    for (int octave = 0; octave < 4; octave++) {
+      value += noise3(p) * amplitude;
+      p = p * 2.03 + vec3(7.7, 13.1, 5.9);
+      amplitude *= 0.46;
+    }
+    return value;
+  }
+
+  void main() {
+    vec3 flow = vCloudPosition * vec3(0.34, 0.27, 0.29);
+    flow += vec3(-uTime * 0.045, uTime * 0.018, uTime * 0.012);
+    float billow = fbm3(flow);
+    float folded = fbm3(flow * 1.92 + billow * 1.35);
+    float density = smoothstep(0.28, 1.05, billow * 0.68 + folded * 0.48);
+
+    vec3 normal = normalize(vCloudNormal);
+    vec3 lightDirection = normalize(vec3(-0.38, 0.72, 0.42));
+    float diffuse = max(dot(normal, lightDirection), 0.0);
+    float grazing = pow(1.0 - abs(normal.z), 2.0);
+    float illumination = 0.48 + diffuse * 0.42 + grazing * 0.1;
+    vec3 color = vCloudColor * mix(0.54, 1.18, density) * illumination;
+    color = mix(color, color * vec3(0.72, 0.82, 0.86), folded * 0.22);
+    color += vec3(0.58, 0.89, 1.0)
+      * uFlash * pow(max(0.0, folded - 0.52), 3.0) * 3.2;
+    color += vec3(0.06, 0.085, 0.09) * (1.0 - uBand) * density;
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -349,9 +434,20 @@ function StormCloudLobes({
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const group = useRef<THREE.Group>(null);
+  const material = useRef<THREE.ShaderMaterial>(null);
   const lobes = useMemo(
     () => createStormCloudLobes(count, band),
     [band, count],
+  );
+  const uniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uFlash: { value: 0 },
+      uBand: {
+        value: band === "core" ? 0 : band === "shelf" ? 0.5 : 1,
+      },
+    }),
+    [band],
   );
 
   useLayoutEffect(() => {
@@ -360,16 +456,16 @@ function StormCloudLobes({
     const color = new THREE.Color();
     const dark =
       band === "core"
-        ? new THREE.Color("#111e24")
+        ? new THREE.Color("#29414a")
         : band === "shelf"
-          ? new THREE.Color("#30434b")
-          : new THREE.Color("#63757a");
+          ? new THREE.Color("#405c66")
+          : new THREE.Color("#70878c");
     const light =
       band === "core"
-        ? new THREE.Color("#53656a")
+        ? new THREE.Color("#748b91")
         : band === "shelf"
-          ? new THREE.Color("#819096")
-          : new THREE.Color("#c1cccd");
+          ? new THREE.Color("#99aaae")
+          : new THREE.Color("#d1dddd");
 
     lobes.forEach((lobe, index) => {
       dummy.position.set(lobe.x, lobe.y, lobe.z);
@@ -396,6 +492,10 @@ function StormCloudLobes({
   useFrame(({ clock }) => {
     if (!group.current) return;
     const time = clock.elapsedTime;
+    if (material.current) {
+      material.current.uniforms.uTime.value = time;
+      material.current.uniforms.uFlash.value = lightningIntensity(time);
+    }
     group.current.position.y =
       Math.sin(time * 0.19 + (band === "core" ? 0 : 1.7)) *
       (band === "ground" ? 0.08 : 0.18);
@@ -412,16 +512,18 @@ function StormCloudLobes({
         castShadow
         receiveShadow
       >
-        {band === "shelf" ? (
-          <dodecahedronGeometry args={[1, 1]} />
-        ) : (
-          <icosahedronGeometry args={[1, band === "core" ? 2 : 1]} />
-        )}
-        <meshStandardMaterial
-          vertexColors
-          roughness={1}
-          metalness={0}
-          flatShading={band === "ground"}
+        <icosahedronGeometry
+          args={[
+            1,
+            band === "core" ? 2 : band === "shelf" ? 2 : 1,
+          ]}
+        />
+        <shaderMaterial
+          ref={material}
+          uniforms={uniforms}
+          vertexShader={stormCloudVertexShader}
+          fragmentShader={stormCloudFragmentShader}
+          depthWrite
         />
       </instancedMesh>
     </group>
@@ -437,15 +539,15 @@ function StormCloudVolume() {
       <StormWallMembrane />
       <StormCloudLobes
         band="core"
-        count={mobile ? 54 : 108}
+        count={mobile ? 108 : 252}
       />
       <StormCloudLobes
         band="shelf"
-        count={mobile ? 36 : 72}
+        count={mobile ? 84 : 180}
       />
       <StormCloudLobes
         band="ground"
-        count={mobile ? 36 : 72}
+        count={mobile ? 72 : 144}
       />
     </group>
   );
@@ -532,9 +634,9 @@ export function Highstorm() {
       <Lightning />
       <pointLight
         position={[2, 8, 0]}
-        color="#839ca3"
-        intensity={18}
-        distance={22}
+        color="#a9c4c9"
+        intensity={34}
+        distance={28}
         decay={1.8}
       />
     </group>

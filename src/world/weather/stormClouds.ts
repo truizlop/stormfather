@@ -35,7 +35,7 @@ export function createStormCloudLobes(
     const z = -38 + u * 76;
 
     if (band === "ground") {
-      const scale = 1.7 + hash01(index, salt + 23) * 2.2;
+      const scale = 0.9 + hash01(index, salt + 23) * 1.45;
       return {
         x: -2.6 + hash01(index, salt + 11) * 5.8,
         y: 0.45 + v * 3.4,
@@ -50,7 +50,8 @@ export function createStormCloudLobes(
 
     const shelf = band === "shelf";
     const baseScale =
-      (shelf ? 2.4 : 2.9) + hash01(index, salt + 23) * (shelf ? 2.6 : 3.5);
+      (shelf ? 1.15 : 1.35) +
+      hash01(index, salt + 23) * (shelf ? 1.65 : 1.95);
     const height = shelf ? 5.3 + v * 11.8 : 2 + v * 22;
     return {
       x:
@@ -71,4 +72,3 @@ export function stormWallOpacity(localX: number) {
   const core = Math.max(0, 1 - Math.abs(localX + 0.8) / 6.4);
   return 0.58 + core * 0.4;
 }
-
