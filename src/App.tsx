@@ -3,7 +3,6 @@ import { useProgress } from "@react-three/drei";
 import { Suspense } from "react";
 import * as THREE from "three";
 import { AtlasUI } from "./ui/AtlasUI";
-import { FidelityComparison } from "./ui/FidelityComparison";
 import { WorldScene } from "./world/WorldScene";
 
 function LoadingOverlay() {
@@ -42,7 +41,6 @@ export function App() {
           <WorldScene />
         </Suspense>
       </Canvas>
-      <FidelityComparison />
       <AtlasUI />
       <LoadingOverlay />
     </main>

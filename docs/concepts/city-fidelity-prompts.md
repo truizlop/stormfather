@@ -63,7 +63,7 @@ specification.
 
 ## Standalone environment target
 
-Output: `public/reference/kharbranth-concept.jpg`.
+Output: `docs/concepts/city-fidelity-kharbranth.jpg`.
 
 Prompt:
 
@@ -78,7 +78,8 @@ Prompt:
 > highstorm front. No text, panels, map, logos, watermark or direct reproduction
 > of any artist.
 
-This clean image is the website's concept/live comparison asset.
+This clean image is an offline modeling and visual-QA target. It is deliberately
+excluded from the production bundle and must never be mapped onto scene geometry.
 
 ## Kharbranth resident target
 
@@ -124,13 +125,7 @@ without baked directional light, text, objects, logos or watermarks.
 - `public/textures/rosharan-skin-microdetail.png`: a neutral, seamless
   grayscale pore and fine-crease height field for extremely restrained skin
   bump on the CC0 anatomical bases.
-- `public/textures/kharbranth-vista-depth.png`: a grayscale city-depth
-  interpretation preserving the accepted harbor camera, with docks nearest and
-  sky, sea and distant cliff forms receding.
-- `public/textures/kharbranth-residents-depth.png`: a shallow grayscale
-  resident-depth interpretation used under the exact five-role color lineup.
-
 These files were generated through built-in ImageGen, then prepared as stripped,
-web-sized JPEG material scans or PNG displacement fields. They are consumed as
-albedo, roughness, fine bump detail, or shallow relief; code-native material
-color retains cultural variation.
+web-sized JPEG material scans or PNG micro-height fields. They are consumed only
+as surface albedo, roughness, or fine bump detail on modeled geometry;
+code-native material color retains cultural variation.

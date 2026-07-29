@@ -12,7 +12,6 @@ import { CityActivities } from "./actors/CityActivities";
 import { LivingPopulation } from "./actors/LivingPopulation";
 import { ReactiveFlora } from "./actors/ReactiveFlora";
 import { CountryFrontiers } from "./cartography/CountryFrontiers";
-import { KharbranthVistaLOD } from "./cities/KharbranthVistaLOD";
 import { RosharTerrain } from "./terrain/RosharTerrain";
 import { Highstorm } from "./weather/Highstorm";
 
@@ -73,7 +72,6 @@ export function WorldScene() {
       <CityActivities />
       <LivingPopulation />
       <Highstorm />
-      <KharbranthVistaLOD />
       <WorldLabels />
       <SimulationClock />
       <CameraRig />

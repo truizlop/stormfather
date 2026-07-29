@@ -43,22 +43,6 @@ weathered balcony ledge, patinated brackets and one ordinary bronze bell. It
 adds realistic distant detail while the authored meshes continue to provide
 true doors, windows, balconies and collision geometry at street distance.
 
-## `public/textures/kharbranth-vista-depth.png`
-
-Prompt summary: a grayscale depth interpretation of the accepted Kharbranth
-harbor composition. Foreground docks and lower wards are nearest, the terraced
-city recedes through middle gray, and sea, sky and distant cliff forms fall
-toward black. A subdivided Three.js plane consumes it as displacement so the
-photographic city LOD has real relief before the authored street geometry takes
-over.
-
-## `public/textures/kharbranth-residents-depth.png`
-
-Prompt summary: a grayscale figure-depth study derived from the original
-five-role Kharbranth resident lineup. It is applied at deliberately shallow
-displacement under the exact color reference, adding portrait parallax without
-changing the generated faces, garments, props, or composition.
-
 ## `public/textures/rosharan-skin-microdetail.png`
 
 Prompt summary: a seamless neutral grayscale micro-height field of subtle pores,
@@ -88,4 +72,7 @@ terrain detail while the deliberately pale values preserve the canonical biome
 colors beneath it. It contains no coastline, roads, rivers, structures, text, or
 official artwork.
 
-The textures are original visual assets for this non-commercial fan project. They are tinted, repeated, and combined with runtime procedural normals and lighting by Three.js.
+The textures are original visual assets for this non-commercial fan project.
+They are tiled or used as bounded façade atlases on real mesh surfaces, then
+combined with runtime material response and lighting by Three.js. No full-scene
+reference image is used as runtime geometry.

@@ -29,9 +29,6 @@ The accepted design concepts are preserved in [`docs/concepts`](docs/concepts). 
   terrain and minimap, with a visibility control and broad-zoom country labels
 - A responsive brass-and-slate interface with search, minimap, semantic scale
   bars, LOD controls, day/night lighting, and a compact mobile travel sheet
-- A draggable Kharbranth reference/live inspection mode with generated
-  depth-relief city and resident LODs; authored Blender streets and animated
-  residents take over again at navigable close range
 - Settlement lights, roads, mountain chains, culturally distinct materials, and
   ten hidden discoveries
 - An original Blender-authored landmark and inhabitant kit, plus original generated tiling materials
@@ -52,11 +49,6 @@ of body-plus-environment clearance.
 - The top detail controls and map zoom buttons move between continent, region, city, and street scales.
 - Select a small cyan discovery marker to reveal an easter egg.
 - Use the map-layer button to show or hide political frontiers.
-- In Kharbranth city or street detail, use **Compare generated art to 3D** and
-  switch between the city and resident views. The comparison labels its
-  image-based depth-relief LOD explicitly; close it or zoom to street scale to
-  return to the fully authored moving scene.
-
 ## Development
 
 Requires Node.js 22 or newer.

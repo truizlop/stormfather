@@ -1,4 +1,4 @@
-import { open, stat } from "node:fs/promises";
+import { open, readFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const modelPath = resolve("public/models/roshar-landmarks.glb");
@@ -62,13 +62,15 @@ const expectedTextures = [
   "kharbranth-facade-realistic.jpg",
   "kharbranth-stone-realistic.jpg",
   "rosharan-cloth-realistic.jpg",
-  "kharbranth-vista-depth.png",
-  "kharbranth-residents-depth.png",
   "rosharan-skin-microdetail.png",
 ];
-const expectedReferences = [
-  "kharbranth-concept.jpg",
-  "kharbranth-residents.jpg",
+const forbiddenRuntimeTokens = [
+  "FidelityComparison",
+  "KharbranthVistaLOD",
+  "kharbranth-vista-depth.png",
+  "kharbranth-residents-depth.png",
+  "reference/kharbranth-concept.jpg",
+  "reference/kharbranth-residents.jpg",
 ];
 
 try {
@@ -107,15 +109,21 @@ try {
     }
   }
   console.log(`✓ ${expectedTextures.length} generated runtime textures`);
-  for (const referenceName of expectedReferences) {
-    const reference = await stat(resolve("public/reference", referenceName));
-    if (reference.size < 64 * 1024) {
+
+  const sourceFiles = (await readdir(resolve("src"), { recursive: true }))
+    .filter((fileName) => /\.(css|ts|tsx)$/.test(fileName));
+  for (const fileName of sourceFiles) {
+    const source = await readFile(resolve("src", fileName), "utf8");
+    const forbidden = forbiddenRuntimeTokens.find((token) =>
+      source.includes(token),
+    );
+    if (forbidden) {
       throw new Error(
-        `Reference ${referenceName} is unexpectedly small: ${reference.size} bytes`,
+        `Runtime source ${fileName} contains rejected image-relief token ${forbidden}`,
       );
     }
   }
-  console.log(`✓ ${expectedReferences.length} generated fidelity references`);
+  console.log("✓ Runtime contains no full-scene image relief or comparison path");
 } catch (error) {
   console.error(`✗ Missing or invalid landmark kit at ${modelPath}`);
   console.error(error instanceof Error ? error.message : error);
