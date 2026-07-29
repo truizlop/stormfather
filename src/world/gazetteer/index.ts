@@ -16,6 +16,14 @@ export {
 } from "./cityPlans";
 export { GazetteerMarkers } from "./GazetteerMarkers";
 export {
+  literaryPlaceExclusions,
+  literaryPlaceGazetteer,
+} from "./literaryPlaces";
+export type {
+  LiteraryPlaceExclusion,
+  LiteraryPlaceExclusionReason,
+} from "./literaryPlaces";
+export {
   gazetteerMarkerWorld,
   gazetteerMarkerY,
   isGazetteerPlaceVisibleAtLod,

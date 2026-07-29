@@ -1,5 +1,6 @@
 import type { DetailLevel } from "../types";
 import { cityPlanGazetteer } from "./cityPlans";
+import { literaryPlaceGazetteer } from "./literaryPlaces";
 import {
   referencePixelToGazetteerWorld,
   sourceMapPixelToReferencePixel,
@@ -1274,6 +1275,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   }),
   ...shinovarGazetteer,
   ...cityPlanGazetteer,
+  ...literaryPlaceGazetteer,
 ] as const;
 
 export const placeableGazetteer = rosharGazetteer.filter(
