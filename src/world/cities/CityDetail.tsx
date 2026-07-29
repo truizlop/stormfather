@@ -24,11 +24,15 @@ import { cityProfile, type CityProfile } from "./profiles";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
-function configureTexture(texture: THREE.Texture, repeat: number) {
+function configureTexture(
+  texture: THREE.Texture,
+  repeat: number,
+  colorSpace: THREE.ColorSpace = THREE.SRGBColorSpace,
+) {
   const copy = texture.clone();
   copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
   copy.repeat.set(repeat, repeat);
-  copy.colorSpace = THREE.SRGBColorSpace;
+  copy.colorSpace = colorSpace;
   copy.anisotropy = 8;
   copy.needsUpdate = true;
   return copy;
@@ -56,17 +60,17 @@ function InstancedArchitecture({
   const doors = useRef<THREE.InstancedMesh>(null);
   const cornices = useRef<THREE.InstancedMesh>(null);
   const balconies = useRef<THREE.InstancedMesh>(null);
-  const [plasterSource, stoneSource] = useTexture([
-    `${import.meta.env.BASE_URL}textures/kharbranth-plaster-albedo.jpg`,
-    `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
+  const [masonrySource, stormwoodSource] = useTexture([
+    `${import.meta.env.BASE_URL}textures/rosharan-masonry-microheight-v2.jpg`,
+    `${import.meta.env.BASE_URL}textures/rosharan-stormwood-microheight-v2.jpg`,
   ]);
-  const plaster = useMemo(
-    () => configureTexture(plasterSource, 1.8),
-    [plasterSource],
+  const masonry = useMemo(
+    () => configureTexture(masonrySource, 5.6, THREE.NoColorSpace),
+    [masonrySource],
   );
-  const stone = useMemo(
-    () => configureTexture(stoneSource, 1.5),
-    [stoneSource],
+  const stormwood = useMemo(
+    () => configureTexture(stormwoodSource, 4.8, THREE.NoColorSpace),
+    [stormwoodSource],
   );
 
   useLayoutEffect(() => {
@@ -206,9 +210,6 @@ function InstancedArchitecture({
     }
   }, [profile.roof, seeds]);
 
-  const buildingTexture =
-    locationId === "kharbranth" ? plaster : stone;
-
   if (
     seeds.length === 0 ||
     [
@@ -232,8 +233,8 @@ function InstancedArchitecture({
       >
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
-          bumpMap={stone}
-          bumpScale={0.018}
+          bumpMap={masonry}
+          bumpScale={0.012}
           vertexColors
           roughness={0.94}
           metalness={0.01}
@@ -247,8 +248,8 @@ function InstancedArchitecture({
       >
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
-          bumpMap={buildingTexture}
-          bumpScale={0.014}
+          bumpMap={masonry}
+          bumpScale={locationId === "kharbranth" ? 0.007 : 0.009}
           vertexColors
           emissive="#5a4432"
           emissiveIntensity={0.1}
@@ -264,8 +265,8 @@ function InstancedArchitecture({
       >
         <RoofGeometry style={profile.roof} />
         <meshStandardMaterial
-          bumpMap={stone}
-          bumpScale={0.01}
+          bumpMap={masonry}
+          bumpScale={0.007}
           vertexColors
           emissive="#ad835b"
           emissiveIntensity={0.035}
@@ -287,8 +288,8 @@ function InstancedArchitecture({
       >
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
-          bumpMap={stone}
-          bumpScale={0.008}
+          bumpMap={stormwood}
+          bumpScale={0.009}
           vertexColors
           roughness={0.82}
         />
@@ -300,6 +301,8 @@ function InstancedArchitecture({
       >
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
+          bumpMap={masonry}
+          bumpScale={0.005}
           vertexColors
           roughness={0.8}
           metalness={0.05}
@@ -312,6 +315,8 @@ function InstancedArchitecture({
       >
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial
+          bumpMap={stormwood}
+          bumpScale={0.008}
           vertexColors
           roughness={0.86}
           metalness={0.04}

@@ -68,6 +68,37 @@ terrain detail while the deliberately pale values preserve the canonical biome
 colors beneath it. It contains no coastline, roads, rivers, structures, text, or
 official artwork.
 
+## `public/textures/rosharan-masonry-microheight-v2.jpg`
+
+Exact ImageGen prompt: “Create one seamless square grayscale micro-height
+texture for physically based 3D rendering: close-range storm-polished Rosharan
+stone masonry and mineral plaster, flat orthographic scan, even shadowless
+lighting, fine stone grain, subtle plaster pores, hairline crem deposits, salt
+bloom, and tiny wind-eroded pits. Keep all detail at sub-centimeter scale. No
+individual bricks, slabs, seams, mortar grid, borders, objects, scenery, text,
+symbols, people, or directional lighting. Neutral middle-gray base, restrained
+contrast, perfectly tileable on every edge.”
+
+The original ImageGen output was resized to a 1024-pixel high-quality JPEG. It
+is sampled in `NoColorSpace` as a bump field on authored and procedural
+architecture; existing material color and Blender facade atlases remain the
+albedo.
+
+## `public/textures/rosharan-stormwood-microheight-v2.jpg`
+
+Exact ImageGen prompt: “Create one seamless square grayscale micro-height
+texture for physically based 3D rendering: close-range weathered Rosharan
+stormwood with occasional fine braided-fiber striations suitable for timber,
+doors, shutters, balconies, docks, and rope. Flat orthographic scan, even
+shadowless lighting, fine dense grain, shallow tool scoring, salt and crem
+residue, tiny wind erosion. Keep all detail at sub-centimeter scale. No boards,
+planks, panel seams, knots larger than a coin, borders, objects, scenery, text,
+symbols, people, or directional lighting. Neutral middle-gray base, restrained
+contrast, perfectly tileable on every edge.”
+
+The original ImageGen output was resized to a 1024-pixel high-quality JPEG and
+is used only for fine bump response, preserving authored material color.
+
 The textures are original visual assets for this non-commercial fan project.
 They are tiled or used as bounded façade atlases on real mesh surfaces, then
 combined with runtime material response and lighting by Three.js. No full-scene

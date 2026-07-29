@@ -46,42 +46,41 @@ function LandmarkInstance({
 }) {
   const { scene } = useGLTF(MODEL_URL);
   const [
-    stoneSource,
     plasterSource,
-    kharbranthStoneSource,
     kharbranthFacadeSource,
+    masonryMicroSource,
+    stormwoodMicroSource,
   ] = useTexture([
-    `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
     `${import.meta.env.BASE_URL}textures/kharbranth-plaster-subtle.jpg`,
-    `${import.meta.env.BASE_URL}textures/kharbranth-stone-realistic.jpg`,
     `${import.meta.env.BASE_URL}textures/kharbranth-facade-realistic.jpg`,
+    `${import.meta.env.BASE_URL}textures/rosharan-masonry-microheight-v2.jpg`,
+    `${import.meta.env.BASE_URL}textures/rosharan-stormwood-microheight-v2.jpg`,
   ]);
-  const [stone, plaster, kharbranthStone, kharbranthFacade] = useMemo(() => {
-    return [
-      stoneSource,
-      plasterSource,
-      kharbranthStoneSource,
-      kharbranthFacadeSource,
-    ].map(
-      (source, index) => {
+  const [plaster, kharbranthFacade, masonryMicro, stormwoodMicro] =
+    useMemo(() => {
+      return [
+        plasterSource,
+        kharbranthFacadeSource,
+        masonryMicroSource,
+        stormwoodMicroSource,
+      ].map((source, index) => {
         const texture = source.clone();
         texture.wrapS = texture.wrapT =
-          index === 3 ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
-        const repeat =
-          index === 0 ? 3.2 : index === 1 ? 2.4 : index === 2 ? 3.8 : 1;
+          index === 1 ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
+        const repeat = index === 0 ? 2.4 : index === 1 ? 1 : index === 2 ? 6.4 : 5.2;
         texture.repeat.set(repeat, repeat);
-        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.colorSpace =
+          index < 2 ? THREE.SRGBColorSpace : THREE.NoColorSpace;
         texture.anisotropy = 8;
         texture.needsUpdate = true;
         return texture;
-      },
-    ) as [THREE.Texture, THREE.Texture, THREE.Texture, THREE.Texture];
-  }, [
-    kharbranthFacadeSource,
-    kharbranthStoneSource,
-    plasterSource,
-    stoneSource,
-  ]);
+      }) as [THREE.Texture, THREE.Texture, THREE.Texture, THREE.Texture];
+    }, [
+      kharbranthFacadeSource,
+      masonryMicroSource,
+      plasterSource,
+      stormwoodMicroSource,
+    ]);
   const clone = useMemo(() => {
     const source = scene.getObjectByName(rootName);
     if (!source) return null;
@@ -140,46 +139,38 @@ function LandmarkInstance({
             lowerName.includes("water") ||
             lowerName.includes("light");
           if (!excludesTexture && "roughness" in material) {
+            const isStormwood =
+              /(wood|rope|timber|dock|balcony|shutter|door)/.test(lowerName) &&
+              !lowerName.includes("stone");
+            const microSurface = isStormwood
+              ? stormwoodMicro
+              : masonryMicro;
             const isAuthoredCitySurface =
               material.name.toLowerCase().includes("sf_city_");
             if (isAuthoredCitySurface && material.map) {
-              // City atlases are embedded by Blender and remain the albedo on
-              // actual meshes. Reusing their micro-contrast as a restrained
-              // bump keeps deployment self-contained without pretending the
-              // albedo is a calibrated normal map.
+              // Blender-authored atlases stay in the color channel. Original
+              // grayscale scans supply only sub-centimeter relief so a wall
+              // remains a wall instead of reading like a projected image.
               material.map.colorSpace = THREE.SRGBColorSpace;
               material.map.anisotropy = 8;
-              material.bumpMap = material.map;
+              material.bumpMap = microSurface;
               material.roughnessMap = null;
-              material.bumpScale = 0.0014;
+              material.bumpScale = isStormwood ? 0.009 : 0.0055;
               material.roughness = Math.max(
                 material.roughness ?? 0.8,
-                0.84,
+                isStormwood ? 0.8 : 0.86,
               );
               material.metalness = Math.min(
                 material.metalness ?? 0,
                 0.04,
               );
             } else {
-              const usePlaster =
-                rootName === "Landmark_Kharbranth" &&
-                lowerName.includes("plaster");
-              const useKharbranthStone =
-                rootName === "Landmark_Kharbranth" && !usePlaster;
-              material.bumpMap = usePlaster
-                ? plaster
-                : useKharbranthStone
-                  ? kharbranthStone
-                  : stone;
-              material.roughnessMap = usePlaster
-                ? plaster
-                : useKharbranthStone
-                  ? kharbranthStone
-                  : stone;
-              material.bumpScale = usePlaster ? 0.00042 : 0.0024;
+              material.bumpMap = microSurface;
+              material.roughnessMap = null;
+              material.bumpScale = isStormwood ? 0.009 : 0.0055;
               material.roughness = Math.max(
                 material.roughness ?? 0.8,
-                0.78,
+                isStormwood ? 0.8 : 0.86,
               );
               material.metalness = Math.min(
                 material.metalness ?? 0,
@@ -198,11 +189,11 @@ function LandmarkInstance({
     return copy;
   }, [
     kharbranthFacade,
-    kharbranthStone,
+    masonryMicro,
     plaster,
     rootName,
     scene,
-    stone,
+    stormwoodMicro,
   ]);
 
   if (!clone) return null;
