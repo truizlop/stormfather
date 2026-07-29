@@ -51,7 +51,6 @@ const expectedRoots = [
 const expectedTextures = [
   "crem-stone-albedo.jpg",
   "shinovar-grass-albedo.jpg",
-  "highstorm-density.jpg",
   "shattered-paving-albedo.jpg",
   "kharbranth-plaster-albedo.jpg",
   "rosharan-cloth-albedo.jpg",

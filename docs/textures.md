@@ -10,10 +10,6 @@ Prompt summary: a seamless square, top-down, physically plausible storm-polished
 
 Prompt summary: a seamless square, top-down, physically plausible sheltered Shinovar surface with rich soil, conventional fine grass, subtle footpaths, clover, mossy pebbles, and faint agricultural furrows. The source contains no text, landmarks, or official artwork.
 
-## `public/textures/highstorm-density.jpg`
-
-Prompt summary: a seamless square grayscale storm-density field with rolling cellular billows, wind shear, fine vapor channels, and a full luminance range for shader opacity and displacement. The source contains no lightning symbols, landscape, text, or official artwork.
-
 ## `public/textures/shattered-paving-albedo.jpg`
 
 Prompt summary: a seamless top-down material scan of irregular blue-gray
