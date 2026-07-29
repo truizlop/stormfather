@@ -13,7 +13,7 @@ import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
 import { metersToLocal } from "../scale";
 import { localSurfaceY } from "../terrain/localSurface";
-import type { Culture } from "../types";
+import type { Culture, DetailLevel, WorldLocation } from "../types";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import { createDistrictLayout } from "../cities/districtLayout";
 import {
@@ -911,10 +911,15 @@ function DetailedResidents({
   );
 }
 
-export function LivingPopulation() {
-  const selectedId = useAtlasStore((state) => state.selectedId);
-  const detailLevel = useAtlasStore((state) => state.detailLevel);
-  const viewportWidth = useThree((state) => state.size.width);
+function ActiveLivingPopulation({
+  location,
+  detailLevel,
+  viewportWidth,
+}: {
+  location: WorldLocation;
+  detailLevel: DetailLevel;
+  viewportWidth: number;
+}) {
   const { scene } = useGLTF(MODEL_URL);
   const [portraitInspection, setPortraitInspection] = useState(false);
   useEffect(() => {
@@ -929,12 +934,8 @@ export function LivingPopulation() {
       window.removeEventListener("atlas:end-inspection", endPortrait);
     };
   }, []);
-  const location = locationById.get(selectedId);
-  const fallbackLocation = location ?? locationById.get("kholinar")!;
-  const closeDetail =
-    Boolean(location) &&
-    fallbackLocation.id !== "roshar" &&
-    (detailLevel === "city" || detailLevel === "street");
+  const fallbackLocation = location;
+  const closeDetail = true;
   const center = useMemo(
     () =>
       [
@@ -1003,8 +1004,6 @@ export function LivingPopulation() {
     [center, fallbackLocation.id, landmarkObstacles, layout, profile],
   );
 
-  if (!closeDetail || !location) return null;
-
   const streetCast =
     location.id === "kharbranth" &&
     detailLevel === "street" &&
@@ -1050,4 +1049,25 @@ export function LivingPopulation() {
   );
 }
 
-useGLTF.preload(MODEL_URL);
+export function LivingPopulation() {
+  const selectedId = useAtlasStore((state) => state.selectedId);
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const viewportWidth = useThree((state) => state.size.width);
+  const location = locationById.get(selectedId);
+
+  if (
+    !location ||
+    location.id === "roshar" ||
+    (detailLevel !== "city" && detailLevel !== "street")
+  ) {
+    return null;
+  }
+
+  return (
+    <ActiveLivingPopulation
+      location={location}
+      detailLevel={detailLevel}
+      viewportWidth={viewportWidth}
+    />
+  );
+}

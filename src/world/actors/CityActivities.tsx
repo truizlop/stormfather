@@ -273,5 +273,3 @@ export function CityActivities() {
     </group>
   );
 }
-
-useGLTF.preload(MODEL_URL);

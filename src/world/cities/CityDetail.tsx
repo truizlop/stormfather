@@ -598,5 +598,3 @@ export function CityDetail() {
     </group>
   );
 }
-
-useGLTF.preload(MODEL_URL);
