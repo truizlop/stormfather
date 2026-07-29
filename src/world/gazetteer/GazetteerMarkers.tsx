@@ -53,6 +53,103 @@ function isInstitution(place: GazetteerPlace) {
   );
 }
 
+function InstitutionMarker({
+  place,
+  color,
+}: {
+  place: GazetteerPlace;
+  color: string;
+}) {
+  if (place.visualization === "monastery") {
+    return (
+      <>
+        <mesh position={[0, 0.07, 0]}>
+          <boxGeometry args={[0.24, 0.14, 0.19]} />
+          <meshStandardMaterial color={color} roughness={0.84} />
+        </mesh>
+        <mesh position={[0, 0.185, 0]} rotation={[0, Math.PI / 4, 0]}>
+          <coneGeometry args={[0.18, 0.12, 4]} />
+          <meshStandardMaterial color="#745b42" roughness={0.9} />
+        </mesh>
+        <mesh position={[0, 0.29, 0]}>
+          <cylinderGeometry args={[0.025, 0.04, 0.13, 8]} />
+          <meshStandardMaterial color="#d4b764" roughness={0.66} />
+        </mesh>
+      </>
+    );
+  }
+  if (place.visualization === "palace") {
+    return (
+      <>
+        <mesh position={[0, 0.08, 0]}>
+          <cylinderGeometry args={[0.16, 0.19, 0.16, 12]} />
+          <meshStandardMaterial color={color} roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 0.19, 0]}>
+          <sphereGeometry args={[0.14, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshStandardMaterial
+            color="#c59e52"
+            metalness={0.22}
+            roughness={0.58}
+          />
+        </mesh>
+        <mesh position={[0, 0.31, 0]}>
+          <sphereGeometry args={[0.035, 8, 6]} />
+          <meshStandardMaterial color="#67c8cf" emissive="#163f45" />
+        </mesh>
+      </>
+    );
+  }
+  if (place.visualization === "hospital") {
+    return (
+      <>
+        <mesh position={[0, 0.07, 0]}>
+          <boxGeometry args={[0.25, 0.14, 0.18]} />
+          <meshStandardMaterial color={color} roughness={0.78} />
+        </mesh>
+        <mesh position={[0, 0.175, 0]}>
+          <sphereGeometry args={[0.12, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshStandardMaterial color="#d9d1ba" roughness={0.74} />
+        </mesh>
+        <mesh position={[0, 0.27, 0]}>
+          <cylinderGeometry args={[0.025, 0.035, 0.12, 8]} />
+          <meshStandardMaterial color="#6fdde0" emissive="#1c5d61" />
+        </mesh>
+      </>
+    );
+  }
+  if (place.visualization === "oathgate") {
+    return (
+      <>
+        <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.11, 0.18, 10]} />
+          <meshStandardMaterial
+            color="#c5a85e"
+            metalness={0.28}
+            roughness={0.56}
+          />
+        </mesh>
+        <mesh position={[0, 0.12, 0]}>
+          <cylinderGeometry args={[0.055, 0.075, 0.2, 10]} />
+          <meshStandardMaterial color={color} roughness={0.72} />
+        </mesh>
+      </>
+    );
+  }
+  return (
+    <>
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.13, 0.16, 0.16, 10]} />
+        <meshStandardMaterial color={color} roughness={0.72} />
+      </mesh>
+      <mesh position={[0, 0.185, 0]}>
+        <sphereGeometry args={[0.13, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color={color} roughness={0.76} />
+      </mesh>
+    </>
+  );
+}
+
 function GazetteerMarker({
   place,
   selected,
@@ -133,16 +230,7 @@ function GazetteerMarker({
           )}
         </>
       ) : isInstitution(place) ? (
-        <>
-          <mesh position={[0, 0.08, 0]}>
-            <cylinderGeometry args={[0.13, 0.16, 0.16, 10]} />
-            <meshStandardMaterial color={color} roughness={0.72} />
-          </mesh>
-          <mesh position={[0, 0.185, 0]}>
-            <sphereGeometry args={[0.13, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color={color} roughness={0.76} />
-          </mesh>
-        </>
+        <InstitutionMarker place={place} color={color} />
       ) : place.kind === "ruin" ? (
         <>
           <mesh position={[-0.06, 0.08, 0]} rotation={[0.08, 0, -0.14]}>
