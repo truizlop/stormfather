@@ -21,10 +21,7 @@ import {
   landmarkLocalScale,
 } from "../cities/landmarkMetrics";
 import { cityProfile } from "../cities/profiles";
-import {
-  detailedActorLocalScale,
-  residentHeightMeters,
-} from "./humanScale";
+import { detailedActorLocalScale } from "./humanScale";
 import { occupationsFor, type Occupation } from "./occupations";
 import {
   createNavigationField,
@@ -33,72 +30,31 @@ import {
   sampleNavigationRoute,
   type NavigationField,
 } from "./pedestrianNavigation";
+import {
+  createResidentVariation,
+  cultureDressProfiles,
+  movementGaitMultiplier,
+  movementSpeedMultiplier,
+  residentMovementState,
+} from "./residentVariation";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
-
-interface CulturePalette {
-  cloth: readonly string[];
-  skin: readonly string[];
-  accent: readonly string[];
-  marbling?: string;
-}
-
-const culturePalette: Record<Culture, CulturePalette> = {
-  alethi: {
-    cloth: ["#173d73", "#284f75", "#6d3f30", "#8d713d", "#27353b"],
-    skin: ["#5b321f", "#704026", "#8a5536", "#9d6744"],
-    accent: ["#d1a24d", "#91b8bd", "#be7658"],
-  },
-  azish: {
-    cloth: ["#6b214f", "#4b2b69", "#7e542c", "#173f51", "#d0b887"],
-    skin: ["#28130d", "#3a1b12", "#542a1a", "#6a3924"],
-    accent: ["#d6b25c", "#a779a4", "#6fb0ac"],
-  },
-  shin: {
-    cloth: ["#d3c3a2", "#846b4d", "#718052", "#9b6b54"],
-    skin: ["#b98263", "#d1a889", "#e0bd9d"],
-    accent: ["#8fae62", "#b97d4e", "#725e46"],
-  },
-  veden: {
-    cloth: ["#7e2f2f", "#5c343c", "#3b4f68", "#92724e"],
-    skin: ["#704129", "#8a4f33", "#9d6645"],
-    accent: ["#d39c62", "#6fa0a2", "#c4a45c"],
-  },
-  singer: {
-    cloth: ["#762a22", "#3a302b", "#8a593e", "#253c41"],
-    skin: ["#be3b2a", "#e4d0be", "#8f2e25"],
-    accent: ["#1d1716", "#d4b8a1", "#70463b"],
-    marbling: "#241818",
-  },
-  thaylen: {
-    cloth: ["#46545a", "#2e6267", "#76533d", "#8a785c"],
-    skin: ["#7e4c34", "#9b6342", "#b17651"],
-    accent: ["#d8d3c7", "#b69a64", "#6d9492"],
-  },
-  purelaker: {
-    cloth: ["#16737b", "#2f8990", "#a15a36", "#c49a44", "#424e43"],
-    skin: ["#7f472c", "#9c603a", "#b87950"],
-    accent: ["#e0bb57", "#7ec5b9", "#cf694b"],
-  },
-  aimian: {
-    cloth: ["#44666d", "#4c596b", "#6a6655"],
-    skin: ["#668aa6", "#78a2ba", "#53758f"],
-    accent: ["#8bd3dc", "#c0b482", "#6b8d93"],
-    marbling: "#23434f",
-  },
-  reshi: {
-    cloth: ["#596836", "#3d6f62", "#8c6038", "#a88a48"],
-    skin: ["#75472f", "#936047", "#ad7958"],
-    accent: ["#9bb66a", "#d8ad52", "#72aaa1"],
-  },
-};
 
 interface ResidentSeed {
   routeIndex: number;
   speedMetersPerSecond: number;
   phase: number;
   heightUnits: number;
+  shoulderScale: number;
+  torsoDepthScale: number;
+  limbScale: number;
+  legLengthScale: number;
+  headScale: number;
+  garmentLength: number;
+  garmentWidth: number;
+  garmentDepth: number;
   occupation: Occupation;
+  propScale: readonly [number, number, number];
   cloth: THREE.Color;
   skin: THREE.Color;
   accent: THREE.Color;
@@ -113,58 +69,8 @@ interface CrowdRefs {
   rightLegs: RefObject<THREE.InstancedMesh | null>;
   props: RefObject<THREE.InstancedMesh | null>;
   hats: RefObject<THREE.InstancedMesh | null>;
+  outerwear: RefObject<THREE.InstancedMesh | null>;
   marbling: RefObject<THREE.InstancedMesh | null>;
-}
-
-function propScale(occupation: Occupation) {
-  switch (occupation) {
-    case "porter":
-      return [
-        metersToLocal(0.46),
-        metersToLocal(0.38),
-        metersToLocal(0.5),
-      ] as const;
-    case "guard":
-    case "fisher":
-      return [
-        metersToLocal(0.045),
-        metersToLocal(1.5),
-        metersToLocal(0.045),
-      ] as const;
-    case "scribe":
-      return [
-        metersToLocal(0.34),
-        metersToLocal(0.045),
-        metersToLocal(0.46),
-      ] as const;
-    case "builder":
-      return [
-        metersToLocal(0.18),
-        metersToLocal(0.62),
-        metersToLocal(0.1),
-      ] as const;
-    case "merchant":
-    case "sailor":
-      return [
-        metersToLocal(0.4),
-        metersToLocal(0.32),
-        metersToLocal(0.4),
-      ] as const;
-    case "surgeon":
-      return [
-        metersToLocal(0.29),
-        metersToLocal(0.14),
-        metersToLocal(0.36),
-      ] as const;
-    case "farmer":
-      return [
-        metersToLocal(0.07),
-        metersToLocal(1.28),
-        metersToLocal(0.07),
-      ] as const;
-    default:
-      return [0.0001, 0.0001, 0.0001] as const;
-  }
 }
 
 function setPart(
@@ -203,6 +109,7 @@ function ArticulatedResidents({
   const rightLegs = useRef<THREE.InstancedMesh>(null);
   const props = useRef<THREE.InstancedMesh>(null);
   const hats = useRef<THREE.InstancedMesh>(null);
+  const outerwear = useRef<THREE.InstancedMesh>(null);
   const marbling = useRef<THREE.InstancedMesh>(null);
   const clothSource = useTexture(
     `${import.meta.env.BASE_URL}textures/rosharan-cloth-albedo.jpg`,
@@ -216,28 +123,46 @@ function ArticulatedResidents({
     copy.needsUpdate = true;
     return copy;
   }, [clothSource]);
-  const palette = culturePalette[culture];
+  const dress = cultureDressProfiles[culture];
   const occupations = useMemo(
     () => occupationsFor(locationId, culture),
     [culture, locationId],
   );
   const seeds = useMemo<ResidentSeed[]>(
     () =>
-      Array.from({ length: count }, (_, index) => ({
-        routeIndex: (index * 5 + locationId.length) % 10,
-        speedMetersPerSecond: 1.05 + ((index * 17) % 31) / 50,
-        phase: (index * 0.618 + locationId.length * 0.071) % 2,
-        heightUnits: metersToLocal(
-          residentHeightMeters(culture, index, locationId.length),
-        ),
-        occupation: occupations[index % occupations.length],
-        cloth: new THREE.Color(palette.cloth[index % palette.cloth.length]),
-        skin: new THREE.Color(palette.skin[(index * 3 + 1) % palette.skin.length]),
-        accent: new THREE.Color(
-          palette.accent[(index * 5 + 2) % palette.accent.length],
-        ),
-      })),
-    [count, culture, locationId, occupations, palette],
+      Array.from({ length: count }, (_, index) => {
+        const occupation = occupations[index % occupations.length];
+        const variation = createResidentVariation(
+          culture,
+          locationId,
+          index,
+          occupation,
+        );
+        return {
+          routeIndex: (index * 5 + locationId.length) % 10,
+          speedMetersPerSecond: 1.05 + ((index * 17) % 31) / 50,
+          phase: (index * 0.618 + locationId.length * 0.071) % 2,
+          heightUnits: metersToLocal(variation.heightMeters),
+          shoulderScale: variation.shoulderScale,
+          torsoDepthScale: variation.torsoDepthScale,
+          limbScale: variation.limbScale,
+          legLengthScale: variation.legLengthScale,
+          headScale: variation.headScale,
+          garmentLength: variation.garmentLength,
+          garmentWidth: variation.garmentWidth,
+          garmentDepth: variation.garmentDepth,
+          occupation,
+          propScale: [
+            metersToLocal(variation.propMeters[0]),
+            metersToLocal(variation.propMeters[1]),
+            metersToLocal(variation.propMeters[2]),
+          ],
+          cloth: new THREE.Color(variation.cloth),
+          skin: new THREE.Color(variation.skin),
+          accent: new THREE.Color(variation.accent),
+        };
+      }),
+    [count, culture, locationId, occupations],
   );
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const refs = useMemo<CrowdRefs>(
@@ -250,6 +175,7 @@ function ArticulatedResidents({
       rightLegs,
       props,
       hats,
+      outerwear,
       marbling,
     }),
     [],
@@ -260,9 +186,10 @@ function ArticulatedResidents({
       .map((ref) => ref.current)
       .filter((mesh): mesh is THREE.InstancedMesh => Boolean(mesh));
     if (meshes.length !== Object.keys(refs).length) return;
-    const darkMarble = new THREE.Color(palette.marbling ?? "#2a1b18");
+    const darkMarble = new THREE.Color(dress.marbling ?? "#2a1b18");
     seeds.forEach((seed, index) => {
       torso.current!.setColorAt(index, seed.cloth);
+      outerwear.current!.setColorAt(index, seed.accent);
       leftArms.current!.setColorAt(index, seed.cloth);
       rightArms.current!.setColorAt(index, seed.cloth);
       leftLegs.current!.setColorAt(index, seed.accent);
@@ -275,7 +202,7 @@ function ArticulatedResidents({
     meshes.forEach((mesh) => {
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     });
-  }, [palette.marbling, refs, seeds]);
+  }, [dress.marbling, refs, seeds]);
 
   useFrame(() => {
     if (
@@ -290,20 +217,40 @@ function ArticulatedResidents({
     const proximity = stormProximity(stormX, center[0]);
     const hurry = 1 + proximity * 2.8;
     const shelter = THREE.MathUtils.smoothstep(proximity, 0.34, 0.94);
-    const motion = seeds.map((seed) => {
+    const motion = seeds.map((seed, index) => {
       const route =
         navigation.routes[seed.routeIndex % navigation.routes.length];
+      const movement = residentMovementState(
+        locationId,
+        seed.occupation,
+        index,
+        proximity,
+      );
       const routeSpeed =
-        metersToLocal(seed.speedMetersPerSecond) / route.length;
+        (metersToLocal(seed.speedMetersPerSecond) *
+          movementSpeedMultiplier(movement)) /
+        route.length;
       const cycle = (elapsed * routeSpeed * hurry + seed.phase) % 2;
       const pingPong = cycle < 1 ? cycle : 2 - cycle;
+      const workingInPlace =
+        movement === "working" || movement === "conversing";
+      const anchor = 0.13 + (seed.routeIndex % 6) * 0.14;
+      const activeProgress = workingInPlace
+        ? THREE.MathUtils.clamp(
+            anchor +
+              Math.sin(elapsed * 0.42 + seed.phase * 7) *
+                (movement === "working" ? 0.022 : 0.012),
+            0.03,
+            0.97,
+          )
+        : pingPong;
       const routeProgress = THREE.MathUtils.lerp(
-        pingPong,
+        activeProgress,
         0.035 + (seed.routeIndex % 3) * 0.012,
         shelter,
       );
       const routePose = sampleNavigationRoute(route, routeProgress);
-      return { routePose, cycle };
+      return { routePose, cycle, movement };
     });
     const separated = resolveCrowdSeparation(
       motion.map(({ routePose }) => ({
@@ -313,11 +260,23 @@ function ArticulatedResidents({
       navigation,
     );
     seeds.forEach((seed, index) => {
-      const { routePose, cycle } = motion[index];
+      const { routePose, cycle, movement } = motion[index];
       const x = separated[index].x;
       const z = separated[index].z;
-      const facing =
-        routePose.heading + (cycle < 1 ? 0 : Math.PI);
+      let facing = routePose.heading + (cycle < 1 ? 0 : Math.PI);
+      if (movement === "conversing" && separated.length > 1) {
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        for (let other = 0; other < separated.length; other += 1) {
+          if (other === index) continue;
+          const dx = separated[other].x - x;
+          const dz = separated[other].z - z;
+          const distance = dx * dx + dz * dz;
+          if (distance < nearestDistance) {
+            nearestDistance = distance;
+            facing = Math.atan2(dx, dz);
+          }
+        }
+      }
       const forwardX = Math.sin(facing);
       const forwardZ = Math.cos(facing);
       const rightX = Math.cos(facing);
@@ -326,8 +285,7 @@ function ArticulatedResidents({
         Math.sin(
           elapsed * (6.5 + seed.speedMetersPerSecond * 2.2) * hurry +
             seed.phase * 8,
-        ) *
-        (seed.occupation === "scribe" || seed.occupation === "merchant" ? 0.35 : 1);
+        ) * movementGaitMultiplier(movement);
       const humanHeight = seed.heightUnits;
       const bob = Math.abs(gait) * humanHeight * 0.018;
       const lean = shelter * 0.28;
@@ -340,7 +298,27 @@ function ArticulatedResidents({
         dummy,
         index,
         [x, feetY + humanHeight * 0.6, z],
-        [humanHeight * 0.14, humanHeight * 0.2, humanHeight * 0.095],
+        [
+          humanHeight * 0.14 * seed.shoulderScale,
+          humanHeight * 0.2,
+          humanHeight * 0.095 * seed.torsoDepthScale,
+        ],
+        [lean, facing, 0],
+      );
+      setPart(
+        outerwear.current!,
+        dummy,
+        index,
+        [
+          x,
+          feetY + humanHeight * (0.12 + seed.garmentLength / 2),
+          z,
+        ],
+        [
+          humanHeight * seed.garmentWidth,
+          humanHeight * seed.garmentLength,
+          humanHeight * seed.garmentDepth,
+        ],
         [lean, facing, 0],
       );
       setPart(
@@ -348,7 +326,11 @@ function ArticulatedResidents({
         dummy,
         index,
         [x, feetY + humanHeight * 0.89, z],
-        [humanHeight * 0.105, humanHeight * 0.11, humanHeight * 0.105],
+        [
+          humanHeight * 0.105 * seed.headScale,
+          humanHeight * 0.11 * seed.headScale,
+          humanHeight * 0.105 * seed.headScale,
+        ],
         [lean, facing, 0],
       );
       for (const [side, mesh] of [
@@ -361,10 +343,14 @@ function ArticulatedResidents({
           index,
           [
             x + side * rightX * humanHeight * 0.064,
-            feetY + humanHeight * 0.21,
+            feetY + humanHeight * 0.21 * seed.legLengthScale,
             z + side * rightZ * humanHeight * 0.064,
           ],
-          [humanHeight * 0.045, humanHeight * 0.21, humanHeight * 0.052],
+          [
+            humanHeight * 0.045 * seed.limbScale,
+            humanHeight * 0.21 * seed.legLengthScale,
+            humanHeight * 0.052 * seed.limbScale,
+          ],
           [side * gait * 0.46, facing, 0],
         );
       }
@@ -372,12 +358,17 @@ function ArticulatedResidents({
         [-1, leftArms.current!],
         [1, rightArms.current!],
       ] as const) {
-        const workGesture =
-          seed.occupation === "builder" ||
-          seed.occupation === "fisher" ||
-          seed.occupation === "farmer"
-            ? Math.sin(elapsed * 2.6 + seed.phase * 7) * 0.55
-            : -side * gait * 0.42;
+        let workGesture = -side * gait * 0.42;
+        if (movement === "working") {
+          workGesture =
+            Math.sin(elapsed * 2.6 + seed.phase * 7) * 0.55;
+        } else if (movement === "conversing") {
+          workGesture =
+            side *
+            (0.22 + Math.sin(elapsed * 1.8 + seed.phase * 5) * 0.24);
+        } else if (movement === "carrying") {
+          workGesture = side * 0.42;
+        }
         setPart(
           mesh,
           dummy,
@@ -387,36 +378,46 @@ function ArticulatedResidents({
             feetY + humanHeight * 0.6,
             z + side * rightZ * humanHeight * 0.18,
           ],
-          [humanHeight * 0.035, humanHeight * 0.19, humanHeight * 0.042],
+          [
+            humanHeight * 0.035 * seed.limbScale,
+            humanHeight * 0.19,
+            humanHeight * 0.042 * seed.limbScale,
+          ],
           [workGesture + lean, facing, side * 0.12],
         );
       }
 
-      const pScale = propScale(seed.occupation);
-      const propY =
-        seed.occupation === "guard" ||
-        seed.occupation === "fisher" ||
-        seed.occupation === "farmer"
-          ? feetY + humanHeight * 0.48
-          : feetY + humanHeight * 0.56;
+      const staffLike = seed.propScale[1] > seed.propScale[0] * 3;
+      const propY = staffLike
+        ? feetY + humanHeight * 0.48
+        : feetY + humanHeight * 0.56;
+      const propForward =
+        movement === "carrying" ? humanHeight * 0.18 : humanHeight * 0.24;
       setPart(
         props.current!,
         dummy,
         index,
         [
-          x + forwardX * humanHeight * 0.24,
+          x + forwardX * propForward,
           propY,
-          z + forwardZ * humanHeight * 0.24,
+          z + forwardZ * propForward,
         ],
-        pScale,
-        [seed.occupation === "builder" ? gait * 0.7 : 0, facing, 0],
+        seed.propScale,
+        [movement === "working" ? gait * 0.7 : 0, facing, 0],
       );
 
       const hasHat =
         culture === "purelaker" ||
         culture === "azish" ||
         culture === "thaylen" ||
-        seed.occupation === "surgeon";
+        seed.occupation === "surgeon" ||
+        seed.occupation === "herder";
+      const hatWidth =
+        culture === "azish"
+          ? 0.2
+          : culture === "purelaker"
+            ? 0.18
+            : 0.145;
       setPart(
         hats.current!,
         dummy,
@@ -424,9 +425,9 @@ function ArticulatedResidents({
         [x, feetY + humanHeight * 1.01, z],
         hasHat
           ? [
-              humanHeight * 0.17,
+              humanHeight * hatWidth,
               humanHeight * 0.085,
-              humanHeight * 0.17,
+              humanHeight * hatWidth,
             ]
           : [0.0001, 0.0001, 0.0001],
         [0, facing, 0],
@@ -441,7 +442,7 @@ function ArticulatedResidents({
           feetY + humanHeight * 0.6,
           z - forwardZ * humanHeight * 0.1,
         ],
-        palette.marbling
+        dress.marbling
           ? [
               humanHeight * 0.025,
               humanHeight * 0.18,
@@ -471,6 +472,22 @@ function ArticulatedResidents({
           emissiveIntensity={0.28}
           toneMapped={false}
           roughness={0.84}
+        />
+      </instancedMesh>
+      <instancedMesh
+        ref={outerwear}
+        args={[undefined, undefined, count]}
+        castShadow
+      >
+        <coneGeometry args={[1, 1, 7]} />
+        <meshStandardMaterial
+          bumpMap={clothTexture}
+          bumpScale={0.006}
+          vertexColors
+          emissive="#171a1b"
+          emissiveIntensity={0.2}
+          toneMapped={false}
+          roughness={0.88}
         />
       </instancedMesh>
       <instancedMesh ref={heads} args={[undefined, undefined, count]} castShadow>

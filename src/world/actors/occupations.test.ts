@@ -20,4 +20,11 @@ describe("inhabitant occupations", () => {
     const occupations = occupationsFor("purelake", "purelaker");
     expect(occupations.filter((value) => value === "fisher").length).toBe(2);
   });
+
+  it("adds culturally relevant work beyond generic merchants and guards", () => {
+    expect(occupationsFor("shinovar", "shin")).toContain("herder");
+    expect(occupationsFor("thaylen-city", "thaylen")).toContain("dockworker");
+    expect(occupationsFor("azir", "azish")).toContain("courier");
+    expect(occupationsFor("aimia", "aimian")).toContain("scout");
+  });
 });
