@@ -27,7 +27,34 @@ renders at 1280 × 720 and 390 × 844.
 The final acceptance matrix is **15/15**, including the Build Web Apps visual,
 responsive, interaction, accessibility, and implementation signoff. Desktop and
 mobile Lighthouse accessibility and best-practices scores are both 100. The
-automated suite contains 44 passing tests across 12 files.
+automated suite contains 126 passing tests across 29 files.
+
+## Living Roshar refinement acceptance — 2026-07-29
+
+| # | Exact check | Evidence | Result |
+|---:|---|---|:---:|
+| 1 | Required-place contract | All 33 user-required names are source-backed, classified with the requested reader-facing category, inside the supplied-map raster, searchable, and routed to semantic geometry. Makabak is explicitly a regional display anchor rather than false point precision. | Pass |
+| 2 | Continuous city LOD | Far, mid, and authored near tiers crossfade with hysteresis. A selected city in city/street mode retains its authored layer, so wide hero cameras cannot regress to a box proxy. | Pass |
+| 3 | Urithiru form | The exported Blender root contains ten semicircular strata, repeated façade bays, crown drums, mountain embraces, a human-scale east entrance, and exactly ten local destination-labelled Oathgates. | Pass |
+| 4 | Urithiru terrain integration | The flat basalt pedestal is hidden; a cragged support massif is part of the shared terrain sampler; the landmark is sunk 0.62 units; mountain materials use the local rock family; render and pedestrian collision share the same east-facing rotation. | Pass |
+| 5 | Knights Radiant activity | Deterministic captain, knight, and squire patrols remain at shared human scale, clear the tower, expose an east-side hero patrol, leak readable Stormlight ribbons, and enter stormguard behavior near the highstorm. | Pass |
+| 6 | Living population and ecology | Meter-calibrated cultural variants, occupations, bridge crews, collision-safe routes, chulls, axehounds, skyeels, cremlings, a chasmfiend, and five spren families react to place, detail tier, and storm proximity. | Pass |
+| 7 | Highstorm power | The leading edge uses an opaque procedural billow core, dense rain/spray/debris particles, lightning, storm-reactive inhabitants/flora/water, and an oblique moving aerial camera. | Pass |
+| 8 | Water continuity | The ocean uses a higher-resolution adaptive surface with crossing swell families, Fresnel color, crests, coast foam, storm amplification, and separate shallow-water treatments without tiled square flecks. | Pass |
+| 9 | Responsive composition | Browser QA at 1440 × 960 and 390 × 844 reports zero horizontal overflow. The mobile Urithiru view keeps the monumental façade, terrain shoulders, map controls, scale, and travel sheet usable. | Pass |
+| 10 | Runtime and asset integrity | 126 tests, TypeScript, ESLint, production build, and asset validation pass. The 54.2 MiB GLB contains 3,794 authored objects, 352 Urithiru nodes, 45 expected roots, 13 runtime textures, and no full-scene image-relief path. | Pass |
+
+Latest living-world captures:
+
+- `living-roshar-desktop-continent.png`
+- `living-roshar-desktop-literary-place.png`
+- `living-roshar-desktop-kharbranth-mid.png`
+- `living-roshar-desktop-kharbranth-near.png`
+- `living-roshar-desktop-urithiru.png`
+- `living-roshar-desktop-highstorm.png`
+- `living-roshar-mobile-kharbranth.png`
+- `living-roshar-mobile-urithiru.png`
+- `living-roshar-mobile-highstorm.png`
 
 ## Visual fidelity
 
