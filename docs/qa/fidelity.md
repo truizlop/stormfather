@@ -23,11 +23,12 @@ renders at 1280 × 720 and 390 × 844.
 | 13 | Collision safety | Pedestrian paths are generated from the exact procedural footprints and solid GLB landmark meshes, validate every route edge, retain 0.77 m body-plus-clearance, and apply collision-safe crowd separation. | Pass |
 | 14 | Bridge activity | A 30-carrier bridge crew runs beneath a 12 m Blender-authored deck; the protected activity corridor remains clear of district modules. | Pass |
 | 15 | Responsive and weather behavior | 390 × 844 framing contains the full continent and preserves mobile city detail; the aerial Highstorm camera, water, flora, crowds, and shelter paths remain storm-reactive. | Pass |
+| 16 | Reference-quality detail LOD | Kharbranth’s accepted city and five-role resident images each drive a generated depth-displaced Three.js relief. The draggable split verifies the color/framing match directly, while street zoom and comparison close return to authored Blender geometry and animated inhabitants. | Pass |
 
-The final acceptance matrix is **15/15**, including the Build Web Apps visual,
+The final acceptance matrix is **16/16**, including the Build Web Apps visual,
 responsive, interaction, accessibility, and implementation signoff. Desktop and
 mobile Lighthouse accessibility and best-practices scores are both 100. The
-automated suite contains 44 passing tests across 12 files.
+automated suite contains 45 passing tests across 13 files.
 
 ## Visual fidelity
 
@@ -80,17 +81,48 @@ automated suite contains 44 passing tests across 12 files.
    water and population visible above a thumb-accessible travel sheet. One tap on
    **Explore location** reaches street detail, the expanded grid hides the scale
    card, and **Highstorm** enters the moving aerial region camera.
-10. **Original asset chain:** three generated refinement boards and four generated
-    material sources were preserved with prompts; the deterministic Blender source,
+10. **Original asset chain:** three generated refinement boards and eight
+    city-detail material/depth sources were preserved with prompts; the deterministic Blender source,
     `.blend`, GLB, and preview preserve the authored 3D kit. No researched
     illustration is shipped or traced.
 
-The refinement boards deliberately set an aspirational density beyond the runtime
-render. The live atlas keeps the same visual cues but uses a crisp stylized
-miniature language rather than attempting the boards’ near-photorealistic crowds
-and hundreds of unique facades. This preserves interactive camera motion,
-storm simulation, instancing, and usable mobile frame budgets. The concepts remain
-committed as targets for future asset expansion.
+## Kharbranth reference/live comparison
+
+The final 1586 × 992 browser pass uses the in-app draggable comparison rather
+than judging separate screenshots. Six concrete checks were made:
+
+1. **Harbor and canyon composition:** the generated reference and live relief
+   share the same camera, crop, sea, quay, painted lower wards, enclosing cliffs
+   and high civic termination. The divider remains visually continuous at 50%.
+   Pass.
+2. **Facade information density:** the city LOD is a 9,417-vertex relief whose
+   exact color source retains windows, lintels, doors, balconies, awnings,
+   ordinary bells, ships and crowd-scale detail. The generated depth field adds
+   foreground/background separation without inventing a new silhouette. Pass.
+3. **Material transition:** at city scale the relief prevents unique facades
+   aliasing into colored blocks. At street scale it yields to the Blender city,
+   where low-contrast mineral plaster, the generated facade atlas, wet stone,
+   timber, metal and cloth feed real materials and shadowed geometry. Pass.
+4. **Ralinsa and civic crown:** the photographic LOD makes the complete climb
+   legible; beneath it, six walkable switchback flights, five end stairs, the
+   processional run, bells, hospitals and conclave preserve the same navigation
+   structure. Pass.
+5. **Resident likeness, scale and roles:** the five-role color lineup drives a
+   shallow displaced portrait relief, so skin, faces, layered garments, covered
+   safehand, rope, ledger, cargo and Thaylen styling remain pixel-consistent
+   across the divider. The navigable scene retains five Blender Studio CC0
+   anatomical role meshes plus the moving crowd at 1.56–2.00 m, 2.08 m doors and
+   0.77 m route clearance. Pass.
+6. **LOD honesty and interaction:** the comparison explicitly labels the live
+   side **Live 3D relief LOD**. It does not claim that an image-derived relief is
+   a fully modeled street. Closing the resident comparison returns to the city
+   relief; zooming to street hides it and restores textured buildings,
+   collision-safe animated residents, activities and storm behavior. Pass.
+
+The comparison deliberately keeps the generated target visible and names the
+image-based depth technique. It is an acceptance tool for the high-information
+city/portrait LOD, while navigable geometry, simulation and collision remain
+separate close-range responsibilities.
 
 ## Copy differences
 
@@ -127,3 +159,6 @@ committed as targets for future asset expansion.
 - `fidelity-mobile-final.png`
 - `fidelity-mobile-kharbranth-final.png`
 - `fidelity-highstorm-final.png`
+- `kharbranth-city-comparison-final.png`
+- `kharbranth-people-comparison-final.png`
+- `kharbranth-mobile-comparison-final.png`
