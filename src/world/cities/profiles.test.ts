@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { localToMeters } from "../scale";
 import {
   createDistrictLayout,
+  footprintContactAt,
   moduleMetrics,
   usesProceduralArchitecture,
 } from "./districtLayout";
@@ -67,6 +68,23 @@ describe("city architecture profiles", () => {
     for (const module of layout.modules) {
       const metric = moduleMetrics[module.name];
       expect(localToMeters(metric.height * module.scale)).toBeGreaterThan(2.4);
+      expect(module.foundationDrop).toBeGreaterThanOrEqual(0.035);
     }
+    expect(
+      layout.buildings.every((building) => building.foundationDrop >= 0.045),
+    ).toBe(true);
+  });
+
+  it("samples rotated footprints and allocates terrain-reaching foundations", () => {
+    const contact = footprintContactAt(
+      "jah-keved",
+      14,
+      -4,
+      1.6,
+      1.2,
+      0.43,
+    );
+    expect(Number.isFinite(contact.y)).toBe(true);
+    expect(contact.foundationDrop).toBeGreaterThan(0.045);
   });
 });

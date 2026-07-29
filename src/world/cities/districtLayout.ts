@@ -14,6 +14,7 @@ export interface BuildingSeed {
   color: string;
   roofColor: string;
   lit: boolean;
+  foundationDrop: number;
 }
 
 export interface ModuleSeed {
@@ -23,6 +24,9 @@ export interface ModuleSeed {
   z: number;
   rotation: number;
   scale: number;
+  foundationWidth: number;
+  foundationDepth: number;
+  foundationDrop: number;
 }
 
 export interface ModuleMetric {
@@ -36,6 +40,11 @@ export interface ModuleMetric {
 export interface DistrictLayout {
   buildings: readonly BuildingSeed[];
   modules: readonly ModuleSeed[];
+}
+
+export interface FootprintContact {
+  y: number;
+  foundationDrop: number;
 }
 
 /**
@@ -147,6 +156,60 @@ export function usesProceduralArchitecture(locationId: string) {
   return !authoredLandmarkLocations.has(locationId);
 }
 
+/**
+ * Samples the whole rotated footprint instead of placing architecture from a
+ * single center point. The model sits on the highest sampled contact and a
+ * masonry/earth footing fills the full drop to the lowest corner, preventing
+ * the familiar "floating box on a hillside" silhouette.
+ */
+export function footprintContactAt(
+  locationId: string,
+  x: number,
+  z: number,
+  width: number,
+  depth: number,
+  rotation: number,
+): FootprintContact {
+  const centerY = localSurfaceY(locationId, x, z);
+  if (locationId === "purelake") {
+    return { y: centerY, foundationDrop: 0.035 };
+  }
+  if (locationId === "kharbranth") {
+    // Kharbranth uses authored stepped roads. Sampling across a switchback can
+    // reach the neighboring terrace even when the module is correctly seated.
+    return { y: centerY, foundationDrop: 0.055 };
+  }
+
+  const halfWidth = width * 0.52;
+  const halfDepth = depth * 0.52;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const offsets = [
+    [0, 0],
+    [-halfWidth, -halfDepth],
+    [halfWidth, -halfDepth],
+    [-halfWidth, halfDepth],
+    [halfWidth, halfDepth],
+    [-halfWidth, 0],
+    [halfWidth, 0],
+    [0, -halfDepth],
+    [0, halfDepth],
+  ] as const;
+  const samples = offsets.map(([localX, localZ]) =>
+    localSurfaceY(
+      locationId,
+      x + localX * cos + localZ * sin,
+      z - localX * sin + localZ * cos,
+    ),
+  );
+  const highest = Math.max(...samples);
+  const lowest = Math.min(...samples);
+  return {
+    y: highest - 0.008,
+    foundationDrop: Math.max(0.045, highest - lowest + 0.075),
+  };
+}
+
 export function districtCounts(
   profile: CityProfile,
   locationId: string,
@@ -195,9 +258,18 @@ export function createBuildingSeeds(
     const x = center[0] + Math.cos(angle) * radius;
     const z = center[1] + Math.sin(angle) * radius * 0.72;
 
+    const contact = footprintContactAt(
+      locationId,
+      x,
+      z,
+      width,
+      depth,
+      angle + ((index % 5) - 2) * 0.06,
+    );
+
     return {
       x,
-      y: localSurfaceY(locationId, x, z),
+      y: contact.y,
       z,
       width,
       depth,
@@ -207,6 +279,7 @@ export function createBuildingSeeds(
       roofColor:
         profile.roofPalette[(index * 3 + 1) % profile.roofPalette.length],
       lit: index % 4 === 0 || index % 9 === 0,
+      foundationDrop: contact.foundationDrop,
     };
   });
 }
@@ -371,10 +444,24 @@ export function createModuleSeeds(
       ) {
         continue;
       }
+      const foundationWidth = metric.width * metric.scale * 1.04;
+      const foundationDepth = metric.depth * metric.scale * 1.04;
+      const contact = footprintContactAt(
+        locationId,
+        candidate.x,
+        candidate.z,
+        foundationWidth,
+        foundationDepth,
+        -(
+          index * 2.399963 +
+          attempt * 0.73 +
+          0.6
+        ) + Math.PI / 2,
+      );
       modules.push({
         name,
         x: candidate.x,
-        y: localSurfaceY(locationId, candidate.x, candidate.z),
+        y: contact.y,
         z: candidate.z,
         rotation: -(
           index * 2.399963 +
@@ -382,6 +469,9 @@ export function createModuleSeeds(
           0.6
         ) + Math.PI / 2,
         scale: metric.scale,
+        foundationWidth,
+        foundationDepth,
+        foundationDrop: contact.foundationDrop,
       });
       break;
     }

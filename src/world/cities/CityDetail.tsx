@@ -50,6 +50,7 @@ function InstancedArchitecture({
   locationId: string;
 }) {
   const bodies = useRef<THREE.InstancedMesh>(null);
+  const foundations = useRef<THREE.InstancedMesh>(null);
   const roofs = useRef<THREE.InstancedMesh>(null);
   const windows = useRef<THREE.InstancedMesh>(null);
   const doors = useRef<THREE.InstancedMesh>(null);
@@ -71,6 +72,7 @@ function InstancedArchitecture({
   useLayoutEffect(() => {
     if (
       !bodies.current ||
+      !foundations.current ||
       !roofs.current ||
       !windows.current ||
       !doors.current ||
@@ -81,7 +83,24 @@ function InstancedArchitecture({
     }
     const dummy = new THREE.Object3D();
     const windowColor = new THREE.Color();
+    const foundationColor = new THREE.Color();
     seeds.forEach((seed, index) => {
+      dummy.position.set(
+        seed.x,
+        seed.y - seed.foundationDrop / 2 + 0.012,
+        seed.z,
+      );
+      dummy.rotation.set(0, seed.rotation, 0);
+      dummy.scale.set(
+        seed.width * 1.08,
+        seed.foundationDrop,
+        seed.depth * 1.08,
+      );
+      dummy.updateMatrix();
+      foundations.current!.setMatrixAt(index, dummy.matrix);
+      foundationColor.set(seed.color).multiplyScalar(0.48);
+      foundations.current!.setColorAt(index, foundationColor);
+
       dummy.position.set(seed.x, seed.y + seed.height / 2, seed.z);
       dummy.rotation.set(0, seed.rotation, 0);
       dummy.scale.set(seed.width, seed.height, seed.depth);
@@ -174,6 +193,7 @@ function InstancedArchitecture({
       balconies.current!.setColorAt(index, new THREE.Color(seed.roofColor));
     });
     for (const mesh of [
+      foundations.current,
       bodies.current,
       roofs.current,
       windows.current,
@@ -204,6 +224,21 @@ function InstancedArchitecture({
 
   return (
     <>
+      <instancedMesh
+        ref={foundations}
+        args={[undefined, undefined, seeds.length]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial
+          bumpMap={stone}
+          bumpScale={0.018}
+          vertexColors
+          roughness={0.94}
+          metalness={0.01}
+        />
+      </instancedMesh>
       <instancedMesh
         ref={bodies}
         args={[undefined, undefined, seeds.length]}
@@ -427,11 +462,17 @@ function ModuleInstance({
   position,
   rotation,
   scale,
+  foundationWidth,
+  foundationDepth,
+  foundationDrop,
 }: {
   name: string;
   position: [number, number, number];
   rotation: number;
   scale: number;
+  foundationWidth: number;
+  foundationDepth: number;
+  foundationDrop: number;
 }) {
   const { scene } = useGLTF(MODEL_URL);
   const clone = useMemo(() => {
@@ -451,8 +492,24 @@ function ModuleInstance({
   }, [name, scene]);
   if (!clone) return null;
   return (
-    <group position={position} rotation-y={rotation} scale={scale}>
-      <primitive object={clone} />
+    <group position={position} rotation-y={rotation}>
+      <mesh
+        position={[0, -foundationDrop / 2 + 0.01, 0]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry
+          args={[foundationWidth, foundationDrop, foundationDepth]}
+        />
+        <meshStandardMaterial
+          color="#4f4b42"
+          roughness={0.96}
+          metalness={0.01}
+        />
+      </mesh>
+      <group scale={scale}>
+        <primitive object={clone} />
+      </group>
     </group>
   );
 }
@@ -471,6 +528,9 @@ function DistrictModules({
           position={[seed.x, seed.y + 0.01, seed.z]}
           rotation={seed.rotation}
           scale={seed.scale}
+          foundationWidth={seed.foundationWidth}
+          foundationDepth={seed.foundationDepth}
+          foundationDrop={seed.foundationDrop}
         />
       ))}
     </>
