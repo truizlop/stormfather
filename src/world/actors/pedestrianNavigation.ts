@@ -270,15 +270,6 @@ function gridKey(gx: number, gz: number) {
   return `${gx}:${gz}`;
 }
 
-function neighboringKeys(node: GridNode) {
-  return [
-    gridKey(node.gx + 1, node.gz),
-    gridKey(node.gx - 1, node.gz),
-    gridKey(node.gx, node.gz + 1),
-    gridKey(node.gx, node.gz - 1),
-  ];
-}
-
 function edgeIsClear(
   start: NavigationPoint,
   end: NavigationPoint,
@@ -336,22 +327,37 @@ function edgeIsClear(
   });
 }
 
-function walkableNeighborKeys(
-  node: GridNode,
+function createWalkableAdjacency(
   nodes: Map<string, GridNode>,
   obstacles: readonly NavigationObstacle[],
   surface: NavigationSurfaceConstraints | undefined,
 ) {
-  return neighboringKeys(node).filter((key) => {
-    const neighbor = nodes.get(key);
-    return neighbor && edgeIsClear(node, neighbor, obstacles, surface);
-  });
+  const adjacency = new Map<string, string[]>();
+  for (const key of nodes.keys()) adjacency.set(key, []);
+
+  for (const node of nodes.values()) {
+    // Every edge is bidirectional because both obstacle clearance and the
+    // absolute slope/step contract are symmetric. Evaluate only east/north
+    // once, then reuse this graph for connected-component discovery and all
+    // ten route searches instead of resampling terrain eleven times.
+    for (const neighborKey of [
+      gridKey(node.gx + 1, node.gz),
+      gridKey(node.gx, node.gz + 1),
+    ]) {
+      const neighbor = nodes.get(neighborKey);
+      if (!neighbor || !edgeIsClear(node, neighbor, obstacles, surface)) {
+        continue;
+      }
+      adjacency.get(node.key)!.push(neighborKey);
+      adjacency.get(neighborKey)!.push(node.key);
+    }
+  }
+  return adjacency;
 }
 
 function largestConnectedComponent(
   nodes: Map<string, GridNode>,
-  obstacles: readonly NavigationObstacle[],
-  surface: NavigationSurfaceConstraints | undefined,
+  adjacency: ReadonlyMap<string, readonly string[]>,
 ) {
   const unvisited = new Set(nodes.keys());
   let largest: GridNode[] = [];
@@ -365,12 +371,7 @@ function largestConnectedComponent(
       const node = nodes.get(key);
       if (!node) continue;
       component.push(node);
-      for (const neighborKey of walkableNeighborKeys(
-        node,
-        nodes,
-        obstacles,
-        surface,
-      )) {
+      for (const neighborKey of adjacency.get(node.key) ?? []) {
         if (!unvisited.has(neighborKey)) continue;
         unvisited.delete(neighborKey);
         queue.push(neighborKey);
@@ -386,8 +387,7 @@ function shortestGridPath(
   allowed: Set<string>,
   start: GridNode,
   end: GridNode,
-  obstacles: readonly NavigationObstacle[],
-  surface: NavigationSurfaceConstraints | undefined,
+  adjacency: ReadonlyMap<string, readonly string[]>,
 ) {
   const queue = [start.key];
   const visited = new Set([start.key]);
@@ -397,12 +397,7 @@ function shortestGridPath(
     if (key === end.key) break;
     const node = nodes.get(key);
     if (!node) continue;
-    for (const neighborKey of walkableNeighborKeys(
-      node,
-      nodes,
-      obstacles,
-      surface,
-    )) {
+    for (const neighborKey of adjacency.get(node.key) ?? []) {
       if (!allowed.has(neighborKey) || visited.has(neighborKey)) continue;
       visited.add(neighborKey);
       previous.set(neighborKey, key);
@@ -537,11 +532,12 @@ export function createNavigationField(
     }
   }
 
-  const component = largestConnectedComponent(
+  const adjacency = createWalkableAdjacency(
     nodes,
     obstacles,
     routeSurface,
   );
+  const component = largestConnectedComponent(nodes, adjacency);
   const allowed = new Set(component.map((node) => node.key));
   const routes: NavigationRoute[] = [];
   for (let routeIndex = 0; routeIndex < 10; routeIndex += 1) {
@@ -566,8 +562,7 @@ export function createNavigationField(
       allowed,
       start,
       end,
-      obstacles,
-      routeSurface,
+      adjacency,
     );
     const points = rawPath.map(({ x, z }) => ({ x, z }));
     const length = routeLength(points);
