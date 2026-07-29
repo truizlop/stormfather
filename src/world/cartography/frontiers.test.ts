@@ -27,6 +27,10 @@ describe("Roshar country frontiers", () => {
     expect(frontierStyle.disputed.color).not.toBe(
       frontierStyle.porous.color,
     );
+    expect(frontierStyle.national.lineWidth).toBeGreaterThan(
+      frontierStyle.porous.lineWidth,
+    );
+    expect(frontierStyle.national.haloOpacity).toBeGreaterThan(0);
   });
 
   it("provides major and minor country labels", () => {

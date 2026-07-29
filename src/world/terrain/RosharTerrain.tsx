@@ -1,6 +1,6 @@
 import { Line, useTexture } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import {
@@ -9,10 +9,14 @@ import {
   inlandWaterPolygons,
   islandPolygons,
   mainlandOutline,
-  riverPaths,
   type GeographyPoint,
 } from "../cartography/geography";
 import { locations } from "../locations";
+import {
+  createRiverBankGeometry,
+  createRiverSurfaceGeometry,
+  riverDepressionAt,
+} from "./riverChannels";
 import { majorRoads } from "./rosharOutline";
 import { terrainHeightAt, terrainSlopeAt } from "./terrainHeight";
 import { WaterSystem } from "./WaterSystem";
@@ -27,6 +31,79 @@ const mapWidth = ROSHAR_MAP_BOUNDS.maxX - ROSHAR_MAP_BOUNDS.minX;
 const mapDepth = ROSHAR_MAP_BOUNDS.maxZ - ROSHAR_MAP_BOUNDS.minZ;
 const mapCenterX = (ROSHAR_MAP_BOUNDS.minX + ROSHAR_MAP_BOUNDS.maxX) / 2;
 const mapCenterZ = (ROSHAR_MAP_BOUNDS.minZ + ROSHAR_MAP_BOUNDS.maxZ) / 2;
+
+const riverVertexShader = `
+  attribute float aProgress;
+  varying vec2 vUv;
+  varying float vProgress;
+
+  void main() {
+    vUv = uv;
+    vProgress = aProgress;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const riverFragmentShader = `
+  uniform float uTime;
+  uniform float uNight;
+  varying vec2 vUv;
+  varying float vProgress;
+
+  float hash21(vec2 point) {
+    point = fract(point * vec2(123.34, 456.21));
+    point += dot(point, point + 45.32);
+    return fract(point.x * point.y);
+  }
+
+  void main() {
+    float across = abs(vUv.x * 2.0 - 1.0);
+    float downstream = vUv.y - uTime * 0.72;
+    float braidA = sin(downstream * 9.2 + sin(vUv.x * 8.0) * 1.6);
+    float braidB = sin(downstream * 15.8 - vUv.x * 11.0 + uTime * 0.34);
+    float glint = smoothstep(0.79, 0.99, braidA * 0.5 + braidB * 0.24 + 0.48);
+    float granular = hash21(floor(vec2(vUv.x * 19.0, downstream * 5.0)));
+    float edgeFoam = smoothstep(0.86, 0.995, across) *
+      smoothstep(0.46, 0.88, braidB * 0.5 + 0.5);
+    float estuaryFoam = smoothstep(0.78, 1.0, vProgress) *
+      smoothstep(0.69, 0.98, braidA * 0.5 + granular * 0.18 + 0.4);
+
+    vec3 daylightDeep = vec3(0.035, 0.15, 0.17);
+    vec3 daylightShallow = vec3(0.10, 0.32, 0.34);
+    vec3 nightDeep = vec3(0.018, 0.075, 0.105);
+    vec3 nightShallow = vec3(0.055, 0.20, 0.26);
+    vec3 deep = mix(daylightDeep, nightDeep, uNight);
+    vec3 shallow = mix(daylightShallow, nightShallow, uNight);
+    vec3 color = mix(deep, shallow, 0.28 + across * 0.34 + glint * 0.18);
+    color += vec3(0.21, 0.29, 0.28) * glint * (0.14 + 0.32 * (1.0 - uNight));
+    color = mix(color, vec3(0.52, 0.62, 0.57), max(edgeFoam * 0.42, estuaryFoam * 0.32));
+
+    float alpha = 0.84 + edgeFoam * 0.08;
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+const riverBankVertexShader = `
+  varying vec2 vUv;
+
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const riverBankFragmentShader = `
+  uniform float uNight;
+  varying vec2 vUv;
+
+  void main() {
+    float feather = smoothstep(0.0, 0.74, vUv.x);
+    float silt = 0.78 + sin(vUv.y * 41.0) * 0.08;
+    vec3 dayColor = vec3(0.20, 0.25, 0.20) * silt;
+    vec3 nightColor = vec3(0.055, 0.075, 0.07);
+    gl_FragColor = vec4(mix(dayColor, nightColor, uNight), feather * 0.48);
+  }
+`;
 
 function rasterRowToWorldZ(row: number, height: number) {
   return (
@@ -173,7 +250,7 @@ function createTerrainGeometry(segmentsX: number, segmentsZ: number) {
   for (let index = 0; index < positions.count; index += 1) {
     const x = positions.getX(index);
     const z = positions.getZ(index);
-    const height = terrainHeightAt(x, z);
+    const height = terrainHeightAt(x, z) + riverDepressionAt(x, z);
     positions.setY(index, height);
     terrainColorAt(x, z, height).toArray(colors, index * 3);
   }
@@ -390,64 +467,90 @@ function CartographicLines() {
 
 function RiverNetwork() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
-  const tributaries = useMemo(
-    () =>
-      riverPaths.flatMap((river, riverIndex) =>
-        river.points.slice(1, -1).map((point, pointIndex) => {
-          const previous = river.points[pointIndex];
-          const following = river.points[pointIndex + 2];
-          const tangentX = following[0] - previous[0];
-          const tangentZ = following[1] - previous[1];
-          const length = Math.hypot(tangentX, tangentZ) || 1;
-          const side = (riverIndex + pointIndex) % 2 === 0 ? 1 : -1;
-          const reach = 1.4 + ((riverIndex * 5 + pointIndex * 3) % 5) * 0.3;
-          const source: GeographyPoint = [
-            point[0] + (-tangentZ / length) * reach * side - tangentX * 0.08,
-            point[1] + (tangentX / length) * reach * side - tangentZ * 0.08,
-          ];
-          return [source, point] as const;
-        }),
-      ),
+  const nightMode = useAtlasStore((state) => state.nightMode);
+  const viewportWidth = useThree((state) => state.size.width);
+  const mobile = viewportWidth < 720;
+  const surfaceGeometry = useMemo(
+    () => createRiverSurfaceGeometry(mobile ? 0.38 : 0.22),
+    [mobile],
+  );
+  const bankGeometry = useMemo(
+    () => createRiverBankGeometry(mobile ? 0.42 : 0.25),
+    [mobile],
+  );
+  const riverUniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uNight: { value: 0 },
+    }),
     [],
+  );
+  const bankUniforms = useMemo(
+    () => ({
+      uNight: { value: 0 },
+    }),
+    [],
+  );
+  const riverMaterialRef = useRef<THREE.ShaderMaterial>(null);
+  const bankMaterialRef = useRef<THREE.ShaderMaterial>(null);
+
+  useFrame((state) => {
+    if (riverMaterialRef.current) {
+      riverMaterialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      riverMaterialRef.current.uniforms.uNight.value = nightMode ? 1 : 0;
+    }
+    if (bankMaterialRef.current) {
+      bankMaterialRef.current.uniforms.uNight.value = nightMode ? 1 : 0;
+    }
+  });
+
+  useEffect(
+    () => () => {
+      surfaceGeometry.dispose();
+      bankGeometry.dispose();
+    },
+    [bankGeometry, surfaceGeometry],
   );
 
   if (detailLevel === "city" || detailLevel === "street") return null;
   return (
     <group name="Canonical river network">
-      {riverPaths.map((river) => (
-        <Line
-          key={river.id}
-          points={river.points.map(([x, z]) => [
-            x,
-            terrainHeightAt(x, z) + 0.1,
-            z,
-          ])}
-          color="#2d8790"
-          lineWidth={
-            (detailLevel === "continent" ? 0.86 : 1.28) +
-            river.width * 1.8
-          }
+      <mesh
+        name="Shallow river valleys and wet banks"
+        geometry={bankGeometry}
+        renderOrder={2}
+      >
+        <shaderMaterial
+          ref={bankMaterialRef}
+          vertexShader={riverBankVertexShader}
+          fragmentShader={riverBankFragmentShader}
+          uniforms={bankUniforms}
           transparent
-          opacity={detailLevel === "continent" ? 0.72 : 0.84}
           depthWrite={false}
-          renderOrder={3}
+          side={THREE.DoubleSide}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
         />
-      ))}
-      {tributaries.map((tributary, index) => (
-        <Line
-          key={index}
-          points={tributary.map(([x, z]) => [
-            x,
-            terrainHeightAt(x, z) + 0.09,
-            z,
-          ])}
-          color="#397d83"
-          lineWidth={detailLevel === "continent" ? 0.42 : 0.68}
+      </mesh>
+      <mesh
+        name="Directional animated river surfaces and estuaries"
+        geometry={surfaceGeometry}
+        renderOrder={3}
+      >
+        <shaderMaterial
+          ref={riverMaterialRef}
+          vertexShader={riverVertexShader}
+          fragmentShader={riverFragmentShader}
+          uniforms={riverUniforms}
           transparent
-          opacity={0.56}
           depthWrite={false}
+          side={THREE.DoubleSide}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
-      ))}
+      </mesh>
     </group>
   );
 }

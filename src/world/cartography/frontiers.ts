@@ -304,6 +304,8 @@ export const frontierStyle: Record<
   FrontierKind,
   {
     color: string;
+    haloColor: string;
+    haloOpacity: number;
     opacity: number;
     dashSize: number;
     gapSize: number;
@@ -311,24 +313,30 @@ export const frontierStyle: Record<
   }
 > = {
   national: {
-    color: "#e2c57f",
-    opacity: 0.92,
+    color: "#dc805d",
+    haloColor: "#241b17",
+    haloOpacity: 0.54,
+    opacity: 0.94,
     dashSize: 0,
     gapSize: 0,
-    lineWidth: 1.42,
+    lineWidth: 1.88,
   },
   disputed: {
-    color: "#f19a70",
+    color: "#efbc6b",
+    haloColor: "#281817",
+    haloOpacity: 0.58,
     opacity: 0.95,
     dashSize: 0.55,
     gapSize: 0.24,
-    lineWidth: 1.58,
+    lineWidth: 1.62,
   },
   porous: {
-    color: "#bdcb89",
+    color: "#bbc991",
+    haloColor: "#19201a",
+    haloOpacity: 0.5,
     opacity: 0.82,
     dashSize: 0.22,
     gapSize: 0.42,
-    lineWidth: 1.18,
+    lineWidth: 1.22,
   },
 };
