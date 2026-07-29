@@ -12,12 +12,33 @@ import { CityActivities } from "./actors/CityActivities";
 import { LivingPopulation } from "./actors/LivingPopulation";
 import { ReactiveFlora } from "./actors/ReactiveFlora";
 import { CountryFrontiers } from "./cartography/CountryFrontiers";
+import { gazetteerById, GazetteerMarkers } from "./gazetteer";
+import { locationById } from "./locations";
 import { RosharTerrain } from "./terrain/RosharTerrain";
 import { Highstorm } from "./weather/Highstorm";
 
 export function WorldScene() {
   const nightMode = useAtlasStore((state) => state.nightMode);
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const selectedId = useAtlasStore((state) => state.selectedId);
+  const selectedGazetteerId = useAtlasStore(
+    (state) => state.selectedGazetteerId,
+  );
   const viewportWidth = useThree((state) => state.size.width);
+  const selectedLocation = locationById.get(selectedId);
+  const selectedGazetteer = selectedGazetteerId
+    ? gazetteerById.get(selectedGazetteerId)
+    : undefined;
+  const focusWorld =
+    detailLevel === "city" || detailLevel === "street"
+      ? selectedGazetteer?.world ??
+        (selectedLocation
+          ? ([
+              selectedLocation.coordinates.x,
+              selectedLocation.coordinates.z,
+            ] as const)
+          : undefined)
+      : undefined;
 
   return (
     <>
@@ -64,6 +85,11 @@ export function WorldScene() {
       />
       <RosharTerrain />
       <CountryFrontiers />
+      <GazetteerMarkers
+        detailLevel={detailLevel}
+        selectedId={selectedGazetteerId ?? selectedId}
+        focusWorld={focusWorld}
+      />
       <CityClusters />
       <Landmarks />
       <SettlementLights />

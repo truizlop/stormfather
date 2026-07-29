@@ -3,6 +3,7 @@ import type { DetailLevel } from "../world/types";
 
 interface AtlasState {
   selectedId: string;
+  selectedGazetteerId: string | null;
   travelEpoch: number;
   simulationTime: number;
   isPlaying: boolean;
@@ -15,6 +16,7 @@ interface AtlasState {
   frontiersVisible: boolean;
   toast: { title: string; message: string } | null;
   selectLocation: (id: string) => void;
+  focusGazetteerPlace: (id: string) => void;
   setSimulationTime: (time: number) => void;
   togglePlaying: () => void;
   setPlaying: (playing: boolean) => void;
@@ -31,6 +33,7 @@ interface AtlasState {
 
 export const useAtlasStore = create<AtlasState>((set) => ({
   selectedId: "roshar",
+  selectedGazetteerId: null,
   travelEpoch: 0,
   simulationTime: 12,
   isPlaying: true,
@@ -45,8 +48,18 @@ export const useAtlasStore = create<AtlasState>((set) => ({
   selectLocation: (id) =>
     set((state) => ({
       selectedId: id,
+      selectedGazetteerId: null,
       travelEpoch: state.travelEpoch + 1,
       stormMode: id === "highstorm",
+      menuOpen: false,
+      searchOpen: false,
+      locationPanelOpen: true,
+    })),
+  focusGazetteerPlace: (id) =>
+    set((state) => ({
+      selectedGazetteerId: id,
+      travelEpoch: state.travelEpoch + 1,
+      stormMode: false,
       menuOpen: false,
       searchOpen: false,
       locationPanelOpen: true,
@@ -59,6 +72,7 @@ export const useAtlasStore = create<AtlasState>((set) => ({
     set((state) => ({
       stormMode,
       selectedId: stormMode ? "highstorm" : "shattered-plains",
+      selectedGazetteerId: null,
       travelEpoch: state.travelEpoch + 1,
     })),
   toggleNightMode: () => set((state) => ({ nightMode: !state.nightMode })),

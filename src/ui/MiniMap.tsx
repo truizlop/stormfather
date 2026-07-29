@@ -1,4 +1,5 @@
 import { useAtlasStore } from "../store/useAtlasStore";
+import { gazetteerById } from "../world/gazetteer";
 import { locationById, locations } from "../world/locations";
 import { worldToMinimap } from "../world/coordinates";
 import { stormXAtTime } from "../world/weather/storm";
@@ -47,11 +48,20 @@ const viewportSize = {
 
 export function MiniMap() {
   const selectedId = useAtlasStore((state) => state.selectedId);
+  const selectedGazetteerId = useAtlasStore(
+    (state) => state.selectedGazetteerId,
+  );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const simulationTime = useAtlasStore((state) => state.simulationTime);
   const frontiersVisible = useAtlasStore((state) => state.frontiersVisible);
   const selected = locationById.get(selectedId) ?? locationById.get("roshar")!;
-  const marker = worldToMinimap(selected.coordinates);
+  const selectedGazetteer = selectedGazetteerId
+    ? gazetteerById.get(selectedGazetteerId)
+    : undefined;
+  const gazetteerCoordinates = selectedGazetteer?.world
+    ? { x: selectedGazetteer.world[0], z: selectedGazetteer.world[1] }
+    : undefined;
+  const marker = worldToMinimap(gazetteerCoordinates ?? selected.coordinates);
   const storm = worldToMinimap({
     x: stormXAtTime(simulationTime),
     z: 0,
@@ -165,7 +175,7 @@ export function MiniMap() {
         />
       </svg>
       <div className="minimap-caption">
-        <span>{selected.name}</span>
+        <span>{selectedGazetteer?.canonicalName ?? selected.name}</span>
         <strong>{detailLevel}</strong>
       </div>
     </aside>

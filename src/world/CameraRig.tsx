@@ -6,8 +6,10 @@ import type { MapControls as MapControlsImpl } from "three-stdlib";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { kharbranthRoadOffset } from "./cities/landmarkMetrics";
 import { detailFromDistance } from "./coordinates";
+import { gazetteerById } from "./gazetteer";
 import { locationById } from "./locations";
 import { localSurfaceY } from "./terrain/localSurface";
+import { terrainHeightAt } from "./terrain/terrainHeight";
 import { stormXAtTime } from "./weather/storm";
 
 function updatePerspectiveFov(camera: THREE.Camera, fov: number) {
@@ -26,6 +28,9 @@ export function CameraRig() {
     startTarget: new THREE.Vector3(),
   });
   const selectedId = useAtlasStore((state) => state.selectedId);
+  const selectedGazetteerId = useAtlasStore(
+    (state) => state.selectedGazetteerId,
+  );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const travelEpoch = useAtlasStore((state) => state.travelEpoch);
   const stormMode = useAtlasStore((state) => state.stormMode);
@@ -111,7 +116,10 @@ export function CameraRig() {
     }
 
     const location = locationById.get(selectedId);
-    if (!location) return;
+    const gazetteerPlace = selectedGazetteerId
+      ? gazetteerById.get(selectedGazetteerId)
+      : undefined;
+    if (!location && !gazetteerPlace?.world) return;
     if (transition.current.progress < 1) {
       transition.current.progress = Math.min(
         1,
@@ -119,9 +127,24 @@ export function CameraRig() {
       );
       const t = transition.current.progress;
       const eased = t * t * (3 - 2 * t);
-      const destination = new THREE.Vector3(...location.camera.position);
-      const target = new THREE.Vector3(...location.camera.target);
-      if (viewportWidth < 720 && location.id === "roshar") {
+      const targetY = gazetteerPlace?.world
+        ? terrainHeightAt(gazetteerPlace.world[0], gazetteerPlace.world[1])
+        : 0;
+      const destination = gazetteerPlace?.world
+        ? new THREE.Vector3(
+            gazetteerPlace.world[0] + (viewportWidth < 720 ? 9 : 7),
+            targetY + (viewportWidth < 720 ? 16 : 12),
+            gazetteerPlace.world[1] + (viewportWidth < 720 ? 12 : 9),
+          )
+        : new THREE.Vector3(...location!.camera.position);
+      const target = gazetteerPlace?.world
+        ? new THREE.Vector3(
+            gazetteerPlace.world[0],
+            targetY + 0.3,
+            gazetteerPlace.world[1],
+          )
+        : new THREE.Vector3(...location!.camera.target);
+      if (viewportWidth < 720 && location?.id === "roshar") {
         destination.set(target.x, target.y + 174, target.z + 48);
       }
       camera.position.lerpVectors(

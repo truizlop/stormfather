@@ -1,11 +1,15 @@
 import { ChevronRight, CloudLightning, Layers3, Pause, Play } from "lucide-react";
 import { useAtlasStore } from "../store/useAtlasStore";
+import { gazetteerById } from "../world/gazetteer";
 import { locationById, travelLocations } from "../world/locations";
 import { stormPhase, stormXAtTime } from "../world/weather/storm";
 import { locationIcons } from "./icons";
 
 export function MobileChrome() {
   const selectedId = useAtlasStore((state) => state.selectedId);
+  const selectedGazetteerId = useAtlasStore(
+    (state) => state.selectedGazetteerId,
+  );
   const selectLocation = useAtlasStore((state) => state.selectLocation);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const simulationTime = useAtlasStore((state) => state.simulationTime);
@@ -15,17 +19,31 @@ export function MobileChrome() {
   const menuOpen = useAtlasStore((state) => state.menuOpen);
   const selected =
     locationById.get(selectedId) ?? locationById.get("shattered-plains")!;
+  const selectedGazetteer = selectedGazetteerId
+    ? gazetteerById.get(selectedGazetteerId)
+    : undefined;
+  const stormCoordinateX = selectedGazetteer?.world?.[0] ?? selected.coordinates.x;
   const phase = stormPhase(
     stormXAtTime(simulationTime),
-    selected.coordinates.x,
+    stormCoordinateX,
   );
 
   return (
     <div className={`mobile-chrome ${menuOpen ? "is-menu-open" : ""}`}>
       <section className="mobile-location-strip panel">
         <div>
-          <h2>{stormMode ? "Highstorm" : selected.name}</h2>
-          <p>{stormMode ? "Following the stormwall" : selected.subtitle}</p>
+          <h2>
+            {stormMode
+              ? "Highstorm"
+              : selectedGazetteer?.canonicalName ?? selected.name}
+          </h2>
+          <p>
+            {stormMode
+              ? "Following the stormwall"
+              : selectedGazetteer
+                ? `${selectedGazetteer.kind} · ${selectedGazetteer.nationOrRegion} · ${selectedGazetteer.certainty}`
+                : selected.subtitle}
+          </p>
           <span>
             <CloudLightning size={13} />
             {phase === "storm"
@@ -53,7 +71,11 @@ export function MobileChrome() {
               <button
                 key={location.id}
                 type="button"
-                className={selectedId === location.id ? "is-selected" : ""}
+                className={
+                  !selectedGazetteerId && selectedId === location.id
+                    ? "is-selected"
+                    : ""
+                }
                 onClick={() => selectLocation(location.id)}
               >
                 <Icon />
@@ -71,7 +93,13 @@ export function MobileChrome() {
             )
           }
         >
-          <span>{stormMode ? "Ride the storm" : "Explore location"}</span>
+          <span>
+            {stormMode
+              ? "Ride the storm"
+              : selectedGazetteer
+                ? "Inspect mapped place"
+                : "Explore location"}
+          </span>
           <strong>{detailLevel}</strong>
           <ChevronRight />
         </button>

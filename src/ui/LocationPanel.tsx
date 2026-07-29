@@ -6,6 +6,8 @@ import {
   Wind,
 } from "lucide-react";
 import { useAtlasStore } from "../store/useAtlasStore";
+import { gazetteerById } from "../world/gazetteer";
+import type { GazetteerPlace } from "../world/gazetteer";
 import { locationById } from "../world/locations";
 import {
   stormPhase,
@@ -85,8 +87,86 @@ function StormPanel() {
   );
 }
 
+function GazetteerPanel({ place }: { place: GazetteerPlace }) {
+  const toggleLocationPanel = useAtlasStore(
+    (state) => state.toggleLocationPanel,
+  );
+  const placement =
+    place.certainty === "precise"
+      ? "Explicit cartographic point"
+      : place.certainty === "regional"
+        ? "Regional placement"
+        : "No responsible exterior point";
+
+  return (
+    <aside className="location-panel panel gazetteer-panel">
+      <div className="location-title">
+        <Compass size={26} strokeWidth={1.25} />
+        <div>
+          <h2>{place.canonicalName}</h2>
+          <p>
+            {place.kind} · {place.nationOrRegion}
+          </p>
+        </div>
+        <button
+          type="button"
+          aria-label="Collapse place details"
+          onClick={toggleLocationPanel}
+        >
+          <ChevronLeft size={16} />
+        </button>
+      </div>
+      <section>
+        <span className="section-label">Cartographic record</span>
+        <dl className="activity-details">
+          <div>
+            <dt>Placement</dt>
+            <dd>{placement}</dd>
+          </div>
+          <div>
+            <dt>Map treatment</dt>
+            <dd>{place.visualization.replaceAll("-", " ")}</dd>
+          </div>
+          {place.referencePixel && (
+            <div>
+              <dt>Reference point</dt>
+              <dd>
+                {place.referencePixel[0].toFixed(1)},{" "}
+                {place.referencePixel[1].toFixed(1)}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </section>
+      {place.alternateNames && place.alternateNames.length > 0 && (
+        <div className="location-facts">
+          {place.alternateNames.map((name) => (
+            <span key={name}>Also: {name}</span>
+          ))}
+        </div>
+      )}
+      <section className="gazetteer-sources">
+        <span className="section-label">Sources</span>
+        {place.sources.slice(0, 3).map((source) => (
+          <a
+            key={source.url}
+            href={source.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {source.title}
+          </a>
+        ))}
+      </section>
+    </aside>
+  );
+}
+
 export function LocationPanel() {
   const selectedId = useAtlasStore((state) => state.selectedId);
+  const selectedGazetteerId = useAtlasStore(
+    (state) => state.selectedGazetteerId,
+  );
   const simulationTime = useAtlasStore((state) => state.simulationTime);
   const stormMode = useAtlasStore((state) => state.stormMode);
   const isOpen = useAtlasStore((state) => state.locationPanelOpen);
@@ -95,6 +175,11 @@ export function LocationPanel() {
   );
   if (!isOpen) return null;
   if (stormMode) return <StormPanel />;
+
+  const gazetteerPlace = selectedGazetteerId
+    ? gazetteerById.get(selectedGazetteerId)
+    : undefined;
+  if (gazetteerPlace) return <GazetteerPanel place={gazetteerPlace} />;
 
   const location = locationById.get(selectedId);
   if (!location) return null;
