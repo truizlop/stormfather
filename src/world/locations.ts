@@ -69,7 +69,13 @@ const locationData = [
     subtitle: "Cymatic chasms of Natanatan",
     kind: "landmark",
     coordinates: coordinateFor("shattered-plains"),
-    camera: { position: [46, 7.2, 3], target: [37.2, 1.65, 11.45] },
+    // Frame the complete cymatic field around Stormseat. The previous
+    // warcamp-biased target cropped the eastern plateaus behind the travel
+    // panel and made the old chasm-floor presentation disk dominate.
+    camera: {
+      position: [50.5, 11, 3],
+      target: [40, 1.55, 13.76],
+    },
     arrivalDetail: "city",
     regionColor: "#504a3e",
     accentColor: "#6ee6f2",
