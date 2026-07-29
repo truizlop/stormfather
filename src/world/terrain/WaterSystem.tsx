@@ -18,7 +18,6 @@ import {
   stormProximity,
   stormXAtTime,
 } from "../weather/storm";
-import { terrainHeightAt } from "./terrainHeight";
 
 const coastlinePolygons: readonly (readonly GeographyPoint[])[] = [
   mainlandOutline,
@@ -179,7 +178,12 @@ const harborFragmentShader = /* glsl */ `
   void main() {
     vec2 center = vUv - 0.5;
     float radius = length(center);
-    if (radius > 0.5) discard;
+    float angle = atan(center.y, center.x);
+    float shoreline =
+      0.485 +
+      sin(angle * 3.0 + 0.7) * 0.018 +
+      sin(angle * 7.0 - 1.2) * 0.011;
+    if (radius > shoreline) discard;
     vec3 dx = dFdx(vWorldPosition);
     vec3 dy = dFdy(vWorldPosition);
     vec3 normal = normalize(cross(dx, dy));
@@ -195,20 +199,19 @@ const harborFragmentShader = /* glsl */ `
     );
     float specular = pow(max(dot(normal, halfVector), 0.0), 72.0);
     specular *= 0.35 + detail * 0.28;
-    float angle = atan(center.y, center.x);
     float shoreBreak = sin(angle * 11.0 - uTime * 1.42 + detail * 1.7);
-    float edgeBand = smoothstep(0.37, 0.46, radius)
-      * (1.0 - smoothstep(0.465, 0.505, radius));
+    float edgeDistance = shoreline - radius;
+    float edgeBand = 1.0 - smoothstep(0.012, 0.062, edgeDistance);
     float foam = edgeBand * smoothstep(-0.15, 0.72, shoreBreak);
     foam += smoothstep(0.032, 0.058, vWave) * (0.18 + uStorm * 0.46);
-    vec3 deep = mix(vec3(0.018, 0.17, 0.22), vec3(0.02, 0.29, 0.34), 1.0 - uNight);
-    vec3 shallow = mix(vec3(0.055, 0.31, 0.33), vec3(0.06, 0.47, 0.45), 1.0 - uNight);
+    vec3 deep = mix(vec3(0.012, 0.12, 0.17), vec3(0.018, 0.23, 0.29), 1.0 - uNight);
+    vec3 shallow = mix(vec3(0.035, 0.24, 0.28), vec3(0.05, 0.38, 0.39), 1.0 - uNight);
     vec3 color = mix(deep, shallow, smoothstep(0.05, 0.5, radius));
     color = mix(color, vec3(0.19, 0.43, 0.45), fresnel * 0.42);
     color += vec3(0.7, 0.9, 0.84) * specular * (0.62 - uNight * 0.21);
     color = mix(color, vec3(0.65, 0.89, 0.82), foam * 0.58);
     color *= 1.0 - uStorm * 0.13;
-    gl_FragColor = vec4(color, 0.84);
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -693,21 +696,15 @@ const harborCoordinates: Record<
 > = {
   kharbranth: {
     center: [11.02, 22.29],
-    scale: [5.8, 3.05],
-    surfaceY:
-      terrainHeightAt(
-        destinationAnchors.kharbranth[0],
-        destinationAnchors.kharbranth[1],
-      ) + 0.145,
+    scale: [4.7, 2.42],
+    // Harbor water shares the ocean datum; sampling the mountainous city
+    // anchor lifted the old patch through several blocks of architecture.
+    surfaceY: -0.16,
   },
   "thaylen-city": {
     center: [9.56, 27.08],
     scale: [6.4, 3.35],
-    surfaceY:
-      terrainHeightAt(
-        destinationAnchors["thaylen-city"][0],
-        destinationAnchors["thaylen-city"][1],
-      ) + 0.12,
+    surfaceY: -0.16,
   },
 };
 
@@ -721,7 +718,11 @@ function SelectedHarborSurface() {
     () =>
       Array.from({ length: 81 }, (_, index) => {
         const angle = (index / 80) * Math.PI * 2;
-        return [Math.cos(angle), 0.025, Math.sin(angle)] as [
+        const radius =
+          0.97 +
+          Math.sin(angle * 3 + 0.7) * 0.036 +
+          Math.sin(angle * 7 - 1.2) * 0.022;
+        return [Math.cos(angle) * radius, 0.025, Math.sin(angle) * radius] as [
           number,
           number,
           number,
@@ -789,8 +790,7 @@ function SelectedHarborSurface() {
           uniforms={uniforms}
           vertexShader={harborVertexShader}
           fragmentShader={harborFragmentShader}
-          transparent
-          depthWrite={false}
+          depthWrite
           side={THREE.DoubleSide}
         />
       </mesh>
