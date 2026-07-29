@@ -7,6 +7,10 @@ import {
   moduleMetrics,
   type DistrictLayout,
 } from "../cities/districtLayout";
+import {
+  KHARBRANTH_LANDMARK_SCALE,
+  kharbranthRoadOffset,
+} from "../cities/landmarkMetrics";
 import type { CityProfile } from "../cities/profiles";
 
 export interface NavigationPoint {
@@ -315,6 +319,55 @@ function routeLength(points: readonly NavigationPoint[]) {
   return length;
 }
 
+function kharbranthRalinsaRoutes(
+  center: readonly [number, number],
+  profile: Pick<CityProfile, "radius">,
+  obstacles: readonly NavigationObstacle[],
+) {
+  return Array.from({ length: 6 }, (_, tier): NavigationRoute | null => {
+    const roadOffset = kharbranthRoadOffset(tier);
+    const roadZ = center[1] + roadOffset;
+    const districtRadiusX = profile.radius * 0.94;
+    const districtRadiusZ = profile.radius * 0.69;
+    const ellipseHalfWidth =
+      districtRadiusX *
+        Math.sqrt(
+          Math.max(
+            0,
+            1 - (roadOffset * roadOffset) / (districtRadiusZ * districtRadiusZ),
+          ),
+        ) -
+      0.08;
+    const halfWidth = Math.min(
+      (4.65 - tier * 0.34) * KHARBRANTH_LANDMARK_SCALE - 0.38,
+      ellipseHalfWidth,
+    );
+    const direction = tier % 2 === 0 ? 1 : -1;
+    const startX = center[0] - halfWidth;
+    const endX = center[0] + halfWidth;
+    const points = Array.from({ length: 13 }, (_, pointIndex) => {
+      const progress = pointIndex / 12;
+      const x = THREE.MathUtils.lerp(startX, endX, progress);
+      return {
+        x: direction > 0 ? x : startX + endX - x,
+        z: roadZ,
+      };
+    });
+    if (
+      !points.every((point) =>
+        isPointClear(point, obstacles, PEDESTRIAN_ENVIRONMENT_CLEARANCE),
+      )
+    ) {
+      return null;
+    }
+    return {
+      id: `kharbranth-ralinsa-tier-${tier + 1}`,
+      points,
+      length: routeLength(points),
+    };
+  }).filter((route): route is NavigationRoute => Boolean(route));
+}
+
 export function createNavigationField(
   locationId: string,
   profile: CityProfile,
@@ -387,12 +440,20 @@ export function createNavigationField(
     });
   }
 
+  const authoredKharbranthRoutes =
+    locationId === "kharbranth"
+      ? kharbranthRalinsaRoutes(center, profile, obstacles)
+      : [];
+
   return {
     center,
     locationId,
     profile,
     obstacles,
-    routes,
+    routes:
+      authoredKharbranthRoutes.length > 0
+        ? authoredKharbranthRoutes
+        : routes,
   };
 }
 

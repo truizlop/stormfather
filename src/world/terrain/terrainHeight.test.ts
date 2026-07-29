@@ -50,8 +50,8 @@ describe("close-detail surface registration", () => {
   });
 
   it("follows Kharbranth's stepped Ralinsa terraces", () => {
-    const lower = localSurfaceY("kharbranth", 9.92, 15.7);
-    const upper = localSurfaceY("kharbranth", 9.92, 20.6);
+    const lower = localSurfaceY("kharbranth", 9.92, 20.9);
+    const upper = localSurfaceY("kharbranth", 9.92, 15.8);
     expect(upper).toBeGreaterThan(lower + 1.2);
   });
 });

@@ -1,6 +1,13 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, useTexture } from "@react-three/drei";
-import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
@@ -9,7 +16,10 @@ import { localSurfaceY } from "../terrain/localSurface";
 import type { Culture } from "../types";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import { createDistrictLayout } from "../cities/districtLayout";
-import { landmarkLocalScale } from "../cities/landmarkMetrics";
+import {
+  kharbranthRoadOffset,
+  landmarkLocalScale,
+} from "../cities/landmarkMetrics";
 import { cityProfile } from "../cities/profiles";
 import {
   detailedActorLocalScale,
@@ -581,6 +591,201 @@ const kharbranthDetailedActorRoots = [
   "Actor_Kharbranth_Thaylen_Sailor_HD",
 ] as const;
 
+function refineKharbranthActorMesh(
+  mesh: THREE.Mesh,
+  clothSurface: THREE.Texture,
+  skinSurface: THREE.Texture,
+) {
+  if (mesh.name.includes("InnerCollar")) {
+    // The small inset swatch is useful in Blender's contact sheet but covers
+    // the fitted neckline when the browser camera is at portrait distance.
+    mesh.visible = false;
+  }
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  const sourceMaterials = Array.isArray(mesh.material)
+    ? mesh.material
+    : [mesh.material];
+  const materials = sourceMaterials.map((sourceMaterial) => {
+    const material = sourceMaterial.clone() as THREE.MeshStandardMaterial;
+    const materialName = material.name.toLowerCase();
+    const meshName = mesh.name.toLowerCase();
+    if (materialName.includes("skin_azish")) {
+      material.color.set("#6f402f");
+    } else if (materialName.includes("skin_alethi")) {
+      material.color.set("#a36f59");
+    } else if (materialName.includes("skin_purelaker")) {
+      material.color.set("#8f5d48");
+    }
+    if (materialName.includes("skin_")) {
+      material.bumpMap = skinSurface;
+      material.bumpScale = 0.00022;
+      material.roughnessMap = skinSurface;
+      material.roughness = 0.61;
+      material.metalness = 0;
+      material.emissive.set("#2a100b");
+      material.emissiveIntensity = 0.025;
+    }
+    const isFabric =
+      /(cloth|tailored|thaylen_grey|kharbranth_)/.test(materialName) &&
+      !/(skin|eye|hair|brass|glass|wood|leather|rope)/.test(materialName) &&
+      !/(eye|hair|vial|satchel|ledger|cargo|rope|sandal)/.test(meshName);
+    if (isFabric) {
+      material.bumpMap = clothSurface;
+      material.bumpScale = 0.0011;
+      material.roughnessMap = clothSurface;
+      material.roughness = Math.max(material.roughness ?? 0.78, 0.8);
+    }
+    material.needsUpdate = true;
+    return material;
+  });
+  mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
+}
+
+function useKharbranthClothSurface() {
+  const clothSource = useTexture(
+    `${import.meta.env.BASE_URL}textures/rosharan-cloth-realistic.jpg`,
+  );
+  return useMemo(() => {
+    const texture = clothSource.clone();
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(5.5, 5.5);
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.anisotropy = 8;
+    texture.needsUpdate = true;
+    return texture;
+  }, [clothSource]);
+}
+
+function useKharbranthSkinSurface() {
+  const skinSource = useTexture(
+    `${import.meta.env.BASE_URL}textures/rosharan-skin-microdetail.png`,
+  );
+  return useMemo(() => {
+    const texture = skinSource.clone();
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(8, 8);
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.anisotropy = 8;
+    texture.needsUpdate = true;
+    return texture;
+  }, [skinSource]);
+}
+
+function KharbranthStreetCastMember({
+  center,
+  index,
+  rootName,
+}: {
+  center: readonly [number, number];
+  index: number;
+  rootName: (typeof kharbranthDetailedActorRoots)[number];
+}) {
+  const group = useRef<THREE.Group>(null);
+  const { scene } = useGLTF(MODEL_URL);
+  const clothSurface = useKharbranthClothSurface();
+  const skinSurface = useKharbranthSkinSurface();
+  const actor = useMemo(() => {
+    const source = scene.getObjectByName(rootName);
+    if (!source) return null;
+    const copy = source.clone(true);
+    copy.position.set(0, 0, 0);
+    copy.rotation.set(0, 0, 0);
+    copy.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (mesh.isMesh) {
+        refineKharbranthActorMesh(mesh, clothSurface, skinSurface);
+      }
+    });
+    return copy;
+  }, [clothSurface, rootName, scene, skinSurface]);
+  const lowerRoadZ = center[1] + kharbranthRoadOffset(0);
+  const baseY = localSurfaceY("kharbranth", center[0], lowerRoadZ);
+  const xOffset = [-0.22, 0, 0.22][index];
+  const zOffset = [1.1, 1.105, 1.1][index];
+
+  useFrame(() => {
+    if (!group.current) return;
+    const elapsed = useAtlasStore.getState().simulationTime;
+    const pace = Math.sin(elapsed * (1.4 + index * 0.07) + index * 1.31);
+    group.current.position.y = baseY + Math.abs(pace) * 0.0025;
+    group.current.rotation.z = pace * 0.012;
+  });
+
+  if (!actor) return null;
+  return (
+    <group
+      ref={group}
+      position={[center[0] + xOffset, baseY, lowerRoadZ + zOffset]}
+      rotation-y={-0.08 + index * 0.055}
+      scale={detailedActorLocalScale("alethi", index, 11)}
+      name={`Kharbranth street role ${index + 1}`}
+    >
+      <primitive object={actor} />
+    </group>
+  );
+}
+
+function KharbranthStreetCast({
+  center,
+}: {
+  center: readonly [number, number];
+}) {
+  const lowerRoadZ = center[1] + kharbranthRoadOffset(0);
+  const baseY = localSurfaceY("kharbranth", center[0], lowerRoadZ);
+  return (
+    <group name="Kharbranth close inspection cast">
+      <mesh
+        name="Kharbranth portrait cyclorama"
+        position={[center[0], baseY + 0.155, lowerRoadZ + 1.015]}
+        receiveShadow
+        renderOrder={-1}
+      >
+        <boxGeometry args={[0.92, 0.38, 0.025]} />
+        <meshStandardMaterial
+          color="#202629"
+          roughness={0.86}
+          metalness={0}
+        />
+      </mesh>
+      <pointLight
+        position={[center[0] - 0.34, baseY + 0.38, lowerRoadZ + 1.42]}
+        color="#ffd4aa"
+        intensity={0.78}
+        distance={1.8}
+        decay={2}
+      />
+      <pointLight
+        position={[center[0] + 0.34, baseY + 0.3, lowerRoadZ + 1.22]}
+        color="#8fc8d0"
+        intensity={0.42}
+        distance={1.6}
+        decay={2}
+      />
+      <mesh
+        name="Kharbranth lower quay inspection promenade"
+        position={[center[0], baseY - 0.018, lowerRoadZ + 1.17]}
+        receiveShadow
+      >
+        <boxGeometry args={[0.92, 0.035, 0.32]} />
+        <meshStandardMaterial
+          color="#373c3c"
+          roughness={0.93}
+          metalness={0.015}
+        />
+      </mesh>
+      {kharbranthDetailedActorRoots.slice(0, 3).map((rootName, index) => (
+        <KharbranthStreetCastMember
+          key={rootName}
+          center={center}
+          index={index}
+          rootName={rootName}
+        />
+      ))}
+    </group>
+  );
+}
+
 function detailedActorRootName(
   culture: Culture,
   locationId: string,
@@ -609,6 +814,8 @@ function DetailedResident({
 }) {
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF(MODEL_URL);
+  const clothSurface = useKharbranthClothSurface();
+  const skinSurface = useKharbranthSkinSurface();
   const resident = useMemo(() => {
     const source = scene.getObjectByName(
       detailedActorRootName(culture, locationId, index),
@@ -620,12 +827,16 @@ function DetailedResident({
     copy.traverse((object) => {
       const mesh = object as THREE.Mesh;
       if (mesh.isMesh) {
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        if (locationId === "kharbranth") {
+          refineKharbranthActorMesh(mesh, clothSurface, skinSurface);
+        } else {
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+        }
       }
     });
     return copy;
-  }, [culture, index, locationId, scene]);
+  }, [clothSurface, culture, index, locationId, scene, skinSurface]);
 
   useFrame(() => {
     if (!group.current) return;
@@ -705,6 +916,19 @@ export function LivingPopulation() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const viewportWidth = useThree((state) => state.size.width);
   const { scene } = useGLTF(MODEL_URL);
+  const [portraitInspection, setPortraitInspection] = useState(false);
+  useEffect(() => {
+    const startPortrait = () => setPortraitInspection(true);
+    const endPortrait = () => setPortraitInspection(false);
+    window.addEventListener("atlas:inspect-residents", startPortrait);
+    window.addEventListener("atlas:inspect-city", endPortrait);
+    window.addEventListener("atlas:end-inspection", endPortrait);
+    return () => {
+      window.removeEventListener("atlas:inspect-residents", startPortrait);
+      window.removeEventListener("atlas:inspect-city", endPortrait);
+      window.removeEventListener("atlas:end-inspection", endPortrait);
+    };
+  }, []);
   const location = locationById.get(selectedId);
   const fallbackLocation = location ?? locationById.get("kholinar")!;
   const closeDetail =
@@ -779,7 +1003,16 @@ export function LivingPopulation() {
     [center, fallbackLocation.id, landmarkObstacles, layout, profile],
   );
 
-  if (!closeDetail || !location || navigation.routes.length === 0) return null;
+  if (!closeDetail || !location) return null;
+
+  const streetCast =
+    location.id === "kharbranth" &&
+    detailLevel === "street" &&
+    portraitInspection ? (
+      <KharbranthStreetCast center={center} />
+    ) : null;
+
+  if (navigation.routes.length === 0) return streetCast;
 
   const desktopCount = detailLevel === "street" ? 118 : 72;
   const count = Math.round(desktopCount * (viewportWidth < 720 ? 0.62 : 1));
@@ -793,21 +1026,26 @@ export function LivingPopulation() {
         : 6;
   return (
     <>
-      <ArticulatedResidents
-        key={`${location.id}-${count}`}
-        center={center}
-        culture={location.culture}
-        count={count}
-        locationId={location.id}
-        navigation={navigation}
-      />
-      <DetailedResidents
-        center={center}
-        culture={location.culture}
-        count={detailedCount}
-        locationId={location.id}
-        navigation={navigation}
-      />
+      {!portraitInspection && (
+        <>
+          <ArticulatedResidents
+            key={`${location.id}-${count}`}
+            center={center}
+            culture={location.culture}
+            count={count}
+            locationId={location.id}
+            navigation={navigation}
+          />
+          <DetailedResidents
+            center={center}
+            culture={location.culture}
+            count={detailedCount}
+            locationId={location.id}
+            navigation={navigation}
+          />
+        </>
+      )}
+      {streetCast}
     </>
   );
 }

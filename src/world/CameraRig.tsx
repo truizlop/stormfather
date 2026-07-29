@@ -4,8 +4,10 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import type { MapControls as MapControlsImpl } from "three-stdlib";
 import { useAtlasStore } from "../store/useAtlasStore";
+import { kharbranthRoadOffset } from "./cities/landmarkMetrics";
 import { detailFromDistance } from "./coordinates";
 import { locationById } from "./locations";
+import { localSurfaceY } from "./terrain/localSurface";
 import { stormXAtTime } from "./weather/storm";
 
 function updatePerspectiveFov(camera: THREE.Camera, fov: number) {
@@ -24,6 +26,7 @@ export function CameraRig() {
     startTarget: new THREE.Vector3(),
   });
   const selectedId = useAtlasStore((state) => state.selectedId);
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
   const travelEpoch = useAtlasStore((state) => state.travelEpoch);
   const stormMode = useAtlasStore((state) => state.stormMode);
 
@@ -46,6 +49,35 @@ export function CameraRig() {
       const control = controls.current;
       if (!control) return;
       const factor = (event as CustomEvent<{ factor: number }>).detail.factor;
+      // Direct zoom input takes ownership from any still-running travel tween.
+      transition.current.progress = 1;
+      const selected = useAtlasStore.getState().selectedId;
+      const selectedLocation = locationById.get(selected);
+      if (
+        selectedLocation?.id === "kharbranth" &&
+        factor <= 0.5
+      ) {
+        control.minDistance = 0.25;
+        const lowerRoadZ =
+          selectedLocation.coordinates.z + kharbranthRoadOffset(0);
+        const streetY = localSurfaceY(
+          selectedLocation.id,
+          selectedLocation.coordinates.x,
+          lowerRoadZ,
+        );
+        camera.position.set(
+          selectedLocation.coordinates.x - 0.55,
+          streetY + 0.46,
+          lowerRoadZ + 1.95,
+        );
+        control.target.set(
+          selectedLocation.coordinates.x,
+          streetY + 0.09,
+          lowerRoadZ + 1.1,
+        );
+        control.update();
+        return;
+      }
       const offset = camera.position.clone().sub(control.target);
       const distance = THREE.MathUtils.clamp(
         offset.length() * factor,
@@ -56,8 +88,93 @@ export function CameraRig() {
       camera.position.copy(control.target).add(offset);
       control.update();
     };
+    const handleInspectResidents = () => {
+      const control = controls.current;
+      const selectedLocation = locationById.get(
+        useAtlasStore.getState().selectedId,
+      );
+      if (!control || selectedLocation?.id !== "kharbranth") return;
+      transition.current.progress = 1;
+      control.minDistance = 0.25;
+      updatePerspectiveFov(camera, 38);
+      const lowerRoadZ =
+        selectedLocation.coordinates.z + kharbranthRoadOffset(0);
+      const streetY = localSurfaceY(
+        selectedLocation.id,
+        selectedLocation.coordinates.x,
+        lowerRoadZ,
+      );
+      camera.position.set(
+        selectedLocation.coordinates.x,
+        streetY + 0.12,
+        lowerRoadZ + 1.43,
+      );
+      control.target.set(
+        selectedLocation.coordinates.x,
+        streetY + 0.08,
+        lowerRoadZ + 1.1,
+      );
+      control.update();
+    };
+    const handleInspectCity = () => {
+      const control = controls.current;
+      const selectedLocation = locationById.get(
+        useAtlasStore.getState().selectedId,
+      );
+      if (!control || selectedLocation?.id !== "kharbranth") return;
+      transition.current.progress = 1;
+      control.minDistance = 5.8;
+      updatePerspectiveFov(camera, 42);
+      camera.position.set(...selectedLocation.camera.position);
+      control.target.set(...selectedLocation.camera.target);
+      control.update();
+    };
+    const handleEndInspection = () => {
+      const control = controls.current;
+      const atlas = useAtlasStore.getState();
+      const selectedLocation = locationById.get(atlas.selectedId);
+      if (
+        !control ||
+        selectedLocation?.id !== "kharbranth" ||
+        atlas.detailLevel !== "street"
+      ) {
+        return;
+      }
+      transition.current.progress = 1;
+      control.minDistance = 0.25;
+      updatePerspectiveFov(camera, 42);
+      const lowerRoadZ =
+        selectedLocation.coordinates.z + kharbranthRoadOffset(0);
+      const streetY = localSurfaceY(
+        selectedLocation.id,
+        selectedLocation.coordinates.x,
+        lowerRoadZ,
+      );
+      camera.position.set(
+        selectedLocation.coordinates.x - 1.1,
+        streetY + 1.05,
+        lowerRoadZ + 4.2,
+      );
+      control.target.set(
+        selectedLocation.coordinates.x,
+        streetY + 0.28,
+        lowerRoadZ + 0.3,
+      );
+      control.update();
+    };
     window.addEventListener("atlas:zoom", handleZoom);
-    return () => window.removeEventListener("atlas:zoom", handleZoom);
+    window.addEventListener("atlas:inspect-residents", handleInspectResidents);
+    window.addEventListener("atlas:inspect-city", handleInspectCity);
+    window.addEventListener("atlas:end-inspection", handleEndInspection);
+    return () => {
+      window.removeEventListener("atlas:zoom", handleZoom);
+      window.removeEventListener(
+        "atlas:inspect-residents",
+        handleInspectResidents,
+      );
+      window.removeEventListener("atlas:inspect-city", handleInspectCity);
+      window.removeEventListener("atlas:end-inspection", handleEndInspection);
+    };
   }, [camera]);
 
   useFrame((_, delta) => {
@@ -114,7 +231,9 @@ export function CameraRig() {
       makeDefault
       enableDamping
       dampingFactor={0.075}
-      minDistance={5.8}
+      minDistance={
+        selectedId === "kharbranth" && detailLevel === "street" ? 0.25 : 5.8
+      }
       maxDistance={viewportWidth < 720 ? 230 : 165}
       minPolarAngle={0.22}
       maxPolarAngle={Math.PI * 0.47}

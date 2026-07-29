@@ -20,7 +20,9 @@ const landmarkPlanSize: Record<string, readonly [number, number]> = {
 export const KHARBRANTH_LANDMARK_SCALE = (5.1 * 2) / 10.551;
 
 export function kharbranthRoadOffset(tier: number) {
-  return (-2.52 + tier * 1.02) * KHARBRANTH_LANDMARK_SCALE;
+  // Blender Y is exported as negative Three.js Z. The authored run sits
+  // 0.3 m harborward of its terrace center, hence the 2.82 lower-run offset.
+  return (2.82 - tier * 1.02) * KHARBRANTH_LANDMARK_SCALE;
 }
 
 export function kharbranthRoadElevation(tier: number) {

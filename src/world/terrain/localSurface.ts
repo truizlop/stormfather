@@ -19,10 +19,10 @@ export function localSurfaceY(
   if (locationId === "purelake") return PURELAKE_WATER_HEIGHT;
   if (locationId === "kharbranth") {
     const [centerX, centerZ] = destinationAnchors.kharbranth;
-    const localZ = (z - centerZ) / KHARBRANTH_LANDMARK_SCALE;
+    const localThreeZ = (z - centerZ) / KHARBRANTH_LANDMARK_SCALE;
     const tier = Math.max(
       0,
-      Math.min(5, Math.round((localZ + 2.52) / 1.02)),
+      Math.min(5, Math.round((2.82 - localThreeZ) / 1.02)),
     );
     return (
       terrainHeightAt(centerX, centerZ) +

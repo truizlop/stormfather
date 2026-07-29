@@ -176,7 +176,7 @@ const locationData = [
     subtitle: "The City of Bells",
     kind: "city",
     coordinates: coordinateFor("kharbranth"),
-    camera: { position: [18, 13, 30], target: [10, 2, 18] },
+    camera: { position: [0, 13.5, 31.5], target: [10.2, 2.8, 18.4] },
     arrivalDetail: "street",
     regionColor: "#426268",
     accentColor: "#dcb66d",
