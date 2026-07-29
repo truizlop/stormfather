@@ -1,8 +1,8 @@
 import {
-  destinationAnchors,
   mountainRidges,
   type GeographyPoint,
 } from "../cartography/geography";
+import { applyLocationTerrainCradles } from "./locationTerrain";
 
 function fract(value: number) {
   return value - Math.floor(value);
@@ -107,7 +107,7 @@ export function ridgeHeightAt(x: number, z: number) {
   return strongest + secondary * 0.18;
 }
 
-export function terrainHeightAt(x: number, z: number) {
+export function naturalTerrainHeightAt(x: number, z: number) {
   const broad = fbm(x * 0.095 + 10.4, z * 0.095 - 3.8);
   const detail = fbm(x * 0.33 - 8.2, z * 0.33 + 12.1);
   const eroded = Math.abs(fbm(x * 0.19, z * 0.19) - 0.5);
@@ -120,36 +120,16 @@ export function terrainHeightAt(x: number, z: number) {
     detail * 0.2 +
     eroded * 0.3 +
     stormwardPlateau;
-  const naturalHeight = base + ridgeHeightAt(x, z);
-  const [urithiruX, urithiruZ] = destinationAnchors.urithiru;
-  const deltaX = x - urithiruX;
-  const deltaZ = z - urithiruZ;
-  const distance = Math.hypot(deltaX, deltaZ);
-  if (distance >= 7.8) return naturalHeight;
+  return base + ridgeHeightAt(x, z);
+}
 
-  // Urithiru is excavated into a continuous mountain mass. The geographic
-  // ridge sampler previously dipped more than three world units beneath the
-  // selected-city footprint, forcing the authored city to balance on a flat
-  // slab. This cragged support shelf joins the same canonical heightfield,
-  // stays beneath the built strata, and fades back to the natural ridge.
-  const core = 4.55;
-  const falloff = 1 - smoothstep(
-    Math.max(0, Math.min(1, (distance - core) / (7.8 - core))),
-  );
-  const eastApproach =
-    Math.max(0, deltaX / Math.max(0.1, distance)) *
-    Math.max(0, 1 - distance / core);
-  const crags =
-    Math.sin(x * 2.17 + z * 0.83) * 0.075 +
-    Math.sin(x * 0.91 - z * 2.41) * 0.045;
-  const supportHeight =
-    3.9 -
-    Math.max(0, distance - 2.4) * 0.025 +
-    eastApproach * 0.28 +
-    crags;
-  return Math.max(
+export function terrainHeightAt(x: number, z: number) {
+  const naturalHeight = naturalTerrainHeightAt(x, z);
+  return applyLocationTerrainCradles(
+    x,
+    z,
     naturalHeight,
-    naturalHeight + Math.max(0, supportHeight - naturalHeight) * falloff,
+    naturalTerrainHeightAt,
   );
 }
 
