@@ -77,9 +77,12 @@ const cradleInputs: readonly Omit<LocationTerrainCradle, "center">[] = [
     id: "kharbranth",
     kind: "cliff",
     coreRadiusX: 6.45,
-    coreRadiusZ: 4.5,
-    influenceRadiusX: 8.2,
-    influenceRadiusZ: 6.4,
+    // The authored city footprint ends at the quay, but its six piers and
+    // working skiffs project farther harborward. Keep the ocean cut active
+    // through that full modeled reach so the docks do not sit on a land shelf.
+    coreRadiusZ: 8.2,
+    influenceRadiusX: 8.9,
+    influenceRadiusZ: 10.2,
   },
   {
     id: "kholinar",
@@ -246,13 +249,17 @@ function localCradleTarget(
             Math.pow((localZ - 3.45) / 1.75, 2)
           ),
         ) * 0.46;
-      return (
+      const cliffTarget =
         anchorNaturalHeight -
         0.3 +
         inlandRise -
         harborCut +
-        strata * 1.15
-      );
+        strata * 1.15;
+      const harborward = smoothstep((localZ - 2.55) / 1.85);
+      const mouthWidth =
+        1 - smoothstep((Math.abs(localX) - 5.2) / 1.65);
+      const harborMouth = clamp01(harborward * mouthWidth);
+      return cliffTarget + (-0.245 - cliffTarget) * harborMouth;
     }
     case "ravines": {
       const leftCut =
@@ -278,13 +285,17 @@ function localCradleTarget(
             Math.pow((localZ - 2.75) / 1.8, 2)
           ),
         ) * 0.22;
-      return (
+      const coastalTarget =
         anchorNaturalHeight -
         0.08 +
         inlandRise -
         basin +
-        strata * 0.75
-      );
+        strata * 0.75;
+      const harborward = smoothstep((localZ - 1.85) / 1.55);
+      const basinWidth =
+        1 - smoothstep((Math.abs(localX) - 2.9) / 1.25);
+      const harborMouth = clamp01(harborward * basinWidth);
+      return coastalTarget + (-0.235 - coastalTarget) * harborMouth;
     }
   }
 }
@@ -294,29 +305,53 @@ export function applyLocationTerrainCradles(
   z: number,
   naturalHeight: number,
   naturalHeightAt: (x: number, z: number) => number,
+  focusedLocationId?: DetailedLocationId,
 ) {
-  let result = naturalHeight;
-  for (const cradle of LOCATION_TERRAIN_CRADLES) {
+  const candidates = focusedLocationId
+    ? LOCATION_TERRAIN_CRADLES.filter(
+        (cradle) => cradle.id === focusedLocationId,
+      )
+    : LOCATION_TERRAIN_CRADLES;
+  let selectedCradle: LocationTerrainCradle | undefined;
+  let selectedInfluence = 0;
+  let selectedCoreDistance = Number.POSITIVE_INFINITY;
+  for (const cradle of candidates) {
     const influence = locationTerrainInfluenceAt(cradle, x, z);
     if (influence <= 0) continue;
-    const anchorNaturalHeight = naturalHeightAt(
-      cradle.center[0],
-      cradle.center[1],
+    const coreDistance = ellipseDistance(
+      x - cradle.center[0],
+      z - cradle.center[1],
+      cradle.coreRadiusX,
+      cradle.coreRadiusZ,
     );
-    const target = localCradleTarget(
-      cradle,
-      x,
-      z,
-      anchorNaturalHeight,
-    );
-    if (cradle.kind === "mountain") {
-      result = Math.max(
-        result,
-        result + Math.max(0, target - result) * influence,
-      );
-    } else {
-      result += (target - result) * influence;
+    if (
+      influence > selectedInfluence ||
+      (Math.abs(influence - selectedInfluence) < 0.000001 &&
+        coreDistance < selectedCoreDistance)
+    ) {
+      selectedCradle = cradle;
+      selectedInfluence = influence;
+      selectedCoreDistance = coreDistance;
     }
   }
-  return result;
+  if (!selectedCradle) return naturalHeight;
+
+  const anchorNaturalHeight = naturalHeightAt(
+    selectedCradle.center[0],
+    selectedCradle.center[1],
+  );
+  const target = localCradleTarget(
+    selectedCradle,
+    x,
+    z,
+    anchorNaturalHeight,
+  );
+  if (selectedCradle.kind === "mountain") {
+    return Math.max(
+      naturalHeight,
+      naturalHeight +
+        Math.max(0, target - naturalHeight) * selectedInfluence,
+    );
+  }
+  return naturalHeight + (target - naturalHeight) * selectedInfluence;
 }

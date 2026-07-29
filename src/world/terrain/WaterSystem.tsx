@@ -184,7 +184,9 @@ const harborFragmentShader = /* glsl */ `
       0.485 +
       sin(angle * 3.0 + 0.7) * 0.018 +
       sin(angle * 7.0 - 1.2) * 0.011;
-    if (radius > shoreline) discard;
+    float basinBlend =
+      1.0 - smoothstep(shoreline - 0.085, shoreline + 0.008, radius);
+    if (basinBlend < 0.015) discard;
     vec3 dx = dFdx(vWorldPosition);
     vec3 dy = dFdy(vWorldPosition);
     vec3 normal = normalize(cross(dx, dy));
@@ -212,7 +214,7 @@ const harborFragmentShader = /* glsl */ `
     color += vec3(0.7, 0.9, 0.84) * specular * (0.62 - uNight * 0.21);
     color = mix(color, vec3(0.65, 0.89, 0.82), foam * 0.58);
     color *= 1.0 - uStorm * 0.13;
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(color, basinBlend);
   }
 `;
 
@@ -700,11 +702,17 @@ const harborCoordinates: Record<
   }
 > = {
   kharbranth: {
-    center: [11.02, 22.29],
-    scale: [4.7, 2.42],
+    center: [
+      destinationAnchors.kharbranth[0],
+      destinationAnchors.kharbranth[1] + 5.05,
+    ],
+    scale: [5.7, 3.55],
   },
   "thaylen-city": {
-    center: [9.56, 27.08],
+    center: [
+      destinationAnchors["thaylen-city"][0] + 0.6,
+      destinationAnchors["thaylen-city"][1] + 3.4,
+    ],
     scale: [6.4, 3.35],
   },
 };
@@ -795,7 +803,8 @@ function SelectedHarborSurface() {
           uniforms={uniforms}
           vertexShader={harborVertexShader}
           fragmentShader={harborFragmentShader}
-          depthWrite
+          transparent
+          depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>

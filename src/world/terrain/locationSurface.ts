@@ -247,7 +247,10 @@ function createSurface(
       if (definition.id === "purelake") {
         return PURELAKE_LANDFORM_HEIGHT;
       }
-      return terrainHeightAt(x, z) + (definition.supportOffset ?? 0);
+      return (
+        terrainHeightAt(x, z, definition.id) +
+        (definition.supportOffset ?? 0)
+      );
     },
     walkableY: (x, z) => {
       if (definition.id === "purelake") {
@@ -261,11 +264,11 @@ function createSurface(
           Math.min(5, Math.round((2.82 - localThreeZ) / 1.02)),
         );
         return (
-          terrainHeightAt(center[0], center[1]) +
+          terrainHeightAt(center[0], center[1], definition.id) +
           kharbranthRoadElevation(tier)
         );
       }
-      return terrainHeightAt(x, z) + 0.025;
+      return terrainHeightAt(x, z, definition.id) + 0.025;
     },
     waterY: (simulationTime = 0) => {
       if (definition.water === "purelake") {

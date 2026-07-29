@@ -9,6 +9,10 @@ import {
   landmarkRotationY,
 } from "./cities/landmarkMetrics";
 import { cityProfile } from "./cities/profiles";
+import {
+  landmarkHarborNodeUsesWaterDatum,
+  landmarkHarborWaterShift,
+} from "./terrain/landmarkWaterDatum";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
@@ -43,11 +47,15 @@ function LandmarkInstance({
   position,
   scale,
   rotationY = 0,
+  locationId,
+  harborWaterShift = 0,
 }: {
   rootName: string;
   position: [number, number, number];
   scale: number;
   rotationY?: number;
+  locationId: string;
+  harborWaterShift?: number;
 }) {
   const { scene } = useGLTF(MODEL_URL);
   const [
@@ -93,6 +101,14 @@ function LandmarkInstance({
     copy.position.set(0, 0, 0);
     copy.rotation.set(0, 0, 0);
     copy.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      if (
+        mesh.isMesh &&
+        harborWaterShift !== 0 &&
+        landmarkHarborNodeUsesWaterDatum(locationId, object.name)
+      ) {
+        object.position.y += harborWaterShift;
+      }
       if (
         object.name === "Shinovar_Grass_Valley" ||
         object.name === "Purelake_Water_Shelf" ||
@@ -109,7 +125,6 @@ function LandmarkInstance({
       ) {
         object.visible = false;
       }
-      const mesh = object as THREE.Mesh;
       if (mesh.isMesh) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -228,6 +243,8 @@ function LandmarkInstance({
     return copy;
   }, [
     kharbranthFacade,
+    harborWaterShift,
+    locationId,
     masonryMicro,
     plaster,
     rootName,
@@ -266,9 +283,14 @@ export function Landmarks() {
             location.coordinates.z,
           );
           const profile = cityProfile(location.id, location.culture);
+          const scale = landmarkLocalScale(
+            location.modelRoot!,
+            profile,
+          );
           return (
             <LandmarkInstance
               key={location.id}
+              locationId={location.id}
               rootName={location.modelRoot!}
               position={[
                 location.coordinates.x,
@@ -276,7 +298,12 @@ export function Landmarks() {
                 location.coordinates.z,
               ]}
               rotationY={landmarkRotationY(location.id)}
-              scale={landmarkLocalScale(location.modelRoot!, profile)}
+              scale={scale}
+              harborWaterShift={landmarkHarborWaterShift(
+                location.id,
+                elevation,
+                scale,
+              )}
             />
           );
         })}

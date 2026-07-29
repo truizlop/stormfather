@@ -3,6 +3,7 @@ import {
   type GeographyPoint,
 } from "../cartography/geography";
 import { applyLocationTerrainCradles } from "./locationTerrain";
+import type { DetailedLocationId } from "./locationSurface";
 
 function fract(value: number) {
   return value - Math.floor(value);
@@ -123,20 +124,30 @@ export function naturalTerrainHeightAt(x: number, z: number) {
   return base + ridgeHeightAt(x, z);
 }
 
-export function terrainHeightAt(x: number, z: number) {
+export function terrainHeightAt(
+  x: number,
+  z: number,
+  focusedLocationId?: DetailedLocationId,
+) {
   const naturalHeight = naturalTerrainHeightAt(x, z);
   return applyLocationTerrainCradles(
     x,
     z,
     naturalHeight,
     naturalTerrainHeightAt,
+    focusedLocationId,
   );
 }
 
-export function terrainSlopeAt(x: number, z: number, sample = 0.18) {
-  const west = terrainHeightAt(x - sample, z);
-  const east = terrainHeightAt(x + sample, z);
-  const north = terrainHeightAt(x, z - sample);
-  const south = terrainHeightAt(x, z + sample);
+export function terrainSlopeAt(
+  x: number,
+  z: number,
+  sample = 0.18,
+  focusedLocationId?: DetailedLocationId,
+) {
+  const west = terrainHeightAt(x - sample, z, focusedLocationId);
+  const east = terrainHeightAt(x + sample, z, focusedLocationId);
+  const north = terrainHeightAt(x, z - sample, focusedLocationId);
+  const south = terrainHeightAt(x, z + sample, focusedLocationId);
   return Math.hypot(east - west, south - north) / (sample * 2);
 }

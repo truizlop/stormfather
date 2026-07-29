@@ -21,6 +21,10 @@ import { majorRoads } from "./rosharOutline";
 import { terrainColorAt } from "./terrainColor";
 import { terrainHeightAt } from "./terrainHeight";
 import { WaterSystem } from "./WaterSystem";
+import {
+  detailedLocationSurface,
+  type DetailedLocationId,
+} from "./locationSurface";
 
 const landPolygons: readonly (readonly GeographyPoint[])[] = [
   mainlandOutline,
@@ -191,7 +195,11 @@ function createLandMaskTexture(width: number, height: number) {
   return texture;
 }
 
-function createTerrainGeometry(segmentsX: number, segmentsZ: number) {
+function createTerrainGeometry(
+  segmentsX: number,
+  segmentsZ: number,
+  focusedLocationId?: DetailedLocationId,
+) {
   const geometry = new THREE.PlaneGeometry(
     mapWidth,
     mapDepth,
@@ -205,7 +213,9 @@ function createTerrainGeometry(segmentsX: number, segmentsZ: number) {
   for (let index = 0; index < positions.count; index += 1) {
     const x = positions.getX(index);
     const z = positions.getZ(index);
-    const height = terrainHeightAt(x, z) + riverDepressionAt(x, z);
+    const height =
+      terrainHeightAt(x, z, focusedLocationId) +
+      riverDepressionAt(x, z);
     positions.setY(index, height);
     terrainColorAt(x, z, height).toArray(colors, index * 3);
   }
@@ -271,14 +281,25 @@ function createCoastSkirtGeometry() {
 
 function TerrainSurface() {
   const viewportWidth = useThree((state) => state.size.width);
+  const selectedId = useAtlasStore((state) => state.selectedId);
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
   const [stone, macroSource] = useTexture([
     `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
     `${import.meta.env.BASE_URL}textures/roshar-crem-macro.jpg`,
   ]);
   const mobile = viewportWidth < 720;
+  const focusedLocationId =
+    detailLevel === "city" || detailLevel === "street"
+      ? detailedLocationSurface(selectedId)?.id
+      : undefined;
   const geometry = useMemo(
-    () => createTerrainGeometry(mobile ? 190 : 320, mobile ? 100 : 168),
-    [mobile],
+    () =>
+      createTerrainGeometry(
+        mobile ? 190 : 320,
+        mobile ? 100 : 168,
+        focusedLocationId,
+      ),
+    [focusedLocationId, mobile],
   );
   const alphaMap = useMemo(
     () => createLandMaskTexture(mobile ? 640 : 1280, mobile ? 336 : 672),
@@ -330,8 +351,10 @@ function TerrainSurface() {
 }
 
 function CoastSkirts() {
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
   const geometry = useMemo(() => createCoastSkirtGeometry(), []);
   useEffect(() => () => geometry.dispose(), [geometry]);
+  if (detailLevel === "city" || detailLevel === "street") return null;
   return (
     <mesh geometry={geometry} receiveShadow castShadow>
       <meshStandardMaterial

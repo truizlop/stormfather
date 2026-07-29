@@ -33,10 +33,10 @@ describe("continuous Roshar terrain", () => {
 describe("close-detail surface registration", () => {
   it("uses the canonical terrain beneath ordinary destinations", () => {
     expect(localSurfaceY("kholinar", 29.12, -3.84)).toBeCloseTo(
-      terrainHeightAt(29.12, -3.84) + 0.025,
+      terrainHeightAt(29.12, -3.84, "kholinar") + 0.025,
     );
     expect(landmarkSurfaceY("azir", -21.12, 5.12)).toBeCloseTo(
-      terrainHeightAt(-21.12, 5.12),
+      terrainHeightAt(-21.12, 5.12, "azir"),
     );
   });
 
@@ -59,7 +59,7 @@ describe("close-detail surface registration", () => {
     const x = -7.68;
     const z = 6.4;
     expect(landmarkSurfaceY("urithiru", x, z)).toBeCloseTo(
-      terrainHeightAt(x, z) - 0.62,
+      terrainHeightAt(x, z, "urithiru") - 0.62,
     );
     expect(localSurfaceY("urithiru", x, z)).toBeGreaterThan(
       landmarkSurfaceY("urithiru", x, z),
@@ -76,12 +76,12 @@ describe("close-detail surface registration", () => {
       [centerX, centerZ + 4.2],
     ] as const;
     for (const [x, z] of footprintSamples) {
-      expect(terrainHeightAt(x, z)).toBeGreaterThan(3.65);
+      expect(terrainHeightAt(x, z, "urithiru")).toBeGreaterThan(3.65);
     }
     expect(
       Math.abs(
-        terrainHeightAt(centerX + 7.79, centerZ) -
-          terrainHeightAt(centerX + 7.81, centerZ),
+        terrainHeightAt(centerX + 7.79, centerZ, "urithiru") -
+          terrainHeightAt(centerX + 7.81, centerZ, "urithiru"),
       ),
     ).toBeLessThan(0.2);
   });

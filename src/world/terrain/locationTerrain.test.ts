@@ -4,6 +4,7 @@ import {
   LOCATION_TERRAIN_CRADLES,
   locationTerrainInfluenceAt,
 } from "./locationTerrain";
+import { OCEAN_WATER_HEIGHT } from "./locationSurface";
 import {
   naturalTerrainHeightAt,
   terrainHeightAt,
@@ -54,14 +55,14 @@ describe("authored location terrain cradles", () => {
       const z = cradle.center[1];
       expect(
         Math.abs(
-          terrainHeightAt(outsideX, z) -
+          terrainHeightAt(outsideX, z, cradle.id) -
             naturalTerrainHeightAt(outsideX, z),
         ),
       ).toBeLessThan(0.001);
       expect(
         Math.abs(
-          terrainHeightAt(insideX, z) -
-            terrainHeightAt(outsideX, z),
+          terrainHeightAt(insideX, z, cradle.id) -
+            terrainHeightAt(outsideX, z, cradle.id),
         ),
       ).toBeLessThan(0.12);
     }
@@ -89,11 +90,18 @@ describe("authored location terrain cradles", () => {
         terrainHeightAt(
           cradle.center[0] + x * cradle.coreRadiusX,
           cradle.center[1] + z * cradle.coreRadiusZ,
+          id,
         ),
       );
       const variation = Math.max(...samples) - Math.min(...samples);
       expect(variation, `${id} core support variation`).toBeLessThan(
-        id === "aimia" ? 0.32 : id === "shinovar" ? 4.7 : 0.4,
+        id === "aimia"
+          ? 0.32
+          : id === "shinovar"
+            ? 4.7
+            : id === "thaylen-city"
+              ? 0.85
+              : 0.4,
       );
     }
   });
@@ -107,13 +115,58 @@ describe("authored location terrain cradles", () => {
       [0, 4.2],
     ] as const) {
       expect(
-        terrainHeightAt(centerX + offsetX, centerZ + offsetZ),
+        terrainHeightAt(
+          centerX + offsetX,
+          centerZ + offsetZ,
+          "urithiru",
+        ),
       ).toBeGreaterThan(3.65);
     }
   });
 
   it("cuts the Purelake selected-detail bed beneath its water datum", () => {
     const [centerX, centerZ] = destinationAnchors.purelake;
-    expect(terrainHeightAt(centerX, centerZ)).toBeLessThan(0.07);
+    expect(
+      terrainHeightAt(centerX, centerZ, "purelake"),
+    ).toBeLessThan(0.07);
+  });
+
+  it("cuts animated ocean beneath authored Kharbranth and Thaylen piers", () => {
+    const kharbranth = LOCATION_TERRAIN_CRADLES.find(
+      (cradle) => cradle.id === "kharbranth",
+    )!;
+    const thaylen = LOCATION_TERRAIN_CRADLES.find(
+      (cradle) => cradle.id === "thaylen-city",
+    )!;
+
+    expect(
+      terrainHeightAt(
+        kharbranth.center[0],
+        kharbranth.center[1] + 6.8,
+        "kharbranth",
+      ),
+    ).toBeLessThan(OCEAN_WATER_HEIGHT - 0.025);
+    expect(
+      terrainHeightAt(
+        thaylen.center[0],
+        thaylen.center[1] + 3.7,
+        "thaylen-city",
+      ),
+    ).toBeLessThan(OCEAN_WATER_HEIGHT - 0.025);
+
+    expect(
+      terrainHeightAt(
+        kharbranth.center[0],
+        kharbranth.center[1] + 2.5,
+        "kharbranth",
+      ),
+    ).toBeGreaterThan(OCEAN_WATER_HEIGHT + 0.35);
+    expect(
+      terrainHeightAt(
+        thaylen.center[0],
+        thaylen.center[1] + 1.2,
+        "thaylen-city",
+      ),
+    ).toBeGreaterThan(OCEAN_WATER_HEIGHT + 0.35);
   });
 });
