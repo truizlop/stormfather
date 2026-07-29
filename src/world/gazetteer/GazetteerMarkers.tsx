@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import {
   BoxGeometry,
   ConeGeometry,
@@ -27,7 +27,17 @@ import {
   markerArchetypeForVisualization,
   type MarkerArchetype,
 } from "./markerArchetypes";
+import {
+  isSemanticSettlementDetailEligible,
+  semanticSettlementProfile,
+} from "./semanticSettlements";
 import type { GazetteerKind, GazetteerPlace } from "./types";
+
+const SemanticSettlementDetail = lazy(() =>
+  import("./SemanticSettlementDetail").then((module) => ({
+    default: module.SemanticSettlementDetail,
+  })),
+);
 
 const markerColor: Record<GazetteerKind, string> = {
   nation: "#c5a76c",
@@ -1179,15 +1189,36 @@ export function GazetteerMarkers({
 
   return (
     <group name="GazetteerMarkers">
-      {visiblePlacements.map(({ place, world, regionalClusterSize }) => (
-        <GazetteerMarker
-          key={place.id}
-          place={place}
-          markerWorld={world}
-          regionalClusterSize={regionalClusterSize}
-          selected={place.id === selectedId}
-        />
-      ))}
+      {visiblePlacements.map(({ place, world, regionalClusterSize }) => {
+        const selected = place.id === selectedId;
+        const profile = selected
+          ? semanticSettlementProfile(place.id)
+          : undefined;
+        if (
+          profile &&
+          isSemanticSettlementDetailEligible(place, detailLevel)
+        ) {
+          return (
+            <Suspense key={place.id} fallback={null}>
+              <SemanticSettlementDetail
+                place={place}
+                markerWorld={world}
+                detailLevel={detailLevel === "street" ? "street" : "city"}
+                profile={profile}
+              />
+            </Suspense>
+          );
+        }
+        return (
+          <GazetteerMarker
+            key={place.id}
+            place={place}
+            markerWorld={world}
+            regionalClusterSize={regionalClusterSize}
+            selected={selected}
+          />
+        );
+      })}
     </group>
   );
 }

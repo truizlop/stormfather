@@ -38,6 +38,29 @@ export {
 } from "./markerArchetypes";
 export type { MarkerArchetype } from "./markerArchetypes";
 export {
+  createSemanticSettlementLayout,
+  isSemanticSettlementDetailEligible,
+  semanticSettlementIds,
+  semanticSettlementProfile,
+  semanticSettlementProfiles,
+} from "./semanticSettlements";
+export type {
+  SemanticActivity,
+  SemanticActivitySeed,
+  SemanticBuildingSeed,
+  SemanticLayoutStyle,
+  SemanticPavingSeed,
+  SemanticRoofStyle,
+  SemanticSettlementId,
+  SemanticSettlementLayout,
+  SemanticSettlementProfile,
+  SemanticSignature,
+  SemanticSignatureMaterial,
+  SemanticSignaturePart,
+  SemanticSignatureShape,
+  SettlementHeightSampler,
+} from "./semanticSettlements";
+export {
   hasPlaceablePosition,
   referencePixelToGazetteerWorld,
   SEVENTEENTH_SHARD_MAP_SIZE,
