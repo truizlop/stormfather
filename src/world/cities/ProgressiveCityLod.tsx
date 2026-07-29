@@ -10,6 +10,7 @@ import {
   cityLodConfig,
   createCityLodState,
   createCitySilhouette,
+  effectiveCityLodDistance,
   type CityLodState,
   type CityLodTier,
   type CitySilhouette,
@@ -346,6 +347,12 @@ export interface ProgressiveCityLodProps {
    * second placement offset.
    */
   nearWorldSpace?: boolean;
+  /**
+   * A selected city can be deliberately framed wider than the generic
+   * distance threshold. Keep its authored layer active once the semantic
+   * camera mode has reached city detail instead of falling back to a proxy.
+   */
+  forceNear?: boolean;
 }
 
 /**
@@ -356,6 +363,7 @@ export function ProgressiveCityLod({
   locationId,
   near,
   nearWorldSpace = false,
+  forceNear = false,
 }: ProgressiveCityLodProps) {
   const camera = useThree((state) => state.camera);
   const far = useMemo(
@@ -392,7 +400,10 @@ export function ProgressiveCityLod({
     activeCamera.getWorldPosition(cameraPosition.current);
     updateCityLodState(
       lodState,
-      cameraPosition.current.distanceTo(center),
+      effectiveCityLodDistance(
+        cameraPosition.current.distanceTo(center),
+        forceNear,
+      ),
       delta,
       config,
     );

@@ -149,6 +149,7 @@ export function landmarkNavigationObstacles(
   rootName: string | undefined,
   center: readonly [number, number],
   scale: number,
+  rotationY = 0,
 ) {
   if (!rootName) return [];
   const source = scene.getObjectByName(rootName);
@@ -178,12 +179,26 @@ export function landmarkNavigationObstacles(
     ) {
       return;
     }
+    const cosine = Math.cos(rotationY);
+    const sine = Math.sin(rotationY);
+    const rotatedX = cosine * midpoint.x + sine * midpoint.z;
+    const rotatedZ = -sine * midpoint.x + cosine * midpoint.z;
     obstacles.push({
       id: `landmark-${mesh.name}-${obstacles.length}`,
-      x: center[0] + midpoint.x * scale,
-      z: center[1] + midpoint.z * scale,
-      halfWidth: Math.max(0.018, (size.x * scale) / 2),
-      halfDepth: Math.max(0.018, (size.z * scale) / 2),
+      x: center[0] + rotatedX * scale,
+      z: center[1] + rotatedZ * scale,
+      halfWidth: Math.max(
+        0.018,
+        ((Math.abs(cosine) * size.x + Math.abs(sine) * size.z) *
+          scale) /
+          2,
+      ),
+      halfDepth: Math.max(
+        0.018,
+        ((Math.abs(sine) * size.x + Math.abs(cosine) * size.z) *
+          scale) /
+          2,
+      ),
       rotation: 0,
     });
   });

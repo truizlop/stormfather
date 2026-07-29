@@ -9,6 +9,7 @@ const modeledLocations = locations.filter((location) => location.modelRoot);
 
 export function CityClusters() {
   const selectedId = useAtlasStore((state) => state.selectedId);
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
 
   return (
     <group name="Progressive city representations">
@@ -17,6 +18,10 @@ export function CityClusters() {
           key={location.id}
           locationId={location.id}
           nearWorldSpace
+          forceNear={
+            location.id === selectedId &&
+            (detailLevel === "city" || detailLevel === "street")
+          }
           near={
             location.id === selectedId ? (
               <Suspense fallback={null}>

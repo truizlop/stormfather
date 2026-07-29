@@ -38,5 +38,11 @@ export function landmarkSurfaceY(
   z: number,
 ) {
   if (locationId === "purelake") return 0.085;
+  if (locationId === "urithiru") {
+    // The model contains its own excavated mountain mass. Sink that mass into
+    // the shared heightfield so the lower retaining works emerge from rock
+    // rather than standing on a freestanding plinth.
+    return terrainHeightAt(x, z) - 0.62;
+  }
   return terrainHeightAt(x, z);
 }

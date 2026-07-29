@@ -4,7 +4,10 @@ import * as THREE from "three";
 import { locations } from "./locations";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { landmarkSurfaceY } from "./terrain/localSurface";
-import { landmarkLocalScale } from "./cities/landmarkMetrics";
+import {
+  landmarkLocalScale,
+  landmarkRotationY,
+} from "./cities/landmarkMetrics";
 import { cityProfile } from "./cities/profiles";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
@@ -39,10 +42,12 @@ function LandmarkInstance({
   rootName,
   position,
   scale,
+  rotationY = 0,
 }: {
   rootName: string;
   position: [number, number, number];
   scale: number;
+  rotationY?: number;
 }) {
   const { scene } = useGLTF(MODEL_URL);
   const [
@@ -92,6 +97,7 @@ function LandmarkInstance({
         object.name === "Shinovar_Grass_Valley" ||
         object.name === "Purelake_Water_Shelf" ||
         object.name === "ThaylenCity_HarborBasin" ||
+        object.name === "Urithiru_Mountain_Base" ||
         object.name.startsWith("Kharbranth_Mountain_")
       ) {
         object.visible = false;
@@ -138,6 +144,24 @@ function LandmarkInstance({
             lowerName.includes("cyan") ||
             lowerName.includes("water") ||
             lowerName.includes("light");
+          if (rootName === "Landmark_Urithiru" && !excludesTexture) {
+            const materialName = material.name.toLowerCase();
+            const objectName = object.name.toLowerCase();
+            if (
+              objectName.includes("urithiru_mountain_") ||
+              objectName.includes("western_mountain") ||
+              objectName.includes("terrain_seated_foundation")
+            ) {
+              material.color.set("#625f54");
+              material.map = null;
+            }
+            if (materialName.includes("city_urithiru")) {
+              material.color.multiplyScalar(0.68);
+            } else if (materialName.includes("windward_stone")) {
+              material.color.multiplyScalar(0.78);
+            }
+            material.roughness = Math.max(material.roughness ?? 0.8, 0.9);
+          }
           if (!excludesTexture && "roughness" in material) {
             const isStormwood =
               /(wood|rope|timber|dock|balcony|shutter|door)/.test(lowerName) &&
@@ -199,7 +223,7 @@ function LandmarkInstance({
   if (!clone) return null;
 
   return (
-    <group position={position} scale={scale}>
+    <group position={position} rotation-y={rotationY} scale={scale}>
       <primitive object={clone} />
     </group>
   );
@@ -236,6 +260,7 @@ export function Landmarks() {
                 elevation,
                 location.coordinates.z,
               ]}
+              rotationY={landmarkRotationY(location.id)}
               scale={landmarkLocalScale(location.modelRoot!, profile)}
             />
           );

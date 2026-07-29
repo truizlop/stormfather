@@ -23,6 +23,13 @@ export interface CityLodState {
   weights: CityLodWeights;
 }
 
+export function effectiveCityLodDistance(
+  cameraDistance: number,
+  forceNear: boolean,
+) {
+  return forceNear ? 0 : cameraDistance;
+}
+
 export type CitySilhouetteStyle =
   | "tower"
   | "terraced-port"

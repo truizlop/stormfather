@@ -201,12 +201,20 @@ function writeFlightPositionAt(
     arcPulse(cycle, 0.48, 0.64) * maneuverStrength;
   const dive =
     arcPulse(cycle, 0.64, 0.82) * maneuverStrength;
-  const orbit =
+  const fullOrbit =
     seed.angle +
     timeSeconds *
       seed.speed *
       seed.direction *
       (1 + storm * 1.55);
+  // Keep the captain and one fully bonded knight on the eastern half of the
+  // tower. They remain in motion and at canonical human scale, but this
+  // guarantees the selected-city hero view contains an identifiable patrol
+  // instead of leaving every knight hidden behind the mountain at once.
+  const eastFacadePatrol = seed.index === 0 || seed.index === 4;
+  const orbit = eastFacadePatrol
+    ? Math.sin(fullOrbit) * 0.82
+    : fullOrbit;
   const formationTightening = 1 - storm * 0.14;
   const radius = Math.max(
     (crownPatrol

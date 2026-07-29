@@ -35,15 +35,15 @@ const platePalette: Record<
   }
 > = {
   captain: {
-    plate: "#e1f3f4",
-    secondary: "#82b3c6",
-    cape: "#183f69",
+    plate: "#78b8c9",
+    secondary: "#315f7d",
+    cape: "#102e55",
     stormlight: "#f2ffff",
   },
   knight: {
-    plate: "#b4d3dc",
-    secondary: "#6096ae",
-    cape: "#205a8c",
+    plate: "#6f9eae",
+    secondary: "#386d88",
+    cape: "#174a7a",
     stormlight: "#bdf8ff",
   },
   squire: {
@@ -545,7 +545,7 @@ function Formation({
         const sideZ = tangentX / tangentLength;
         const progress = segment / (TRAIL_SEGMENTS - 1);
         const width =
-          (0.044 * (1 - progress) + 0.003) *
+          (0.068 * (1 - progress) + 0.004) *
           (1 + storm * 0.34);
         for (let side = 0; side < 2; side += 1) {
           const sign = side === 0 ? -1 : 1;
@@ -618,7 +618,7 @@ function Formation({
     }
     if (trailMaterial.current) {
       trailMaterial.current.opacity =
-        0.38 + storm * 0.2 + (nightMode ? 0.08 : 0);
+        0.5 + storm * 0.2 + (nightMode ? 0.08 : 0);
     }
   });
 

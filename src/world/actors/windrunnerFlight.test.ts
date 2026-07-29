@@ -50,6 +50,15 @@ describe("Windrunner patrol composition", () => {
       }
     }
   });
+
+  it("keeps the captain and a knight visible from the east hero view", () => {
+    const formation = createWindrunnerSeeds("street");
+    for (const seed of [formation[0]!, formation[4]!]) {
+      for (let time = 0; time <= 180; time += 3) {
+        expect(windrunnerFlightPoseAt(seed, time, 0).x).toBeGreaterThan(0);
+      }
+    }
+  });
 });
 
 describe("Windrunner flight simulation", () => {

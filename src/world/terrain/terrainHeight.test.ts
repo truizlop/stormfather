@@ -54,4 +54,35 @@ describe("close-detail surface registration", () => {
     const upper = localSurfaceY("kharbranth", 9.92, 15.8);
     expect(upper).toBeGreaterThan(lower + 1.2);
   });
+
+  it("buries Urithiru's authored mountain mass into the heightfield", () => {
+    const x = -7.68;
+    const z = 6.4;
+    expect(landmarkSurfaceY("urithiru", x, z)).toBeCloseTo(
+      terrainHeightAt(x, z) - 0.62,
+    );
+    expect(localSurfaceY("urithiru", x, z)).toBeGreaterThan(
+      landmarkSurfaceY("urithiru", x, z),
+    );
+  });
+
+  it("supports Urithiru's full footprint with a continuous massif", () => {
+    const centerX = -7.68;
+    const centerZ = 6.4;
+    const footprintSamples = [
+      [centerX - 4.2, centerZ],
+      [centerX + 4.2, centerZ],
+      [centerX, centerZ - 4.2],
+      [centerX, centerZ + 4.2],
+    ] as const;
+    for (const [x, z] of footprintSamples) {
+      expect(terrainHeightAt(x, z)).toBeGreaterThan(3.65);
+    }
+    expect(
+      Math.abs(
+        terrainHeightAt(centerX + 7.79, centerZ) -
+          terrainHeightAt(centerX + 7.81, centerZ),
+      ),
+    ).toBeLessThan(0.2);
+  });
 });

@@ -3,6 +3,7 @@ import {
   cityLodConfig,
   createCityLodState,
   createCitySilhouette,
+  effectiveCityLodDistance,
   updateCityLodState,
 } from "./progressiveLod";
 
@@ -14,6 +15,11 @@ const testConfig = {
 };
 
 describe("progressive city LOD", () => {
+  it("keeps a selected semantic city in authored near detail", () => {
+    expect(effectiveCityLodDistance(25.38, true)).toBe(0);
+    expect(effectiveCityLodDistance(25.38, false)).toBe(25.38);
+  });
+
   it("holds the active tier inside hysteresis bands", () => {
     const state = createCityLodState(70, testConfig);
     updateCityLodState(state, 48, 1 / 60, testConfig);

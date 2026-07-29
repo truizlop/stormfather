@@ -87,7 +87,10 @@ const locationData = [
     subtitle: "The tower above the storms",
     kind: "city",
     coordinates: coordinateFor("urithiru"),
-    camera: { position: [2, 23, 21], target: [-8, 6.3, 6.5] },
+    // The east-elevation hero view is wide enough to keep the whole mountain
+    // city in frame; the selected-city semantic override keeps the authored
+    // ten-stratum model active instead of substituting its proxy silhouette.
+    camera: { position: [8.5, 19.5, 9.5], target: [-7.3, 8.5, 6.4] },
     arrivalDetail: "city",
     regionColor: "#575a59",
     accentColor: "#7ee7ed",

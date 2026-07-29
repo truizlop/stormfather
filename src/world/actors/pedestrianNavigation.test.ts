@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import * as THREE from "three";
 import { createDistrictLayout } from "../cities/districtLayout";
 import { cityProfile } from "../cities/profiles";
 import { locationById } from "../locations";
 import {
   createNavigationField,
   isNavigationPositionValid,
+  landmarkNavigationObstacles,
   resolveCrowdSeparation,
   sampleNavigationRoute,
   type NavigationObstacle,
@@ -13,6 +15,31 @@ import {
 const cases = ["kharbranth", "shattered-plains", "purelake", "thaylen-city"];
 
 describe("pedestrian navigation", () => {
+  it("rotates authored landmark collision footprints with their render root", () => {
+    const scene = new THREE.Group();
+    const root = new THREE.Group();
+    root.name = "Test_Root";
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 2));
+    tower.name = "Test_Tower";
+    tower.position.set(2, 0, 1);
+    root.add(tower);
+    scene.add(root);
+
+    const [obstacle] = landmarkNavigationObstacles(
+      scene,
+      root.name,
+      [10, 20],
+      1,
+      Math.PI / 2,
+    );
+
+    expect(obstacle.x).toBeCloseTo(11);
+    expect(obstacle.z).toBeCloseTo(18);
+    expect(obstacle.halfWidth).toBeCloseTo(1);
+    expect(obstacle.halfDepth).toBeCloseTo(2);
+    tower.geometry.dispose();
+  });
+
   it.each(cases)(
     "keeps sampled %s residents inside walkable, collision-free space",
     (locationId) => {

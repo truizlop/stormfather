@@ -42,3 +42,7 @@ export function landmarkLocalScale(
 export function landmarkPlanDimensions(rootName: string) {
   return landmarkPlanSize[rootName];
 }
+
+export function landmarkRotationY(locationId: string) {
+  return locationId === "urithiru" ? Math.PI / 2 : 0;
+}

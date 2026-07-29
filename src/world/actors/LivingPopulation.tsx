@@ -19,6 +19,7 @@ import { createDistrictLayout } from "../cities/districtLayout";
 import {
   kharbranthRoadOffset,
   landmarkLocalScale,
+  landmarkRotationY,
 } from "../cities/landmarkMetrics";
 import { cityProfile } from "../cities/profiles";
 import { detailedActorLocalScale } from "./humanScale";
@@ -999,6 +1000,7 @@ function ActiveLivingPopulation({
       fallbackLocation.modelRoot,
       center,
       landmarkLocalScale(fallbackLocation.modelRoot, profile),
+      landmarkRotationY(fallbackLocation.id),
     );
   }, [
     center,
