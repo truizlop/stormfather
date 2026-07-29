@@ -17,7 +17,7 @@ const landmarkPlanSize: Record<string, readonly [number, number]> = {
   Landmark_Oathgate: [7.418, 7.757],
 };
 
-export const KHARBRANTH_LANDMARK_SCALE = (5.1 * 2) / 10.551;
+export const KHARBRANTH_LANDMARK_SCALE = (6.4 * 2) / 10.551;
 
 export function kharbranthRoadOffset(tier: number) {
   // Blender Y is exported as negative Three.js Z. The authored run sits

@@ -173,7 +173,7 @@ const overrides: Record<string, Partial<CityProfile>> = {
     activity: "port",
     roof: "flat",
     density: 1.08,
-    radius: 5.1,
+    radius: 6.4,
     height: [0.34, 1.08],
     footprint: [0.18, 0.38],
     palette: ["#bd7654", "#c19548", "#4a8d8a", "#d0c3a5", "#9b5f65"],

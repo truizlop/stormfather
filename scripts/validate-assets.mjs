@@ -72,6 +72,13 @@ const forbiddenRuntimeTokens = [
   "reference/kharbranth-concept.jpg",
   "reference/kharbranth-residents.jpg",
 ];
+const expectedKharbranthGeometry = [
+  "Kharbranth_FacadeAtlas_Batch_01",
+  "Kharbranth_Retaining_FrameBatch",
+  "Kharbranth_CliffWard_FacadeAtlasBatch",
+  "Kharbranth_Civic_LoggiaBatch",
+  "Kharbranth_Harbor_RopeworkBatch",
+];
 
 try {
   const model = await stat(modelPath);
@@ -97,9 +104,26 @@ try {
   if (missing.length) {
     throw new Error(`Missing authored roots: ${missing.join(", ")}`);
   }
+  const missingKharbranthGeometry = expectedKharbranthGeometry.filter(
+    (name) => !names.has(name),
+  );
+  if (missingKharbranthGeometry.length) {
+    throw new Error(
+      `Missing modeled Kharbranth systems: ${missingKharbranthGeometry.join(", ")}`,
+    );
+  }
+  const kharbranthNodeCount = [...names].filter((name) =>
+    name.startsWith("Kharbranth_"),
+  ).length;
+  if (kharbranthNodeCount < 330) {
+    throw new Error(
+      `Kharbranth geometry is unexpectedly sparse: ${kharbranthNodeCount} named nodes`,
+    );
+  }
 
   console.log(`✓ Roshar landmark kit: ${(model.size / 1024).toFixed(1)} KiB`);
   console.log(`✓ ${expectedRoots.length} expected landmark and actor roots`);
+  console.log(`✓ ${kharbranthNodeCount} modeled Kharbranth nodes`);
   for (const textureName of expectedTextures) {
     const texture = await stat(resolve("public/textures", textureName));
     if (texture.size < 16 * 1024) {

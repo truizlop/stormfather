@@ -118,9 +118,7 @@ function LandmarkInstance({
                 .includes("plaster");
               const isFacade =
                 isPlaster &&
-                /(house|lowerward_block|institution)/.test(
-                  object.name.toLowerCase(),
-                );
+                object.name.toLowerCase().includes("facadeatlas");
               material.map = isFacade
                 ? kharbranthFacade
                 : isPlaster
@@ -143,9 +141,7 @@ function LandmarkInstance({
           if (!excludesTexture && "roughness" in material) {
             const usePlaster =
               rootName === "Landmark_Kharbranth" &&
-              (lowerName.includes("house") ||
-                lowerName.includes("terrace") ||
-                lowerName.includes("awning"));
+              lowerName.includes("plaster");
             const useKharbranthStone =
               rootName === "Landmark_Kharbranth" && !usePlaster;
             material.bumpMap = usePlaster
