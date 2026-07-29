@@ -67,6 +67,94 @@ export function gazetteerMarkerWorld(
   ];
 }
 
+export interface GazetteerMarkerPlacement {
+  place: GazetteerPlace;
+  world: readonly [number, number];
+  regionalClusterIndex: number | null;
+  regionalClusterSize: number;
+}
+
+const REGIONAL_FAN_GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+const REGIONAL_FAN_BASE_RADIUS = 0.34;
+const REGIONAL_FAN_RADIUS_STEP = 0.11;
+
+function markerWorldKey(world: readonly [number, number]) {
+  return `${world[0].toFixed(6)}:${world[1].toFixed(6)}`;
+}
+
+/**
+ * Fan co-located regional records around their shared source anchor.
+ *
+ * This is presentation-only: the catalog coordinates remain unchanged and no
+ * offset is applied to precise points or registered city-plan points. The
+ * golden-angle fan avoids geometry/label piles without implying a canonical
+ * compass bearing for any member of the cluster.
+ */
+export function layoutGazetteerMarkerWorlds(
+  places: readonly GazetteerPlace[],
+): readonly GazetteerMarkerPlacement[] {
+  const resolved = places.flatMap((place) => {
+    const world = gazetteerMarkerWorld(place);
+    return world ? [{ place, world }] : [];
+  });
+  const regionalGroups = new Map<
+    string,
+    Array<(typeof resolved)[number]>
+  >();
+
+  for (const entry of resolved) {
+    if (
+      entry.place.certainty !== "regional" ||
+      entry.place.placementReference !== undefined
+    ) {
+      continue;
+    }
+    const key = markerWorldKey(entry.world);
+    const group = regionalGroups.get(key) ?? [];
+    group.push(entry);
+    regionalGroups.set(key, group);
+  }
+
+  const fanById = new Map<
+    string,
+    {
+      world: readonly [number, number];
+      index: number;
+      size: number;
+    }
+  >();
+  for (const group of regionalGroups.values()) {
+    if (group.length < 2) continue;
+    const stableGroup = [...group].sort((left, right) =>
+      left.place.id.localeCompare(right.place.id),
+    );
+    stableGroup.forEach((entry, index) => {
+      const angle = index * REGIONAL_FAN_GOLDEN_ANGLE;
+      const radius =
+        REGIONAL_FAN_BASE_RADIUS +
+        REGIONAL_FAN_RADIUS_STEP * Math.sqrt(index);
+      fanById.set(entry.place.id, {
+        world: [
+          entry.world[0] + Math.cos(angle) * radius,
+          entry.world[1] + Math.sin(angle) * radius,
+        ],
+        index,
+        size: stableGroup.length,
+      });
+    });
+  }
+
+  return resolved.map(({ place, world }) => {
+    const fan = fanById.get(place.id);
+    return {
+      place,
+      world: fan?.world ?? world,
+      regionalClusterIndex: fan?.index ?? null,
+      regionalClusterSize: fan?.size ?? 1,
+    };
+  });
+}
+
 export function gazetteerMarkerY(
   place: GazetteerPlace,
   markerWorld = gazetteerMarkerWorld(place),
@@ -84,7 +172,7 @@ export function gazetteerMarkerY(
     return terrainHeightAt(place.world[0], place.world[1]) + 2.8;
   }
   const [x, z] = markerWorld ?? place.world;
-  return terrainHeightAt(x, z) + 0.18;
+  return terrainHeightAt(x, z) + 0.025;
 }
 
 export function isWithinGazetteerFocus(

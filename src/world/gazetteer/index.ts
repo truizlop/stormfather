@@ -28,7 +28,15 @@ export {
   gazetteerMarkerY,
   isGazetteerPlaceVisibleAtLod,
   isWithinGazetteerFocus,
+  layoutGazetteerMarkerWorlds,
 } from "./markerLayout";
+export type { GazetteerMarkerPlacement } from "./markerLayout";
+export {
+  markerArchetypeByVisualization,
+  markerArchetypeForVisualization,
+  visualizationArchetypes,
+} from "./markerArchetypes";
+export type { MarkerArchetype } from "./markerArchetypes";
 export {
   hasPlaceablePosition,
   referencePixelToGazetteerWorld,
