@@ -18,7 +18,13 @@ import {
   stormProximity,
   stormXAtTime,
 } from "../weather/storm";
-import { settlementWaterY } from "./locationSurface";
+import {
+  OCEAN_WATER_HEIGHT,
+  settlementWaterY,
+} from "./locationSurface";
+
+/** Mean height used by the rendered ocean and every authored ocean harbor. */
+export const RENDERED_OCEAN_HEIGHT = OCEAN_WATER_HEIGHT;
 
 const coastlinePolygons: readonly (readonly GeographyPoint[])[] = [
   mainlandOutline,
@@ -336,7 +342,11 @@ function OceanSurface() {
   });
 
   return (
-    <mesh rotation-x={-Math.PI / 2} position-y={-0.25} receiveShadow>
+    <mesh
+      rotation-x={-Math.PI / 2}
+      position-y={RENDERED_OCEAN_HEIGHT}
+      receiveShadow
+    >
       <planeGeometry args={[280, 220, segments[0], segments[1]]} />
       <shaderMaterial
         ref={material}

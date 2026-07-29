@@ -4,6 +4,7 @@ import {
   caravanPose,
   cargoLiftHeight,
   fishingRaftPose,
+  floatingWatercraftY,
 } from "./activityMath";
 
 describe("city activity motion", () => {
@@ -42,6 +43,15 @@ describe("city activity motion", () => {
 
     expect(shelteringDistance).toBeLessThan(fishingDistance);
     expect(cargoLiftHeight(20, 1)).toBeCloseTo(0.18);
+  });
+
+  it("keeps a fishing raft registered to a draining water surface", () => {
+    const calm = floatingWatercraftY(0.08, 42, 1);
+    const drained = floatingWatercraftY(0.035, 42, 1);
+
+    expect(calm - drained).toBeCloseTo(0.045);
+    expect(drained).toBeGreaterThan(0.035);
+    expect(drained).toBeLessThan(0.08);
   });
 
   it("keeps caravans moving on calm roads and recalls them before a storm", () => {

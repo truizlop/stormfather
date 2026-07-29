@@ -49,6 +49,18 @@ export function fishingRaftPose(
   };
 }
 
+export function floatingWatercraftY(
+  waterY: number,
+  simulationTime: number,
+  index: number,
+) {
+  return (
+    waterY +
+    0.035 +
+    Math.sin(simulationTime * 0.4 + index) * 0.007
+  );
+}
+
 export function cargoLiftHeight(
   simulationTime: number,
   stormProximity: number,

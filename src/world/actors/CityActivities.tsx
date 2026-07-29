@@ -5,13 +5,15 @@ import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
 import { LOCAL_UNITS_PER_METER } from "../scale";
-import { localSurfaceY, PURELAKE_WATER_HEIGHT } from "../terrain/localSurface";
+import { localSurfaceY } from "../terrain/localSurface";
+import { settlementWaterY } from "../terrain/locationSurface";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import {
   bridgeRunPose,
   caravanPose,
   cargoLiftHeight,
   fishingRaftPose,
+  floatingWatercraftY,
 } from "./activityMath";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
@@ -98,11 +100,11 @@ function FishingRaft({
       proximity,
       center,
     );
+    const waterY =
+      settlementWaterY("purelake", state.simulationTime) ?? 0;
     group.current.position.set(
       pose.x,
-      PURELAKE_WATER_HEIGHT +
-        0.035 +
-        Math.sin(state.simulationTime * 0.4 + index) * 0.007,
+      floatingWatercraftY(waterY, state.simulationTime, index),
       pose.z,
     );
     group.current.rotation.y = pose.heading;

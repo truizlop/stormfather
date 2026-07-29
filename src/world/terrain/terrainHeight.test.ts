@@ -3,8 +3,8 @@ import { terrainHeightAt, terrainSlopeAt } from "./terrainHeight";
 import {
   landmarkSurfaceY,
   localSurfaceY,
-  PURELAKE_WATER_HEIGHT,
 } from "./localSurface";
+import { PURELAKE_PEDESTRIAN_HEIGHT } from "./locationSurface";
 
 describe("continuous Roshar terrain", () => {
   it("is deterministic and remains above the water plane", () => {
@@ -42,10 +42,10 @@ describe("close-detail surface registration", () => {
 
   it("keeps Purelake detail on the shallow-water surface", () => {
     expect(localSurfaceY("purelake", -9.6, -3.84)).toBe(
-      PURELAKE_WATER_HEIGHT,
+      PURELAKE_PEDESTRIAN_HEIGHT,
     );
     expect(landmarkSurfaceY("purelake", -9.6, -3.84)).toBeLessThan(
-      PURELAKE_WATER_HEIGHT,
+      PURELAKE_PEDESTRIAN_HEIGHT,
     );
   });
 

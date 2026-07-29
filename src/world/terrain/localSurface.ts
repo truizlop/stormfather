@@ -1,10 +1,7 @@
 import {
-  PURELAKE_PEDESTRIAN_HEIGHT,
   settlementSupportY,
   settlementWalkableY,
 } from "./locationSurface";
-
-export const PURELAKE_WATER_HEIGHT = PURELAKE_PEDESTRIAN_HEIGHT;
 
 /**
  * Close-detail systems share this sampler so buildings, residents, props, and
