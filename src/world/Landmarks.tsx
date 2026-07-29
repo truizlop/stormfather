@@ -224,6 +224,17 @@ function LandmarkInstance({
                 material.metalness ?? 0,
                 0.04,
               );
+              // Tall stormward walls spend much of the cycle in hard terrain
+              // or storm shadow. A restrained diffuse fill keeps the
+              // generated masonry/timber atlas legible without flattening its
+              // directional lighting or making the city glow.
+              material.emissive.copy(material.color).multiplyScalar(0.08);
+              material.emissiveIntensity =
+                rootName === "Landmark_Shattered_Plains"
+                  ? 0.22
+                  : rootName === "Landmark_Kholinar"
+                    ? 0.18
+                    : 0.12;
             } else {
               material.bumpMap = microSurface;
               material.roughnessMap = null;
