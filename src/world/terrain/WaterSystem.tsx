@@ -90,12 +90,6 @@ const oceanFragmentShader = /* glsl */ `
   varying float vWave;
   varying float vStorm;
 
-  float hash21(vec2 p) {
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
-  }
-
   float microWave(vec2 point) {
     float a = sin(dot(point, vec2(2.71, 1.37)) + uTime * 1.43);
     float b = sin(dot(point, vec2(-1.83, 3.11)) - uTime * 1.09);
@@ -112,14 +106,20 @@ const oceanFragmentShader = /* glsl */ `
     float fresnel = pow(1.0 - max(dot(normal, viewDirection), 0.0), 2.7);
     float fine = microWave(vWorldPosition.xz);
     float crest = smoothstep(0.095, 0.225, vWave + fine * 0.031);
-    float brokenCrest = smoothstep(
-      0.45,
-      0.88,
-      fine + hash21(floor(vWorldPosition.xz * 1.7)) * 0.32
+    float crossingBreakup = microWave(
+      vWorldPosition.xz * 1.74 + vec2(uTime * 0.13, -uTime * 0.09)
     );
-    float fleck = step(
-      0.88,
-      hash21(floor(vWorldPosition.xz * 2.1 + uTime * 0.14))
+    float brokenCrest = smoothstep(
+      0.08,
+      0.78,
+      fine * 0.62 + crossingBreakup * 0.48
+    );
+    float fleck = smoothstep(
+      0.62,
+      0.94,
+      microWave(
+        vWorldPosition.xz * 2.35 + vec2(-uTime * 0.19, uTime * 0.16)
+      )
     );
     vec3 lightDirection = normalize(vec3(-0.42, 0.82, -0.38));
     vec3 halfVector = normalize(viewDirection + lightDirection);
@@ -311,7 +311,7 @@ function OceanSurface() {
   const material = useRef<THREE.ShaderMaterial>(null);
   const width = useThree((state) => state.size.width);
   const nightMode = useAtlasStore((state) => state.nightMode);
-  const segments = width < 720 ? [72, 44] : [144, 86];
+  const segments = width < 720 ? [112, 68] : [256, 160];
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
