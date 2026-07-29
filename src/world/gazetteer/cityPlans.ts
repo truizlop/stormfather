@@ -2,6 +2,7 @@ import {
   referencePixelToGazetteerWorld,
   sourceMapPixelToReferencePixel,
 } from "./transform";
+import { defaultGazetteerCategory } from "./types";
 import type {
   GazetteerKind,
   GazetteerPlace,
@@ -90,6 +91,7 @@ function kholinarPlace(input: CityPlanPlaceInput): GazetteerPlace {
     canonicalName: input.canonicalName,
     parentLocationId: "kholinar",
     kind: input.kind,
+    category: defaultGazetteerCategory(input.kind),
     nationOrRegion: "Kholinar, Alethkar",
     certainty: "regional",
     minimumLod: "street",
@@ -116,6 +118,7 @@ function azimirPlace(input: CityPlanPlaceInput): GazetteerPlace {
     canonicalName: input.canonicalName,
     parentLocationId: "azir",
     kind: input.kind,
+    category: defaultGazetteerCategory(input.kind),
     nationOrRegion: "Azimir, Azir",
     certainty: "regional",
     minimumLod: "street",

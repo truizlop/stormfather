@@ -7,12 +7,14 @@ import {
 } from "./transform";
 import { shinovarGazetteer } from "./shinovar";
 import type {
+  GazetteerCategory,
   GazetteerCertainty,
   GazetteerKind,
   GazetteerPlace,
   GazetteerSource,
   VisualizationArchetype,
 } from "./types";
+import { defaultGazetteerCategory } from "./types";
 
 export const ROSHAR_MAP_SOURCE_COMMIT =
   "dfbf1c167808f29176a7c01469e8ba957a8b3692";
@@ -54,6 +56,7 @@ interface LocatedPlaceInput {
   id: string;
   canonicalName: string;
   kind: GazetteerKind;
+  category?: GazetteerCategory;
   nationOrRegion: string;
   minimumLod: DetailLevel;
   visualization: VisualizationArchetype;
@@ -78,6 +81,7 @@ function located(input: LocatedPlaceInput): GazetteerPlace {
     id: input.id,
     canonicalName: input.canonicalName,
     kind: input.kind,
+    category: input.category ?? defaultGazetteerCategory(input.kind),
     nationOrRegion: input.nationOrRegion,
     certainty: input.certainty ?? "precise",
     minimumLod: input.minimumLod,
@@ -103,6 +107,7 @@ function unknown(
     id: input.id,
     canonicalName: input.canonicalName,
     kind: input.kind,
+    category: input.category ?? defaultGazetteerCategory(input.kind),
     nationOrRegion: input.nationOrRegion,
     certainty: "unknown",
     minimumLod: input.minimumLod,
@@ -193,6 +198,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "kharbranth",
     canonicalName: "Kharbranth",
     kind: "city",
+    category: "city-state",
     nationOrRegion: "Kharbranth",
     minimumLod: "region",
     visualization: "terrace-city",
@@ -240,6 +246,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "aimia",
     canonicalName: "Aimia",
     kind: "island",
+    category: "region",
     nationOrRegion: "Aimia",
     minimumLod: "continent",
     visualization: "island",
@@ -275,6 +282,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "reshi-isles",
     canonicalName: "Reshi Isles",
     kind: "island-chain",
+    category: "region",
     nationOrRegion: "Reshi Isles",
     minimumLod: "continent",
     visualization: "island-chain",
@@ -286,6 +294,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "urithiru",
     canonicalName: "Urithiru",
     kind: "city",
+    category: "legendary city",
     nationOrRegion: "Central Roshar",
     minimumLod: "region",
     visualization: "mountain-city",
@@ -297,6 +306,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "shattered-plains",
     canonicalName: "Shattered Plains",
     kind: "plains",
+    category: "region",
     nationOrRegion: "Former Natanatan",
     minimumLod: "continent",
     visualization: "shattered-plains",
@@ -389,6 +399,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "purelake",
     canonicalName: "Purelake",
     kind: "lake",
+    category: "region",
     nationOrRegion: "Purelake",
     minimumLod: "continent",
     visualization: "shallow-lake",
@@ -423,6 +434,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "new-natanan",
     canonicalName: "New Natanan",
     kind: "city",
+    category: "kingdom/region",
     nationOrRegion: "New Natanan",
     minimumLod: "region",
     visualization: "port-city",
@@ -465,7 +477,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "hearthstone",
     canonicalName: "Hearthstone",
-    kind: "village",
+    kind: "town",
     nationOrRegion: "Sadeas princedom, Alethkar",
     minimumLod: "region",
     visualization: "village",
@@ -476,6 +488,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "horneater-peaks",
     canonicalName: "Horneater Peaks",
     kind: "mountain-range",
+    category: "region",
     nationOrRegion: "Jah Keved",
     minimumLod: "continent",
     visualization: "mountain-range",
@@ -598,6 +611,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "unclaimed-hills",
     canonicalName: "Unclaimed Hills",
     kind: "hills",
+    category: "region",
     nationOrRegion: "Eastern Roshar",
     minimumLod: "continent",
     visualization: "hills",
@@ -728,6 +742,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "frostlands",
     canonicalName: "Frostlands",
     kind: "plains",
+    category: "region",
     nationOrRegion: "Frostlands",
     minimumLod: "continent",
     visualization: "nation-label",
@@ -830,6 +845,21 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     sourceMapPixel: [512.2, 351],
     certainty: "regional",
     coppermindSlug: "Greater_Hexi",
+  }),
+  located({
+    id: "makabak",
+    canonicalName: "Makabak",
+    kind: "region",
+    category: "broad cultural/geographic region",
+    nationOrRegion: "Southwestern and south-central Roshar",
+    minimumLod: "continent",
+    visualization: "nation-label",
+    // Regional display anchor at the center of the Makabaki member states,
+    // not a claim that this broad cultural region has a single surveyed point.
+    referencePixel: [690, 800],
+    certainty: "regional",
+    coppermindSlug: "Makabak",
+    sources: [coppermindSource("Makabak", "Makabak")],
   }),
   located({
     id: "sesemalex-dar",

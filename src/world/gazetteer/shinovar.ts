@@ -1,4 +1,5 @@
 import { referencePixelToGazetteerWorld } from "./transform";
+import { defaultGazetteerCategory } from "./types";
 import type {
   GazetteerKind,
   GazetteerPlace,
@@ -67,6 +68,7 @@ function shinovarPlace(input: ShinovarPlaceInput): GazetteerPlace {
     canonicalName: input.canonicalName,
     parentLocationId: "shinovar",
     kind: input.kind,
+    category: defaultGazetteerCategory(input.kind),
     nationOrRegion: input.nationOrRegion ?? "Shinovar",
     certainty: "regional",
     minimumLod: "city",

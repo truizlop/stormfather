@@ -54,6 +54,7 @@ export {
   shinovarTempleGazetteer,
 } from "./shinovar";
 export type {
+  GazetteerCategory,
   GazetteerCertainty,
   GazetteerKind,
   GazetteerPlace,

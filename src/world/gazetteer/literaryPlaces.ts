@@ -1,5 +1,6 @@
 import type { DetailLevel } from "../types";
 import { referencePixelToGazetteerWorld } from "./transform";
+import { defaultGazetteerCategory } from "./types";
 import type {
   GazetteerKind,
   GazetteerPlace,
@@ -47,6 +48,7 @@ function regional(input: RegionalPlaceInput): GazetteerPlace {
     canonicalName: input.canonicalName,
     parentLocationId: input.parentLocationId,
     kind: input.kind,
+    category: defaultGazetteerCategory(input.kind),
     nationOrRegion: input.nationOrRegion,
     certainty: "regional",
     minimumLod: input.minimumLod,

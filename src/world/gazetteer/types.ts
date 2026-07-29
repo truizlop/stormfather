@@ -4,6 +4,7 @@ export type GazetteerCertainty = "precise" | "regional" | "unknown";
 
 export type GazetteerKind =
   | "nation"
+  | "region"
   | "city"
   | "town"
   | "village"
@@ -22,6 +23,55 @@ export type GazetteerKind =
   | "island-chain"
   | "caves"
   | "landmark";
+
+/**
+ * Reader-facing classification, kept separate from `GazetteerKind`.
+ *
+ * `kind` drives a place's semantic miniature (lake, island chain, mountain
+ * range, and so on), while `category` can retain the political or narrative
+ * classification used by the books without discarding that physical shape.
+ */
+export type GazetteerCategory =
+  | "kingdom/region"
+  | "region"
+  | "broad cultural/geographic region"
+  | "city-state"
+  | "legendary city"
+  | "city"
+  | "town"
+  | "village"
+  | "ruin"
+  | "institution"
+  | "mountain range"
+  | "hills"
+  | "plains"
+  | "valley"
+  | "lake"
+  | "river"
+  | "sea"
+  | "ocean"
+  | "strait"
+  | "island"
+  | "island chain"
+  | "caves"
+  | "landmark";
+
+export function defaultGazetteerCategory(
+  kind: GazetteerKind,
+): GazetteerCategory {
+  switch (kind) {
+    case "nation":
+      return "kingdom/region";
+    case "region":
+      return "region";
+    case "mountain-range":
+      return "mountain range";
+    case "island-chain":
+      return "island chain";
+    default:
+      return kind;
+  }
+}
 
 export type VisualizationArchetype =
   | "nation-label"
@@ -85,6 +135,7 @@ export interface GazetteerPlace {
    */
   parentLocationId?: string;
   kind: GazetteerKind;
+  category: GazetteerCategory;
   nationOrRegion: string;
   /**
    * `precise` means a point is present in the cited cartographic source.

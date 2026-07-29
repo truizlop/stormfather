@@ -31,6 +31,7 @@ import type { GazetteerKind, GazetteerPlace } from "./types";
 
 const markerColor: Record<GazetteerKind, string> = {
   nation: "#c5a76c",
+  region: "#b79f70",
   city: "#e4c47c",
   town: "#d9b970",
   village: "#c9aa68",
@@ -57,6 +58,7 @@ function standardMaterial(color: string, roughness = 0.8) {
 
 const markerMaterial: Record<GazetteerKind, MeshStandardMaterial> = {
   nation: standardMaterial(markerColor.nation, 0.7),
+  region: standardMaterial(markerColor.region, 0.84),
   city: standardMaterial(markerColor.city, 0.76),
   town: standardMaterial(markerColor.town, 0.8),
   village: standardMaterial(markerColor.village, 0.85),

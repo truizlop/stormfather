@@ -1,20 +1,8 @@
 import { MapPin, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useAtlasStore } from "../store/useAtlasStore";
-import { rosharGazetteer } from "../world/gazetteer";
-import { secondaryLocations, travelLocations } from "../world/locations";
-import type { WorldLocation } from "../world/types";
-import type { GazetteerPlace } from "../world/gazetteer";
-
-const searchableLocations = [...travelLocations, ...secondaryLocations];
-const destinationIds = new Set(searchableLocations.map((location) => location.id));
-const supplementalGazetteer = rosharGazetteer.filter(
-  (place) => !destinationIds.has(place.id),
-);
-
-type SearchResult =
-  | { type: "destination"; location: WorldLocation }
-  | { type: "gazetteer"; place: GazetteerPlace };
+import { gazetteerById, rosharGazetteer } from "../world/gazetteer";
+import { searchRosharCatalog } from "./searchCatalog";
 
 export function SearchPalette() {
   const [query, setQuery] = useState("");
@@ -24,43 +12,7 @@ export function SearchPalette() {
   const focusGazetteerPlace = useAtlasStore(
     (state) => state.focusGazetteerPlace,
   );
-  const results = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    if (!normalized) {
-      return [
-        ...searchableLocations.map<SearchResult>((location) => ({
-          type: "destination",
-          location,
-        })),
-        ...[...supplementalGazetteer]
-          .sort((a, b) =>
-            a.canonicalName.localeCompare(b.canonicalName),
-          )
-          .map<SearchResult>((place) => ({ type: "gazetteer", place })),
-      ];
-    }
-    const destinations = searchableLocations
-      .filter((location) =>
-        `${location.name} ${location.kind} ${location.subtitle}`
-          .toLocaleLowerCase()
-          .includes(normalized),
-      )
-      .map<SearchResult>((location) => ({ type: "destination", location }));
-    const places = supplementalGazetteer
-      .filter((place) =>
-        [
-          place.canonicalName,
-          place.kind,
-          place.nationOrRegion,
-          ...(place.alternateNames ?? []),
-        ]
-          .join(" ")
-          .toLocaleLowerCase()
-          .includes(normalized),
-      )
-      .map<SearchResult>((place) => ({ type: "gazetteer", place }));
-    return [...destinations, ...places];
-  }, [query]);
+  const results = useMemo(() => searchRosharCatalog(query), [query]);
 
   if (!searchOpen) return null;
 
@@ -120,8 +72,11 @@ export function SearchPalette() {
                 : result.place.canonicalName;
             const detail =
               result.type === "destination"
-                ? `${result.location.kind} · ${result.location.subtitle}`
-                : `${result.place.kind} · ${result.place.nationOrRegion} · ${
+                ? `${
+                    gazetteerById.get(result.location.id)?.category ??
+                    result.location.kind
+                  } · ${result.location.subtitle}`
+                : `${result.place.category} · ${result.place.nationOrRegion} · ${
                     result.place.certainty === "unknown"
                       ? "location unconfirmed"
                       : `${result.place.certainty} placement`
