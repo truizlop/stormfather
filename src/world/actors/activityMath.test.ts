@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   bridgeRunPose,
-  caravanPose,
   cargoLiftHeight,
   fishingRaftPose,
   floatingWatercraftY,
@@ -52,13 +51,5 @@ describe("city activity motion", () => {
     expect(calm - drained).toBeCloseTo(0.045);
     expect(drained).toBeGreaterThan(0.035);
     expect(drained).toBeLessThan(0.08);
-  });
-
-  it("keeps caravans moving on calm roads and recalls them before a storm", () => {
-    const center = [4, 7] as const;
-    const calm = caravanPose(20, 0, center);
-    const warning = caravanPose(20, 1, center);
-    expect(calm.x).toBeGreaterThan(center[0] - 3.2);
-    expect(warning.x).toBeCloseTo(center[0] - 2.69, 1);
   });
 });

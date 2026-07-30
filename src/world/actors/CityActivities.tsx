@@ -11,7 +11,6 @@ import { settlementWaterY } from "../terrain/locationSurface";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import {
   bridgeRunPose,
-  caravanPose,
   cargoLiftHeight,
   fishingRaftPose,
   floatingWatercraftY,
@@ -200,46 +199,6 @@ function HarborCargo({
   );
 }
 
-function ChullCaravan({
-  center,
-  locationId,
-}: {
-  center: readonly [number, number];
-  locationId: string;
-}) {
-  const group = useRef<THREE.Group>(null);
-  const { scene } = useGLTF(MODEL_URL);
-  const caravan = useMemo(
-    () => cloneModelRoot(scene, "Prop_Chull_Caravan"),
-    [scene],
-  );
-
-  useFrame(() => {
-    if (!group.current) return;
-    const state = useAtlasStore.getState();
-    const proximity = stormProximity(
-      stormXAtTime(state.simulationTime),
-      center[0],
-    );
-    const pose = caravanPose(state.simulationTime, proximity, center);
-    group.current.position.set(
-      pose.x,
-      localSurfaceY(locationId, pose.x, pose.z),
-      pose.z,
-    );
-    group.current.rotation.y = pose.heading;
-    group.current.rotation.z =
-      Math.sin(state.simulationTime * 1.6) * 0.014 * (1 - proximity);
-  });
-
-  if (!caravan) return null;
-  return (
-    <group ref={group} scale={0.105} name="working chull caravan">
-      <primitive object={caravan} />
-    </group>
-  );
-}
-
 export function CityActivities() {
   const proximityLocationId = useAtlasStore(
     (state) => state.proximityLocationId,
@@ -262,12 +221,6 @@ export function CityActivities() {
     location.coordinates.z,
   ] as const;
 
-  const caravanLocations = new Set([
-    "azir",
-    "shinovar",
-    "kholinar",
-    "urithiru",
-  ]);
   return (
     <group name={`${location.name} daily activities`}>
       {activeLocationId === "shattered-plains" && <BridgeRun />}
@@ -277,12 +230,6 @@ export function CityActivities() {
       {(activeLocationId === "kharbranth" ||
         activeLocationId === "thaylen-city") && (
         <HarborCargo center={center} locationId={activeLocationId} />
-      )}
-      {caravanLocations.has(activeLocationId) && (
-        <ChullCaravan
-          center={center}
-          locationId={activeLocationId}
-        />
       )}
     </group>
   );
