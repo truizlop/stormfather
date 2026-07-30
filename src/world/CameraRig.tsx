@@ -385,6 +385,7 @@ export function CameraRig() {
       }}
       enableDamping
       dampingFactor={0.075}
+      zoomToCursor
       minDistance={
         (proximityLocationId ?? selectedId) === "kharbranth" &&
         detailLevel === "street"

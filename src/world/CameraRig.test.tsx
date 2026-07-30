@@ -42,6 +42,7 @@ const controlsHarness = vi.hoisted(() => ({
   instance: null as MockControls | null,
   onStart: null as (() => void) | null,
   onEnd: null as (() => void) | null,
+  zoomToCursor: false,
 }));
 
 vi.mock("@react-three/fiber", () => ({
@@ -67,8 +68,15 @@ vi.mock("@react-three/drei", async () => {
   return {
     MapControls: React.forwardRef<
       MockControls,
-      { onStart?: () => void; onEnd?: () => void }
-    >(function MockMapControls({ onEnd, onStart }, ref) {
+      {
+        onStart?: () => void;
+        onEnd?: () => void;
+        zoomToCursor?: boolean;
+      }
+    >(function MockMapControls(
+      { onEnd, onStart, zoomToCursor },
+      ref,
+    ) {
       const controls = React.useMemo<MockControls>(
         () => ({
           target: new Three.Vector3(),
@@ -81,6 +89,7 @@ vi.mock("@react-three/drei", async () => {
       controlsHarness.instance = controls;
       controlsHarness.onStart = onStart ?? null;
       controlsHarness.onEnd = onEnd ?? null;
+      controlsHarness.zoomToCursor = zoomToCursor ?? false;
       return null;
     }),
   };
@@ -117,6 +126,7 @@ describe("CameraRig navigation regressions", () => {
     controlsHarness.instance = null;
     controlsHarness.onStart = null;
     controlsHarness.onEnd = null;
+    controlsHarness.zoomToCursor = false;
     useAtlasStore.setState({
       selectedId: "roshar",
       selectedGazetteerId: null,
@@ -179,6 +189,12 @@ describe("CameraRig navigation regressions", () => {
       }
       expect(mounted, location.id).toBe(true);
     }
+  });
+
+  it("anchors native wheel and pinch dolly to the pointed terrain", () => {
+    render(<CameraRig />);
+
+    expect(controlsHarness.zoomToCursor).toBe(true);
   });
 
   it("keeps every list/search arrival camera outside its authored bounds", () => {

@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import type { DetailLevel } from "../types";
 import {
   STANDARD_DOOR_HEIGHT_METERS,
   STANDARD_DOOR_WIDTH_METERS,
@@ -626,14 +627,17 @@ function DistrictModules({
 }
 
 export function CityDetail({
+  detailLevel: detailLevelOverride,
   locationId,
 }: {
+  detailLevel?: DetailLevel;
   locationId?: string;
 } = {}) {
   const activeLocationId = useAtlasStore(
     (state) => locationId ?? state.selectedId,
   );
-  const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const storeDetailLevel = useAtlasStore((state) => state.detailLevel);
+  const detailLevel = detailLevelOverride ?? storeDetailLevel;
   const width = useThree((state) => state.size.width);
   const location = locationById.get(activeLocationId);
 

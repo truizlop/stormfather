@@ -44,20 +44,19 @@ export function WorldScene() {
   const selectedGazetteerWorld = selectedGazetteer
     ? gazetteerMarkerWorld(selectedGazetteer)
     : null;
-  const focusWorld =
-    detailLevel === "city" || detailLevel === "street"
-      ? proximityLocation
+  const focusWorld = proximityLocation
+    ? ([
+        proximityLocation.coordinates.x,
+        proximityLocation.coordinates.z,
+      ] as const)
+    : detailLevel === "city" || detailLevel === "street"
+      ? selectedGazetteerWorld ??
+        (selectedLocation
           ? ([
-              proximityLocation.coordinates.x,
-              proximityLocation.coordinates.z,
+              selectedLocation.coordinates.x,
+              selectedLocation.coordinates.z,
             ] as const)
-          : selectedGazetteerWorld ??
-            (selectedLocation
-              ? ([
-                  selectedLocation.coordinates.x,
-                  selectedLocation.coordinates.z,
-                ] as const)
-              : undefined)
+          : undefined)
       : undefined;
 
   return (

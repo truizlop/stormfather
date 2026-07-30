@@ -296,14 +296,18 @@ function createCoastSkirtGeometry() {
 function TerrainSurface() {
   const viewportWidth = useThree((state) => state.size.width);
   const selectedId = useAtlasStore((state) => state.selectedId);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const [stone, macroSource] = useTexture([
     `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
     `${import.meta.env.BASE_URL}textures/roshar-crem-macro.jpg`,
   ]);
   const mobile = viewportWidth < 720;
-  const focusedLocationId =
-    detailLevel === "city" || detailLevel === "street"
+  const focusedLocationId = proximityLocationId
+    ? detailedLocationSurface(proximityLocationId)?.id
+    : detailLevel === "city" || detailLevel === "street"
       ? detailedLocationSurface(selectedId)?.id
       : undefined;
   const geometry = useMemo(

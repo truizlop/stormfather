@@ -9,6 +9,7 @@ import {
   createCitySilhouette,
   effectiveCityLodDistance,
   localCityPresenceId,
+  localCityRenderDetail,
   nearestCityFocusOwner,
   nearestCityProximityOwner,
   resolvedCityProximityOwner,
@@ -249,6 +250,13 @@ describe("progressive city LOD", () => {
     );
     expect(localCityPresenceId("region", owner)).toBeNull();
     expect(localCityPresenceId("continent", owner)).toBeNull();
+  });
+
+  it("promotes a camera-owned regional city to authored City detail", () => {
+    expect(localCityRenderDetail("continent")).toBe("city");
+    expect(localCityRenderDetail("region")).toBe("city");
+    expect(localCityRenderDetail("city")).toBe("city");
+    expect(localCityRenderDetail("street")).toBe("street");
   });
 
   it("drops stale list-selection force when manual focus hands off to another city", () => {

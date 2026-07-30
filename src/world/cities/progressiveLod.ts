@@ -244,6 +244,17 @@ export function localCityPresenceId(
     : null;
 }
 
+/**
+ * Authored city geometry owns a local visual tier independently from the
+ * wider geographic chrome. A Region camera that has entered a city's lens
+ * should reveal City geometry, while Street remains an explicit closer tier.
+ */
+export function localCityRenderDetail(
+  detailLevel: DetailLevel,
+): Extract<DetailLevel, "city" | "street"> {
+  return detailLevel === "street" ? "street" : "city";
+}
+
 export function resolvedCityProximityOwner(
   cameraOwnerId: string | null,
   inspectionOwnerId: string | null,

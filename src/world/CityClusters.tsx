@@ -16,7 +16,7 @@ import {
   cityProximityCandidate,
   cityInspectionOwnerAtFocus,
   cityClusterLodPolicy,
-  localCityPresenceId,
+  localCityRenderDetail,
   nearestCityProximityOwner,
   resolvedCityProximityOwner,
 } from "./cities/progressiveLod";
@@ -29,7 +29,7 @@ import {
   modeledLocationForGazetteer,
 } from "./locations";
 import { landmarkSurfaceY } from "./terrain/localSurface";
-import type { WorldLocation } from "./types";
+import type { DetailLevel, WorldLocation } from "./types";
 
 const modeledLocations = locations.filter((location) => location.modelRoot);
 const proximityCandidates = modeledLocations.map((location) =>
@@ -110,16 +110,24 @@ function NearCityLoadingFallback({
 }
 
 function NearCityContent({
+  detailLevel,
   location,
 }: {
+  detailLevel: DetailLevel;
   location: WorldLocation;
 }) {
   return (
     <Suspense
       fallback={<NearCityLoadingFallback location={location} />}
     >
-      <CityDetail locationId={location.id} />
-      <Landmarks locationId={location.id} />
+      <CityDetail
+        detailLevel={detailLevel}
+        locationId={location.id}
+      />
+      <Landmarks
+        detailLevel={detailLevel}
+        locationId={location.id}
+      />
       <NearContentReadySignal />
     </Suspense>
   );
@@ -128,10 +136,12 @@ function NearCityContent({
 function ModeledCityCluster({
   location,
   activeOwnerId,
+  detailLevel,
   selectedLocalLocationId,
 }: {
   location: WorldLocation;
   activeOwnerId: string | null;
+  detailLevel: DetailLevel;
   selectedLocalLocationId?: string;
 }) {
   const lodPolicy = cityClusterLodPolicy(
@@ -139,9 +149,18 @@ function ModeledCityCluster({
     activeOwnerId,
     selectedLocalLocationId,
   );
+  // The geographic tier controls map chrome and continental overlays. Once
+  // the camera owns a modeled city, its authored subtree needs a local render
+  // tier even if the wider camera-to-target distance still reads Region.
+  const localDetailLevel = localCityRenderDetail(detailLevel);
   const near = useMemo(
-    () => <NearCityContent location={location} />,
-    [location],
+    () => (
+      <NearCityContent
+        detailLevel={localDetailLevel}
+        location={location}
+      />
+    ),
+    [localDetailLevel, location],
   );
 
   return (
@@ -186,9 +205,9 @@ export function CityClusters() {
     locationId: string;
     focus: readonly [number, number, number] | null;
   } | null>(null);
-  const activeOwnerId = localCityPresenceId(
-    detailLevel,
-    resolvedCityProximityOwner(proximityOwnerId, inspectionOwnerId),
+  const activeOwnerId = resolvedCityProximityOwner(
+    proximityOwnerId,
+    inspectionOwnerId,
   );
 
   useEffect(() => {
@@ -289,12 +308,9 @@ export function CityClusters() {
       setProximityOwnerId(nextOwner);
     }
     const store = useAtlasStore.getState();
-    const publishedOwner = localCityPresenceId(
-      store.detailLevel,
-      resolvedCityProximityOwner(
-        nextOwner,
-        retainedInspectionOwner,
-      ),
+    const publishedOwner = resolvedCityProximityOwner(
+      nextOwner,
+      retainedInspectionOwner,
     );
     if (store.proximityLocationId !== publishedOwner) {
       store.setProximityLocation(publishedOwner);
@@ -308,6 +324,7 @@ export function CityClusters() {
           key={location.id}
           location={location}
           activeOwnerId={activeOwnerId}
+          detailLevel={detailLevel}
           selectedLocalLocationId={selectedLocalLocationId}
         />
       ))}

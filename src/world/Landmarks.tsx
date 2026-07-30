@@ -14,6 +14,7 @@ import {
   landmarkChildVerticalShift,
   landmarkPresentationNodeIsHidden,
 } from "./terrain/landmarkTerrainDatum";
+import type { DetailLevel } from "./types";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
@@ -303,11 +304,14 @@ function LandmarkInstance({
 }
 
 export function Landmarks({
+  detailLevel: detailLevelOverride,
   locationId,
 }: {
+  detailLevel?: DetailLevel;
   locationId?: string;
 } = {}) {
-  const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const storeDetailLevel = useAtlasStore((state) => state.detailLevel);
+  const detailLevel = detailLevelOverride ?? storeDetailLevel;
   const activeLocationId = useAtlasStore(
     (state) => locationId ?? state.selectedId,
   );
