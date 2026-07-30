@@ -9,6 +9,34 @@ import {
   shatteredPlainsSurfaceAt,
 } from "./shatteredPlainsTopology";
 
+function distanceToPolygonLip(
+  point: readonly [number, number],
+  polygon: readonly (readonly [number, number])[],
+) {
+  return Math.min(
+    ...polygon.map((start, index) => {
+      const end = polygon[(index + 1) % polygon.length];
+      const segmentX = end[0] - start[0];
+      const segmentZ = end[1] - start[1];
+      const lengthSquared =
+        segmentX * segmentX + segmentZ * segmentZ;
+      const progress = Math.max(
+        0,
+        Math.min(
+          1,
+          ((point[0] - start[0]) * segmentX +
+            (point[1] - start[1]) * segmentZ) /
+            lengthSquared,
+        ),
+      );
+      return Math.hypot(
+        point[0] - (start[0] + segmentX * progress),
+        point[1] - (start[1] + segmentZ * progress),
+      );
+    }),
+  );
+}
+
 describe("Shattered Plains shared topology", () => {
   it("preserves every authored irregular plateau and bridge deck", () => {
     expect(SHATTERED_PLAINS_PLATEAUS).toHaveLength(37);
@@ -51,6 +79,12 @@ describe("Shattered Plains shared topology", () => {
     const plateauIds = new Set(
       SHATTERED_PLAINS_PLATEAUS.map((plateau) => plateau.id),
     );
+    const plateausById = new Map(
+      SHATTERED_PLAINS_PLATEAUS.map((plateau) => [
+        plateau.id,
+        plateau,
+      ]),
+    );
     for (const bridge of SHATTERED_PLAINS_BRIDGES) {
       expect(plateauIds.has(bridge.sourcePlateauId)).toBe(true);
       expect(plateauIds.has(bridge.destinationPlateauId)).toBe(true);
@@ -72,6 +106,18 @@ describe("Shattered Plains shared topology", () => {
         id: bridge.id,
       });
       expect(end?.y).toBeCloseTo(bridge.endY);
+      expect(
+        distanceToPolygonLip(
+          bridge.start,
+          plateausById.get(bridge.sourcePlateauId)!.polygon,
+        ),
+      ).toBeLessThanOrEqual(0.02);
+      expect(
+        distanceToPolygonLip(
+          bridge.end,
+          plateausById.get(bridge.destinationPlateauId)!.polygon,
+        ),
+      ).toBeLessThanOrEqual(0.02);
     }
   });
 

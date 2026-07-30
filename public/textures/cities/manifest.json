@@ -114,6 +114,19 @@
         "ShatteredPlains_Chasm"
       ],
       "repeatMeters": [7.5, 7.5]
+    },
+    {
+      "id": "vedenar-stormstone-restoration",
+      "file": "vedenar-stormstone-restoration-atlas.jpg",
+      "intendedRoots": ["Landmark_Vedenar"],
+      "materialTokens": [
+        "SF_City_Vedenar_Stormstone_Restoration",
+        "Vedenar_Terrace",
+        "Vedenar_Valhav_Oathgate",
+        "Vedenar_BurnedHarbor",
+        "Vedenar_Restoration"
+      ],
+      "repeatMeters": [5.5, 5.5]
     }
   ]
 }

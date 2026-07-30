@@ -27,6 +27,10 @@ These images are the implementation specification for the Roshar living atlas.
   terraced wards embedded in Tarat Sea cliffs, the Valhav Oathgate garden,
   river and field approaches, a damaged palace quarter, storm shelters, and
   burned docks under active reconstruction.
+- `vedenar-material-atlas-source.png` is the generated source for Vedenar's
+  modeled green-gray stormstone, damaged Veden plaster, stormwood, and wet
+  Oathgate/harbor paving. The optimized runtime sheet lives under
+  `public/textures/cities/`; it is mapped only onto real geometry.
 - `shinovar-pastoral-scale-target.png` defines the corrected Shinovar scale:
   broad pasture, many ordinary-sized trees, low farms and Herald temples,
   sheep flocks, shepherds, and mountains that remain vastly larger than every

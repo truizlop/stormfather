@@ -255,3 +255,30 @@ mapping contract and physical repeat sizes are recorded in that directory's
 > armor, props, symbols, glyphs, text, labels, watermark, cast shadows, vignette,
 > perspective, lava, fantasy crystals, moss, grass, cobblestone street pattern,
 > large black empty fissures
+
+## Vedenar
+
+Source: `vedenar-material-atlas-source.png`
+Runtime: `public/textures/cities/vedenar-stormstone-restoration-atlas.jpg`
+
+> Create one square 2048x2048 photorealistic PBR material reference atlas for
+> an original real-time 3D fantasy cliff city inspired by storm-weathered
+> Rosharan Veden architecture. This is a texture/material sheet only, not a
+> city scene, painting, map, UI, or concept vista. Arrange four seamless-looking
+> equal quadrants with straight boundaries and no gaps: upper left green-gray
+> stratified stormstone ashlar masonry with pale crem seams and subtle chisel
+> wear; upper right weathered muted burgundy and slate-blue painted lime plaster
+> over stone with chips, soot, rain streaks, and restrained variation; lower
+> left dark stormwood beams, shutters, scaffold planks, braided rope, and
+> oxidized iron fasteners at consistent orthographic scale; lower right wet
+> harbor paving and damaged civic stone with scorched edges, fine rubble, moss
+> in protected joints, and pale inlaid geometric lines suitable for an
+> Oathgate precinct. Even diffuse overcast lighting, orthographic front-facing
+> capture, physically plausible albedo and roughness cues, tileable microdetail,
+> no cast shadows from large objects, no perspective, no buildings, no
+> doors/windows, no people, no symbols, no lettering, no border, no labels, no
+> watermark. Original material design, high resolution, production-ready for
+> Blender and Three.js modular geometry.
+
+The generated PNG is preserved unchanged. The runtime copy is resized to
+1024×1024, metadata-stripped, and JPEG-compressed at quality 88.

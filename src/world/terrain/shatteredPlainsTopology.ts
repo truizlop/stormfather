@@ -33,7 +33,6 @@ export interface ShatteredPlainsBridge {
   end: readonly [number, number];
   startY: number;
   endY: number;
-  deckY: number;
   width: number;
 }
 

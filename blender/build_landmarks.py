@@ -10,6 +10,7 @@ the editable .blend, the web GLB, and a presentation render.
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import random
@@ -290,6 +291,14 @@ city_surface = {
         0.01,
         0.94,
         0.15,
+    ),
+    "vedenar": textured_material(
+        "SF_City_Vedenar_Stormstone_Restoration",
+        (0.58, 0.59, 0.54),
+        "cities/vedenar-stormstone-restoration-atlas.jpg",
+        0.02,
+        0.9,
+        0.13,
     ),
 }
 
@@ -4695,9 +4704,104 @@ def build_shinovar() -> None:
             0,
         )
         rail.rotation_euler[1] = math.pi / 2
-    for i, (x, y, scale) in enumerate(((-3.6, -0.9, 1), (-3.2, 2.9, 0.8), (0.8, 3.1, 1.1), (3.7, 2.3, 0.92), (3.8, -2.7, 0.76))):
-        cyl(f"Shinovar_Tree_{i}_Trunk", (x, y, scale), 0.14 * scale, 2 * scale, p["earth"], r, 10)
-        sphere(f"Shinovar_Tree_{i}_Crown", (x, y, 2.35 * scale), (0.8 * scale, 0.75 * scale, 0.95 * scale), p["leaf"], r, 14, 8)
+    # Ordinary valley trees must remain subordinate to farmhouses and vastly
+    # subordinate to the Misted Mountains. The previous five trees exported at
+    # roughly 33–47.5 m. These orchard rows and shelterbelts are 5.2–10.8 m,
+    # with explicit metadata so the web asset audit can enforce the ceiling.
+    tree_positions = []
+    for side in (-1, 1):
+        for row in range(8):
+            tree_positions.append(
+                (
+                    side * (3.62 + 0.11 * math.sin(row * 1.73)),
+                    -2.9 + row * 0.82,
+                )
+            )
+    for row in range(3):
+        for column in range(4):
+            tree_positions.append(
+                (
+                    -1.75 + column * 1.05 + (row % 2) * 0.18,
+                    2.34 + row * 0.55,
+                )
+            )
+    for lane_index in range(8):
+        tree_positions.append(
+            (
+                -2.85 + lane_index * 0.82,
+                -2.72 + 0.15 * math.sin(lane_index * 1.27),
+            )
+        )
+
+    for tree_index, (x, y) in enumerate(tree_positions):
+        height_meters = 5.2 + ((tree_index * 7) % 17) / 16 * 5.6
+        authored_height = height_meters / (12 * runtime_scale)
+        trunk_height = authored_height * 0.54
+        crown_radius_z = authored_height * 0.46
+        crown_radius_x = authored_height * (
+            0.27 + (tree_index % 4) * 0.018
+        )
+        crown_radius_y = authored_height * (
+            0.24 + ((tree_index + 2) % 4) * 0.016
+        )
+        tree = bpy.data.objects.new(
+            f"Shinovar_Tree_{tree_index + 1:02d}",
+            None,
+        )
+        assets.objects.link(tree)
+        tree.parent = r
+        tree.location = (x, y, 0)
+        tree["height_meters"] = round(height_meters, 3)
+        tree["vegetation_role"] = (
+            "orchard"
+            if 16 <= tree_index < 28
+            else "shelterbelt"
+        )
+        cyl(
+            f"Shinovar_Tree_{tree_index + 1:02d}_Trunk",
+            (0, 0, 0.36 + trunk_height / 2),
+            max(0.028, authored_height * 0.055),
+            trunk_height,
+            p["earth"],
+            tree,
+            9,
+            0.008,
+        )
+        sphere(
+            f"Shinovar_Tree_{tree_index + 1:02d}_CrownMain",
+            (0, 0, 0.36 + trunk_height),
+            (
+                crown_radius_x,
+                crown_radius_y,
+                crown_radius_z,
+            ),
+            p["leaf"],
+            tree,
+            12,
+            7,
+        )
+        for lobe_index, side in enumerate((-1, 1)):
+            sphere(
+                f"Shinovar_Tree_{tree_index + 1:02d}_CrownLobe_{lobe_index + 1}",
+                (
+                    side * crown_radius_x * 0.48,
+                    (1 if tree_index % 2 else -1)
+                    * crown_radius_y
+                    * 0.22,
+                    0.36
+                    + trunk_height
+                    - crown_radius_z * 0.18,
+                ),
+                (
+                    crown_radius_x * 0.62,
+                    crown_radius_y * 0.58,
+                    crown_radius_z * 0.68,
+                ),
+                p["leaf"],
+                tree,
+                10,
+                6,
+            )
 
 
 def build_akinah() -> None:
@@ -5060,55 +5164,561 @@ def build_thaylen_city() -> None:
         )
 
 
+def build_vedenar() -> None:
+    """Author Vedenar as a rebuilt cliff capital, not a semantic marker.
+
+    Local +Y climbs inland from the Tarat Sea. Five inhabited ledges follow the
+    plate-like geology described for the city; every ward is founded into one
+    of those ledges. The Valhav Oathgate, ruined palace, library/temple
+    precinct, storm shelters, burned docks, and restoration works remain
+    individually named for runtime collision and QA.
+    """
+
+    random.seed(7723)
+    r = root("Landmark_Vedenar", (33, -7, 0))
+    runtime_scale = (4.9 * 2) / 11.4
+    outline = [
+        (-5.35, -4.2),
+        (-3.75, -5.05),
+        (-1.1, -5.42),
+        (1.65, -5.28),
+        (4.15, -4.62),
+        (5.52, -2.95),
+        (5.6, 0.15),
+        (5.05, 3.4),
+        (3.42, 4.85),
+        (0.65, 5.35),
+        (-2.1, 5.05),
+        (-4.45, 3.92),
+        (-5.62, 1.4),
+    ]
+    vedenar_toe = natural_terrain_cradle(
+        "Vedenar_TerrainCradle_Cliff",
+        outline,
+        0.58,
+        0.5,
+        1.38,
+        city_surface["vedenar"],
+        p["stone_dark"],
+        p["stone_dark"],
+        r,
+        1.31,
+        1.1,
+        3,
+        2.4,
+    )
+    terrain_cradle_outcrops(
+        "Vedenar_TerrainCradle_Cliff",
+        vedenar_toe,
+        p["stone_dark"],
+        r,
+        4,
+        0.72,
+    )
+
+    terrace_specs = (
+        ("Harbor", -3.72, 4.72, 1.08, 0.66),
+        ("Lower", -2.02, 4.98, 1.15, 0.84),
+        ("Civic", -0.18, 5.08, 1.18, 1.02),
+        ("Temple", 1.72, 4.7, 1.08, 1.2),
+        ("Palace", 3.55, 3.82, 0.92, 1.4),
+    )
+    for terrace_index, (name, y, half_width, half_depth, cap_z) in enumerate(
+        terrace_specs
+    ):
+        points = [
+            (-half_width, y - half_depth),
+            (half_width * 0.93, y - half_depth * 1.03),
+            (half_width, y + half_depth * 0.82),
+            (half_width * 0.72, y + half_depth),
+            (-half_width * 0.8, y + half_depth * 1.05),
+            (-half_width, y + half_depth * 0.72),
+        ]
+        prism(
+            f"Vedenar_Terrace_{terrace_index + 1:02d}_{name}",
+            points,
+            0.24 + terrace_index * 0.07,
+            city_surface["vedenar"],
+            r,
+            cap_z - (0.12 + terrace_index * 0.035),
+        )
+        retaining = cube(
+            f"Vedenar_Terrace_{terrace_index + 1:02d}_{name}_RetainingWall",
+            (0, y - half_depth + 0.04, cap_z + 0.31),
+            (half_width * 0.94, 0.12, 0.31),
+            city_surface["vedenar"],
+            r,
+            0.035,
+        )
+        retaining.rotation_euler[2] = -0.018 + terrace_index * 0.01
+
+    # The north approach remains agricultural and legible from the far LOD.
+    # Its buried shelf extends the palace ledge into the foothills so the
+    # fields meet stone rather than hovering above the terrain cradle.
+    prism(
+        "Vedenar_NorthernAgriculturalShelf",
+        [
+            (-4.95, 4.22),
+            (4.46, 4.1),
+            (4.88, 4.82),
+            (4.22, 5.38),
+            (1.2, 5.5),
+            (-3.7, 5.6),
+            (-5.2, 5.55),
+            (-5.18, 4.92),
+        ],
+        1.008,
+        city_surface["vedenar"],
+        r,
+        0.99,
+    )
+    for field_index in range(12):
+        column = field_index % 4
+        row = field_index // 4
+        x = -3.75 + column * 2.35
+        y = 4.55 + row * 0.31
+        field = cube(
+            f"Vedenar_NorthernField_{field_index + 1:02d}",
+            (x, y, 1.49 + row * 0.012),
+            (0.92, 0.11, 0.02),
+            p["grass"] if field_index % 3 else p["earth"],
+            r,
+            0.008,
+        )
+        field.rotation_euler[2] = (column - 1.5) * 0.025
+
+    # A narrow river reaches the city from the peaks and drops beside the
+    # western terraces rather than cutting through the modeled wards.
+    river_segments = []
+    for segment_index in range(11):
+        progress = segment_index / 10
+        x = -4.55 + math.sin(progress * math.pi * 1.3) * 0.32
+        y = 5.02 - progress * 9.45
+        river = cube(
+            f"Vedenar_RiverWest_Segment_{segment_index + 1:02d}",
+            (x, y, 1.49 - progress * 0.82),
+            (0.18 + progress * 0.045, 0.53, 0.022),
+            p["water"],
+            r,
+            0.006,
+        )
+        river.rotation_euler[2] = -0.03 + math.sin(progress * 4.2) * 0.055
+        river_segments.append(river)
+    join_meshes("Vedenar_RiverWest_ChannelBatch", river_segments, r)
+
+    # Dense wards follow the five ledges. Reserved gaps preserve stairs,
+    # Oathgate sightlines, palace ruins, and a readable harbor.
+    ward_index = 0
+    for terrace_index, (_name, y, half_width, half_depth, cap_z) in enumerate(
+        terrace_specs
+    ):
+        columns = 10 if terrace_index < 4 else 7
+        rows = 2
+        for row in range(rows):
+            for column in range(columns):
+                x = (
+                    -half_width * 0.82
+                    + (column + 0.5) * (half_width * 1.64 / columns)
+                )
+                local_y = y - half_depth * 0.42 + row * half_depth * 0.82
+                if terrace_index == 2 and math.hypot(x + 0.45, local_y + 0.1) < 1.25:
+                    continue
+                if terrace_index == 4 and abs(x - 0.75) < 1.55:
+                    continue
+                if terrace_index == 0 and abs(x) < 1.25:
+                    continue
+                ward_index += 1
+                height = (
+                    0.27
+                    + terrace_index * 0.045
+                    + ((ward_index * 7) % 5) * 0.045
+                )
+                rotation = (
+                    (column - columns / 2) * 0.018
+                    + (row - 0.5) * 0.035
+                )
+                authored_city_block(
+                    f"Vedenar_Ward_{ward_index:03d}",
+                    (x, local_y, cap_z + 0.03),
+                    (
+                        0.24 + (column % 3) * 0.026,
+                        0.22 + ((column + row) % 3) * 0.022,
+                        height,
+                    ),
+                    city_surface["vedenar"],
+                    p["slate"] if ward_index % 5 else p["cloth_red"],
+                    r,
+                    runtime_scale,
+                    rotation,
+                    "pitched" if ward_index % 4 == 0 else "flat",
+                    p["glass_dark"],
+                    p["wood"],
+                    p["stone_dark"],
+                    2,
+                )
+
+    # Switchback stairs and broad ledge roads physically connect the terraces.
+    for terrace_index in range(len(terrace_specs) - 1):
+        lower = terrace_specs[terrace_index]
+        upper = terrace_specs[terrace_index + 1]
+        side = -1 if terrace_index % 2 == 0 else 1
+        stair_x = side * (3.42 - terrace_index * 0.22)
+        lower_y = lower[1] + lower[3] * 0.72
+        upper_y = upper[1] - upper[3] * 0.72
+        lower_z = lower[4]
+        upper_z = upper[4]
+        for step_index in range(12):
+            progress = step_index / 11
+            cube(
+                f"Vedenar_TerraceStair_{terrace_index + 1}_{step_index + 1:02d}",
+                (
+                    stair_x + side * math.sin(progress * math.pi) * 0.12,
+                    lower_y + (upper_y - lower_y) * progress,
+                    lower_z + (upper_z - lower_z) * progress,
+                ),
+                (0.31, 0.09, 0.045),
+                p["stone_light"],
+                r,
+                0.01,
+            )
+        for landing_side in (-1, 1):
+            cube(
+                f"Vedenar_TerraceStair_{terrace_index + 1}_Landing_{landing_side}",
+                (
+                    stair_x,
+                    lower_y if landing_side < 0 else upper_y,
+                    lower_z if landing_side < 0 else upper_z,
+                ),
+                (0.46, 0.24, 0.045),
+                city_surface["vedenar"],
+                r,
+                0.012,
+            )
+
+    # Valhav's Oathgate is a civic garden and raised approach, not a second
+    # copy of Vedenar on Urithiru's terrace.
+    oathgate_center = (-0.45, -0.08)
+    cyl(
+        "Vedenar_Valhav_Oathgate_Garden",
+        (*oathgate_center, 1.09),
+        1.12,
+        0.12,
+        p["grass"],
+        r,
+        32,
+        0.015,
+    )
+    cyl(
+        "Vedenar_Valhav_Oathgate_Dais",
+        (*oathgate_center, 1.19),
+        0.72,
+        0.16,
+        city_surface["vedenar"],
+        r,
+        20,
+        0.025,
+    )
+    torus(
+        "Vedenar_Valhav_Oathgate_Ring",
+        (*oathgate_center, 1.31),
+        0.44,
+        0.055,
+        p["cyan"],
+        r,
+    )
+    oathgate_ramp = cube(
+        "Vedenar_Valhav_Oathgate_Ramp",
+        (-0.45, -1.35, 1.02),
+        (0.5, 1.05, 0.075),
+        city_surface["vedenar"],
+        r,
+        0.018,
+    )
+    oathgate_ramp.rotation_euler[0] = -0.085
+    for garden_index in range(12):
+        angle = 2 * math.pi * garden_index / 12
+        rock(
+            f"Vedenar_Valhav_Oathgate_GardenStone_{garden_index + 1:02d}",
+            (
+                oathgate_center[0] + math.cos(angle) * 0.92,
+                oathgate_center[1] + math.sin(angle) * 0.92,
+                1.24,
+            ),
+            (0.1, 0.075, 0.11),
+            p["stone_light"],
+            r,
+            1,
+        )
+
+    # Isharest's library and temple compound survive on the eastern temple
+    # ledge and provide a strong civic silhouette beside the damaged palace.
+    authored_city_block(
+        "Vedenar_Pailiah_LibraryTemple",
+        (2.55, 1.72, 1.25),
+        (0.72, 0.55, 0.72),
+        city_surface["vedenar"],
+        p["slate"],
+        r,
+        runtime_scale,
+        0.04,
+        "dome",
+        p["cyan"],
+        p["wood"],
+        p["stone_dark"],
+        4,
+    )
+    for shelter_index, x in enumerate((-3.3, -1.8, 1.45, 3.25)):
+        cube(
+            f"Vedenar_StormShelter_{shelter_index + 1:02d}",
+            (x, 1.48 + (shelter_index % 2) * 0.42, 1.38),
+            (0.46, 0.35, 0.25),
+            p["stone_dark"],
+            r,
+            0.055,
+        )
+
+    # The upper palace is visibly ruined but remains part of the same terrace.
+    palace_center = (0.72, 3.55)
+    prism(
+        "Vedenar_RuinedPalace_Foundation",
+        [
+            (-0.7, 2.78),
+            (2.18, 2.88),
+            (2.35, 4.12),
+            (0.1, 4.48),
+            (-0.88, 3.8),
+        ],
+        0.22,
+        city_surface["vedenar"],
+        r,
+        1.48,
+    )
+    for ruin_index in range(9):
+        angle = ruin_index * 2.399963
+        radius = 0.36 + (ruin_index % 4) * 0.24
+        x = palace_center[0] + math.cos(angle) * radius
+        y = palace_center[1] + math.sin(angle) * radius * 0.72
+        height = 0.32 + (ruin_index % 4) * 0.14
+        tower = cube(
+            f"Vedenar_RuinedPalace_Tower_{ruin_index + 1:02d}",
+            (x, y, 1.52 + height),
+            (0.25, 0.22, height),
+            city_surface["vedenar"],
+            r,
+            0.045,
+        )
+        tower.rotation_euler[2] = angle * 0.13
+        if ruin_index % 2 == 0:
+            rock(
+                f"Vedenar_RuinedPalace_Collapse_{ruin_index + 1:02d}",
+                (x + 0.18, y - 0.12, 1.58),
+                (0.22, 0.18, 0.13),
+                p["stone_dark"],
+                r,
+                1,
+            )
+
+    # A natural ridge shelters the burned harbor. Quays are seated at the
+    # lowest terrace while blackened frames and active scaffolds show repair.
+    ridge_rocks = []
+    for ridge_index in range(16):
+        x = -5.1 + ridge_index * 0.68
+        y = -5.18 - 0.34 * math.sin(ridge_index * 0.47)
+        ridge_rocks.append(
+            rock(
+                f"Vedenar_HarborShelterRidge_{ridge_index + 1:02d}",
+                (x, y, 0.62 + (ridge_index % 3) * 0.11),
+                (0.52, 0.32, 0.45 + (ridge_index % 4) * 0.1),
+                p["stone_dark"],
+                r,
+                1,
+            )
+        )
+    join_meshes("Vedenar_HarborShelterRidgeBatch", ridge_rocks, r)
+    for dock_index in range(6):
+        x = -2.9 + dock_index * 1.12
+        dock = cube(
+            f"Vedenar_BurnedHarbor_Dock_{dock_index + 1:02d}",
+            (x, -5.35, 0.67),
+            (0.39, 0.84, 0.055),
+            p["wood"],
+            r,
+            0.018,
+        )
+        dock.rotation_euler[2] = (dock_index - 2.5) * 0.018
+        for post_side in (-1, 1):
+            cyl(
+                f"Vedenar_BurnedHarbor_Dock_{dock_index + 1:02d}_Post_{post_side}",
+                (x + post_side * 0.28, -5.72, 0.81),
+                0.04,
+                0.62,
+                p["wood"],
+                r,
+                8,
+                0,
+            )
+
+    for repair_index in range(10):
+        x = -3.72 + (repair_index % 5) * 1.64
+        y = -3.92 + (repair_index // 5) * 0.54
+        for side in (-1, 1):
+            cyl(
+                f"Vedenar_Restoration_Scaffold_{repair_index + 1:02d}_Post_{side}",
+                (x + side * 0.24, y, 1.18),
+                0.025,
+                1.04,
+                p["wood"],
+                r,
+                8,
+                0,
+            )
+        beam = cyl(
+            f"Vedenar_Restoration_Scaffold_{repair_index + 1:02d}_Beam",
+            (x, y, 1.58),
+            0.025,
+            0.62,
+            p["rope"],
+            r,
+            8,
+            0,
+        )
+        beam.rotation_euler[1] = math.pi / 2
+
+    for rubble_index in range(36):
+        angle = rubble_index * 2.399963 + 0.2
+        radius = 0.3 + ((rubble_index * 13) % 31) / 10
+        zone_x = palace_center[0] if rubble_index < 22 else 0
+        zone_y = palace_center[1] if rubble_index < 22 else -4.08
+        rock(
+            f"Vedenar_Restoration_Rubble_{rubble_index + 1:02d}",
+            (
+                zone_x + math.cos(angle) * radius,
+                zone_y + math.sin(angle) * radius * 0.45,
+                1.54 if rubble_index < 22 else 0.82,
+            ),
+            (
+                0.07 + (rubble_index % 4) * 0.025,
+                0.055 + ((rubble_index + 1) % 3) * 0.022,
+                0.045 + ((rubble_index + 2) % 3) * 0.02,
+            ),
+            p["stone_dark"],
+            r,
+            1,
+        )
+
+    r["authored_ward_count"] = ward_index
+    r["contains_destination_geometry"] = True
+    r["oathgate_is_local_portal"] = True
+
+
 def build_shattered_plains() -> None:
     random.seed(9981)
     r = root("Landmark_Shattered_Plains", (33, 8, 0))
     runtime_scale = (4.4 * 2) / 12.14
-    cyl("ShatteredPlains_Chasm_Floor", (0, 0, 0.05), 6, 0.1, city_surface["shattered"], r, 48, 0)
-    centers = [(0, 0, 1, 0.95, 0)]
-    for ring, radius, count in ((1, 1.65, 8), (2, 3.35, 12), (3, 5, 16)):
-        for i in range(count):
-            angle = 2 * math.pi * i / count + (0.1 if ring % 2 else 0)
-            x, y = math.cos(angle) * radius, math.sin(angle) * radius
-            erosion = max(0, x / 5)
-            scale = (0.74 if ring == 1 else 0.82) * (1 - 0.28 * erosion)
-            scale *= 0.88 + 0.18 * math.sin(i * 3.7)
-            centers.append((x, y, 0.68 + 0.16 * math.sin(i * 1.9), scale, angle))
-    for index, (x, y, z, scale, _angle) in enumerate(centers):
-        sides = 7 if index % 3 else 8
-        points = []
-        for j in range(sides):
-            angle = 2 * math.pi * j / sides
-            radius = scale * (0.78 + 0.22 * math.sin(j * 2.7 + index))
-            points.append((x + math.cos(angle) * radius, y + math.sin(angle) * radius))
+    topology_path = (
+        ROOT
+        / "src"
+        / "world"
+        / "terrain"
+        / "shatteredPlainsTopology.json"
+    )
+    topology = json.loads(topology_path.read_text())
+    if len(topology["plateaus"]) != 37 or len(topology["bridges"]) != 9:
+        raise RuntimeError(
+            "Shattered Plains topology must define 37 plateaus and 9 bridges"
+        )
+    chasm_floor_y = topology["patch"]["chasmFloorY"]
+    # This authored floor remains a named QA datum but is hidden at runtime;
+    # the selected-detail patch supplies the continuous floor and outer blend.
+    cyl(
+        "ShatteredPlains_Chasm_Floor",
+        (0, 0, (chasm_floor_y - 0.05) / runtime_scale),
+        topology["patch"]["outerRadiusX"] / runtime_scale,
+        0.1 / runtime_scale,
+        city_surface["shattered"],
+        r,
+        64,
+        0,
+    )
+    for index, plateau in enumerate(topology["plateaus"]):
+        points = [
+            (
+                point[0] / runtime_scale,
+                -point[1] / runtime_scale,
+            )
+            for point in plateau["polygon"]
+        ]
+        cap_y = plateau["capY"]
+        plateau_height = (cap_y - chasm_floor_y) / runtime_scale
+        plateau_center_y = (
+            (cap_y + chasm_floor_y) / 2 / runtime_scale
+        )
         prism(
             f"ShatteredPlains_Plateau_{index + 1:02d}",
             points,
-            1.35 + 0.25 * (index % 3),
+            plateau_height,
             city_surface["shattered"],
             r,
-            z,
+            plateau_center_y,
         )
     bridge_abutments = []
-    for index, (x, y, _z, _scale, _angle) in enumerate(centers[1:18]):
-        if x > 2.2 or index % 3 == 1:
-            continue
-        distance = math.hypot(x, y)
+    for index, bridge_spec in enumerate(topology["bridges"]):
+        start_x, start_z = bridge_spec["start"]
+        end_x, end_z = bridge_spec["end"]
+        delta_x = end_x - start_x
+        delta_blender_y = -(end_z - start_z)
+        distance = math.hypot(delta_x, delta_blender_y)
+        vertical_delta = bridge_spec["endY"] - bridge_spec["startY"]
+        sloped_distance = math.hypot(distance, vertical_delta)
+        bridge_half_height = 0.045
+        bridge_angle = math.atan2(delta_blender_y, delta_x)
+        bridge_slope = math.atan2(vertical_delta, distance)
         bridge = cube(
-            f"ShatteredPlains_Bridge_{index + 1}",
-            (x * 0.57, y * 0.57, 1.52),
-            (distance * 0.31, 0.075, 0.055),
-            p["brass"],
+            f"ShatteredPlains_Bridge_{index + 1:02d}_{bridge_spec['id']}",
+            (
+                (start_x + end_x) / 2 / runtime_scale,
+                -(start_z + end_z) / 2 / runtime_scale,
+                (
+                    (bridge_spec["startY"] + bridge_spec["endY"])
+                    / 2
+                    - bridge_half_height
+                )
+                / runtime_scale,
+            ),
+            (
+                sloped_distance / 2 / runtime_scale,
+                bridge_spec["width"] / 2 / runtime_scale,
+                bridge_half_height / runtime_scale,
+            ),
+            p["wood"],
             r,
             0.02,
         )
-        bridge_angle = math.atan2(y, x)
+        bridge.rotation_euler[1] = -bridge_slope
         bridge.rotation_euler[2] = bridge_angle
-        for side_index, radial_fraction in enumerate((0.26, 0.88)):
+        bridge["bridge_id"] = bridge_spec["id"]
+        bridge["source_plateau_id"] = bridge_spec["sourcePlateauId"]
+        bridge["destination_plateau_id"] = bridge_spec[
+            "destinationPlateauId"
+        ]
+        for side_index, (endpoint, endpoint_y) in enumerate(
+            (
+                (bridge_spec["start"], bridge_spec["startY"]),
+                (bridge_spec["end"], bridge_spec["endY"]),
+            )
+        ):
             abutment = cube(
-                f"ShatteredPlains_Bridge_{index + 1}_Abutment_{side_index + 1}",
-                (x * radial_fraction, y * radial_fraction, 1.42),
-                (0.13, 0.18, 0.18),
+                f"ShatteredPlains_Bridge_{index + 1:02d}_Abutment_{side_index + 1}",
+                (
+                    endpoint[0] / runtime_scale,
+                    -endpoint[1] / runtime_scale,
+                    (endpoint_y - 0.12) / runtime_scale,
+                ),
+                (
+                    0.14 / runtime_scale,
+                    (bridge_spec["width"] * 0.68) / runtime_scale,
+                    0.14 / runtime_scale,
+                ),
                 p["stone_dark"],
                 r,
                 0.022,
@@ -5120,71 +5730,214 @@ def build_shattered_plains() -> None:
         bridge_abutments,
         r,
     )
-    cyl("Stormseat_Central_Dais", (0, 0, 1.78), 0.62, 0.25, p["slate"], r, 10)
-    torus("Stormseat_Oathgate_Ring", (0, 0, 1.94), 0.38, 0.045, p["cyan"], r)
-    for ruin_index in range(10):
-        angle = 2 * math.pi * ruin_index / 10 + 0.18
-        radius = 0.92 + (ruin_index % 2) * 0.28
+    plateau_by_id = {
+        plateau["id"]: plateau for plateau in topology["plateaus"]
+    }
+
+    def authored_plateau_center(plateau_id):
+        plateau = plateau_by_id[plateau_id]
+        count = len(plateau["polygon"])
+        return (
+            sum(point[0] for point in plateau["polygon"])
+            / count
+            / runtime_scale,
+            -sum(point[1] for point in plateau["polygon"])
+            / count
+            / runtime_scale,
+            plateau["capY"] / runtime_scale,
+        )
+
+    narak = bpy.data.objects.new("Narak_Stormseat_Precinct", None)
+    assets.objects.link(narak)
+    narak.parent = r
+    narak["district"] = "Narak / Stormseat"
+    narak["topology_plateau_ids"] = ",".join(
+        topology["districts"]["narak"]["plateauIds"]
+    )
+    central_x, central_y, central_cap = authored_plateau_center(
+        "plateau-01"
+    )
+    cyl(
+        "Stormseat_Central_Dais",
+        (central_x, central_y, central_cap + 0.08),
+        0.42,
+        0.16,
+        p["slate"],
+        r,
+        12,
+        0.018,
+    )
+    torus(
+        "Stormseat_Oathgate_Ring",
+        (central_x, central_y, central_cap + 0.19),
+        0.27,
+        0.035,
+        p["cyan"],
+        r,
+    )
+    for ruin_index, plateau_id in enumerate(
+        topology["districts"]["narak"]["plateauIds"]
+    ):
+        x, y, cap = authored_plateau_center(plateau_id)
+        rotation = ruin_index * 2.399963 + 0.18
         authored_city_block(
             f"Stormseat_RuinBuilding_{ruin_index + 1:02d}",
+            (x, y, cap + 0.012),
             (
-                math.cos(angle) * radius,
-                math.sin(angle) * radius,
-                1.7,
-            ),
-            (
-                0.18 + (ruin_index % 3) * 0.025,
-                0.14 + ((ruin_index + 1) % 3) * 0.02,
-                0.2 + (ruin_index % 4) * 0.045,
+                0.12 + (ruin_index % 3) * 0.018,
+                0.1 + ((ruin_index + 1) % 3) * 0.015,
+                0.16 + (ruin_index % 4) * 0.035,
             ),
             city_surface["shattered"],
             city_surface["shattered"],
             r,
             runtime_scale,
-            angle - math.pi / 2,
+            rotation,
             "flat",
             p["glass_dark"],
             p["stone_dark"],
             p["stone_dark"],
             2,
         )
+        # Listener homes, crem partitions, and rockbud plots make Narak a
+        # living precinct layered onto the older city rather than one dais.
+        if ruin_index > 0:
+            home = rock(
+                f"Narak_CarapaceHome_{ruin_index:02d}",
+                (
+                    x + math.cos(rotation) * 0.16,
+                    y + math.sin(rotation) * 0.14,
+                    cap + 0.15,
+                ),
+                (0.14, 0.11, 0.13),
+                p["slate"] if ruin_index % 2 else p["stone_dark"],
+                r,
+                2,
+            )
+            home["district"] = "Narak listener quarter"
+            partition = cube(
+                f"Narak_CremPartition_{ruin_index:02d}",
+                (
+                    x - math.sin(rotation) * 0.17,
+                    y + math.cos(rotation) * 0.17,
+                    cap + 0.055,
+                ),
+                (0.16, 0.025, 0.055),
+                p["stone_light"],
+                r,
+                0.008,
+            )
+            partition.rotation_euler[2] = rotation
+            for bud_index in range(3):
+                rock(
+                    f"Narak_RockbudPlot_{ruin_index:02d}_{bud_index + 1}",
+                    (
+                        x
+                        + math.cos(
+                            rotation + bud_index * math.pi * 2 / 3
+                        )
+                        * 0.22,
+                        y
+                        + math.sin(
+                            rotation + bud_index * math.pi * 2 / 3
+                        )
+                        * 0.2,
+                        cap + 0.035,
+                    ),
+                    (0.035, 0.03, 0.028),
+                    p["red_leaf"],
+                    r,
+                    1,
+                )
+    watch_x, watch_y, watch_cap = authored_plateau_center("plateau-02")
+    cyl(
+        "Narak_Stormseat_Watchtower",
+        (watch_x, watch_y, watch_cap + 0.48),
+        0.12,
+        0.96,
+        city_surface["shattered"],
+        r,
+        10,
+        0.025,
+    )
+    cone(
+        "Narak_Stormseat_Watchtower_Carapace",
+        (watch_x, watch_y, watch_cap + 1.02),
+        0.19,
+        0.04,
+        0.2,
+        p["slate"],
+        r,
+        8,
+        0.018,
+    )
+
+    warcamp_spec = topology["districts"]["westernWarcamp"]
+    warcamp_x = warcamp_spec["anchor"][0] / runtime_scale
+    warcamp_y = -warcamp_spec["anchor"][1] / runtime_scale
+    warcamp_base = warcamp_spec["foundation"]["baseY"] / runtime_scale
+    warcamp_surface = (
+        warcamp_spec["foundation"]["surfaceY"] / runtime_scale
+    )
+    warcamp_depth = warcamp_surface - warcamp_base
     cyl(
         "Warcamp_TerrainSkirt",
-        (-4.8, 0, 0.64),
-        0.94,
-        0.42,
+        (
+            warcamp_x,
+            warcamp_y,
+            warcamp_base + warcamp_depth / 2,
+        ),
+        warcamp_spec["foundation"]["radius"] / runtime_scale,
+        warcamp_depth,
         p["stone_dark"],
         r,
-        16,
+        24,
         0.045,
     )
-    torus("Warcamp_Crater_Rim", (-4.8, 0, 0.85), 1.12, 0.22, p["stone_dark"], r)
+    torus(
+        "Warcamp_Crater_Rim",
+        (warcamp_x, warcamp_y, warcamp_surface + 0.04),
+        warcamp_spec["foundation"]["walkableRadius"] / runtime_scale,
+        0.075,
+        p["stone_dark"],
+        r,
+    )
     warcamp_ramp = cube(
         "Warcamp_ApproachRamp",
-        (-3.9, -0.65, 1.03),
-        (0.68, 0.16, 0.05),
+        (warcamp_x + 0.55, warcamp_y - 0.25, warcamp_surface + 0.035),
+        (0.42, 0.14, 0.035),
         p["stone_light"],
         r,
         0.018,
     )
-    warcamp_ramp.rotation_euler[1] = -0.1
-    warcamp_ramp.rotation_euler[2] = -0.55
+    warcamp_ramp.rotation_euler[2] = -0.25
     for i in range(7):
         angle = 2 * math.pi * i / 7
         cube(
             f"Warcamp_Barrack_{i + 1}",
-            (-4.8 + math.cos(angle) * 0.65, math.sin(angle) * 0.65, 0.82),
-            (0.12, 0.34, 0.2),
+            (
+                warcamp_x + math.cos(angle) * 0.57,
+                warcamp_y + math.sin(angle) * 0.57,
+                warcamp_surface + 0.18,
+            ),
+            (0.11, 0.22, 0.18),
             p["ochre"],
             r,
             0.035,
         ).rotation_euler[2] = angle
+    temple_x, temple_y, temple_cap = authored_plateau_center(
+        "plateau-36"
+    )
     for i in range(6):
         cyl(
             f"Chasm_Temple_Column_{i + 1}",
-            (2.55 + (i % 3) * 0.22, -3.15 + (i // 3) * 0.45, 0.62),
+            (
+                temple_x + ((i % 3) - 1) * 0.13,
+                temple_y + ((i // 3) - 0.5) * 0.25,
+                temple_cap + 0.34,
+            ),
             0.055,
-            0.75,
+            0.68,
             p["stone_light"],
             r,
             8,
@@ -5194,25 +5947,35 @@ def build_shattered_plains() -> None:
     # components make the plateau feel occupied at close LOD.
     for row in range(5):
         for column in range(6):
-            x = -4.45 + column * 0.34
-            y = -1.35 + row * 0.34
+            x = warcamp_x - 0.5 + column * 0.2
+            y = warcamp_y - 0.42 + row * 0.21
             slab = cube(
                 f"Warcamp_Paving_{row + 1}_{column + 1}",
-                (x, y, 1.18 + ((row + column) % 3) * 0.012),
-                (0.155, 0.155, 0.028),
+                (
+                    x,
+                    y,
+                    warcamp_surface
+                    + 0.02
+                    + ((row + column) % 3) * 0.008,
+                ),
+                (0.09, 0.09, 0.018),
                 p["wet_stone"] if (row + column) % 4 else p["stone_light"],
                 r,
                 0.025,
             )
             slab.rotation_euler[2] = ((row * 7 + column * 3) % 5 - 2) * 0.025
     for bay in range(4):
-        x = -3.8 + bay * 0.48
+        x = warcamp_x - 0.45 + bay * 0.3
         for side in (-1, 1):
             cyl(
                 f"Warcamp_Scaffold_Post_{bay + 1}_{side}",
-                (x, -2.55 + side * 0.48, 1.88),
-                0.035,
-                1.55,
+                (
+                    x,
+                    warcamp_y - 0.2 + side * 0.22,
+                    warcamp_surface + 0.48,
+                ),
+                0.025,
+                0.96,
                 p["wood"],
                 r,
                 8,
@@ -5220,9 +5983,9 @@ def build_shattered_plains() -> None:
             )
         beam = cyl(
             f"Warcamp_Scaffold_Beam_{bay + 1}",
-            (x, -2.55, 2.32),
-            0.03,
-            1.15,
+            (x, warcamp_y - 0.2, warcamp_surface + 0.84),
+            0.022,
+            0.56,
             p["rope"],
             r,
             8,
@@ -5230,14 +5993,14 @@ def build_shattered_plains() -> None:
         )
         beam.rotation_euler[0] = math.pi / 2
     for tent in range(4):
-        x = -5.2 + tent * 0.72
-        y = 1.65 + (tent % 2) * 0.55
+        x = warcamp_x - 0.48 + tent * 0.31
+        y = warcamp_y + 0.48 + (tent % 2) * 0.12
         cone(
             f"Warcamp_StormTent_{tent + 1}",
-            (x, y, 1.58),
-            0.48,
-            0.08,
-            0.82,
+            (x, y, warcamp_surface + 0.34),
+            0.22,
+            0.05,
+            0.42,
             p["cloth_blue"] if tent % 2 else p["cloth_red"],
             r,
             4,
@@ -5245,23 +6008,30 @@ def build_shattered_plains() -> None:
         ).rotation_euler[2] = math.pi / 4
         cube(
             f"Warcamp_TentWall_{tent + 1}",
-            (x, y, 1.25),
-            (0.42, 0.36, 0.24),
+            (x, y, warcamp_surface + 0.13),
+            (0.2, 0.16, 0.13),
             p["cloth_blue"] if tent % 2 else p["cloth_red"],
             r,
             0.025,
         )
     for crate_index in range(14):
-        x = -5.45 + (crate_index % 5) * 0.26
-        y = -2.2 + (crate_index // 5) * 0.28
+        x = warcamp_x - 0.58 + (crate_index % 5) * 0.19
+        y = warcamp_y - 0.62 + (crate_index // 5) * 0.18
         cube(
             f"Warcamp_Crate_{crate_index + 1:02d}",
-            (x, y, 1.32 + (crate_index % 2) * 0.13),
-            (0.115, 0.115, 0.12),
+            (
+                x,
+                y,
+                warcamp_surface + 0.08 + (crate_index % 2) * 0.1,
+            ),
+            (0.08, 0.08, 0.08),
             p["wood"],
             r,
             0.02,
         )
+    r["topology_source"] = "src/world/terrain/shatteredPlainsTopology.json"
+    r["plateau_count"] = len(topology["plateaus"])
+    r["bridge_count"] = len(topology["bridges"])
 
 
 def build_detail_modules() -> None:
@@ -6952,6 +7722,7 @@ for label, builder in (
     ("Shinovar", build_shinovar),
     ("Akinah", build_akinah),
     ("Thaylen City", build_thaylen_city),
+    ("Vedenar", build_vedenar),
     ("Shattered Plains", build_shattered_plains),
     ("detail modules", build_detail_modules),
     ("fidelity modules", build_fidelity_modules),

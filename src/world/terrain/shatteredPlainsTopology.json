@@ -1365,16 +1365,15 @@
       "sourcePlateauId": "plateau-01",
       "destinationPlateauId": "plateau-02",
       "start": [
-        0.30942,
-        -0.03105
+        0.51121,
+        -0.05217
       ],
       "end": [
-        1.04726,
-        -0.10508
+        0.93154,
+        -0.09386
       ],
       "startY": 1.21417,
       "endY": 1.07282,
-      "deckY": 1.14168,
       "width": 0.10873
     },
     {
@@ -1382,16 +1381,15 @@
       "sourcePlateauId": "plateau-01",
       "destinationPlateauId": "plateau-04",
       "start": [
-        -0.03105,
-        -0.30942
+        -0.04025,
+        -0.41357
       ],
       "end": [
-        -0.10508,
-        -1.04726
+        -0.0739,
+        -0.74786
       ],
       "startY": 1.21417,
       "endY": 0.91124,
-      "deckY": 1.14168,
       "width": 0.10873
     },
     {
@@ -1399,16 +1397,15 @@
       "sourcePlateauId": "plateau-01",
       "destinationPlateauId": "plateau-05",
       "start": [
-        -0.24074,
-        -0.19684
+        -0.45402,
+        -0.37254
       ],
       "end": [
-        -0.81483,
-        -0.66623
+        -0.70293,
+        -0.57536
       ],
       "startY": 1.21417,
       "endY": 1.00895,
-      "deckY": 1.14168,
       "width": 0.10873
     },
     {
@@ -1416,16 +1413,15 @@
       "sourcePlateauId": "plateau-01",
       "destinationPlateauId": "plateau-07",
       "start": [
-        -0.19684,
-        0.24074
+        -0.37565,
+        0.45659
       ],
       "end": [
-        -0.66623,
-        0.81483
+        -0.5389,
+        0.65505
       ],
       "startY": 1.21417,
       "endY": 0.97349,
-      "deckY": 1.14168,
       "width": 0.10873
     },
     {
@@ -1433,16 +1429,15 @@
       "sourcePlateauId": "plateau-01",
       "destinationPlateauId": "plateau-08",
       "start": [
-        0.03105,
-        0.30942
+        0.04534,
+        0.44392
       ],
       "end": [
-        0.10508,
-        1.04726
+        0.08938,
+        0.88865
       ],
       "startY": 1.21417,
       "endY": 0.96619,
-      "deckY": 1.14168,
       "width": 0.10873
     },
     {
@@ -1450,16 +1445,15 @@
       "sourcePlateauId": "plateau-04",
       "destinationPlateauId": "plateau-13",
       "start": [
-        -0.05754,
-        -0.74369
+        -0.07459,
+        -1.66959
       ],
       "end": [
-        0,
-        -2.13694
+        -0.03388,
+        -2.11936
       ],
       "startY": 0.91124,
       "endY": 0.91834,
-      "deckY": 1.14168,
       "width": 0.10873
     },
     {
@@ -1467,16 +1461,15 @@
       "sourcePlateauId": "plateau-05",
       "destinationPlateauId": "plateau-14",
       "start": [
-        -0.69342,
-        -0.54355
+        -0.98496,
+        -1.03277
       ],
       "end": [
-        -1.06847,
-        -1.85064
+        -1.13007,
+        -1.70938
       ],
       "startY": 1.00895,
       "endY": 1.18508,
-      "deckY": 1.14168,
       "width": 0.10873
     },
     {
@@ -1484,16 +1477,15 @@
       "sourcePlateauId": "plateau-06",
       "destinationPlateauId": "plateau-16",
       "start": [
-        -0.86897,
-        -0.01609
+        -1.58975,
+        0.08209
       ],
       "end": [
-        -2.13694,
-        0
+        -1.99726,
+        0.04408
       ],
       "startY": 1.27569,
       "endY": 0.87558,
-      "deckY": 1.14168,
       "width": 0.10873
     },
     {
@@ -1501,16 +1493,15 @@
       "sourcePlateauId": "plateau-07",
       "destinationPlateauId": "plateau-17",
       "start": [
-        -0.50831,
-        0.64309
+        -1.00711,
+        0.97712
       ],
       "end": [
-        -1.85064,
-        1.06847
+        -1.72293,
+        1.13217
       ],
       "startY": 0.97349,
       "endY": 1.15047,
-      "deckY": 1.14168,
       "width": 0.10873
     }
   ],
