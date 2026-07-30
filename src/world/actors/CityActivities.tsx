@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import { LANDMARK_RUNTIME_KIT_URL } from "../assets/landmarkAssets";
 import { locationById } from "../locations";
 import { localCityPresenceId } from "../cities/progressiveLod";
 import { LOCAL_UNITS_PER_METER } from "../scale";
@@ -15,8 +16,6 @@ import {
   fishingRaftPose,
   floatingWatercraftY,
 } from "./activityMath";
-
-const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
 function cloneModelRoot(scene: THREE.Group, name: string) {
   const source = scene.getObjectByName(name);
@@ -36,7 +35,7 @@ function cloneModelRoot(scene: THREE.Group, name: string) {
 
 function BridgeRun() {
   const group = useRef<THREE.Group>(null);
-  const { scene } = useGLTF(MODEL_URL);
+  const { scene } = useGLTF(LANDMARK_RUNTIME_KIT_URL);
   const bridgeCrew = useMemo(
     () => cloneModelRoot(scene, "Prop_Bridge_Run"),
     [scene],
@@ -157,7 +156,7 @@ function HarborCargo({
 }) {
   const crane = useRef<THREE.Group>(null);
   const crate = useRef<THREE.Mesh>(null);
-  const { scene } = useGLTF(MODEL_URL);
+  const { scene } = useGLTF(LANDMARK_RUNTIME_KIT_URL);
   const craneModel = useMemo(
     () => cloneModelRoot(scene, "Module_Dock_Crane"),
     [scene],

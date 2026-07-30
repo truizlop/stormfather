@@ -3,6 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import { landmarkAssetUrl } from "../assets/landmarkAssets";
 import {
   createNavigationField,
   landmarkNavigationObstacles,
@@ -55,7 +56,6 @@ import {
 } from "./ecologyNavigation";
 import { ShinovarPastoralLife } from "./ShinovarPastoralLife";
 
-const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 const EMPTY_CREATURE_ROUTES = new Map<string, NavigationRoute>();
 
 function CreatureActor({
@@ -482,7 +482,7 @@ function RoutedCityEcology({
   sprenSeeds: readonly SprenSeed[];
   layoutViewportWidth: number;
 }) {
-  const { scene } = useGLTF(MODEL_URL);
+  const { scene } = useGLTF(landmarkAssetUrl(location.modelRoot!));
   const navigation = useMemo(() => {
     const profile = cityProfile(location.id, location.culture);
     const layout = createDistrictLayout(

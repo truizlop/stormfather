@@ -10,6 +10,10 @@ import {
 } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import {
+  landmarkAssetUrl,
+  LANDMARK_RUNTIME_KIT_URL,
+} from "../assets/landmarkAssets";
 import { locationById } from "../locations";
 import { metersToLocal } from "../scale";
 import { localSurfaceY } from "../terrain/localSurface";
@@ -50,8 +54,6 @@ import {
   residentMovementState,
   type ResidentMovementState,
 } from "./residentVariation";
-
-const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
 interface ResidentSeed extends PopulationRouteAssignment {
   speedMetersPerSecond: number;
@@ -781,7 +783,7 @@ function KharbranthStreetCastMember({
   rootName: (typeof kharbranthDetailedActorRoots)[number];
 }) {
   const group = useRef<THREE.Group>(null);
-  const { scene } = useGLTF(MODEL_URL);
+  const { scene } = useGLTF(LANDMARK_RUNTIME_KIT_URL);
   const clothSurface = useKharbranthClothSurface();
   const skinSurface = useKharbranthSkinSurface();
   const actor = useMemo(() => {
@@ -1113,7 +1115,7 @@ function DetailedResident({
     heading: 0,
   });
   const lanePoseRef = useRef<NavigationPoint>({ x: 0, z: 0 });
-  const { scene } = useGLTF(MODEL_URL);
+  const { scene } = useGLTF(LANDMARK_RUNTIME_KIT_URL);
   const kharbranthResident = locationId === "kharbranth";
   const resident = useMemo(() => {
     const source = scene.getObjectByName(
@@ -1270,7 +1272,7 @@ function ActiveLivingPopulation({
   detailLevel: DetailLevel;
   viewportWidth: number;
 }) {
-  const { scene } = useGLTF(MODEL_URL);
+  const { scene } = useGLTF(landmarkAssetUrl(location.modelRoot!));
   const [portraitInspection, setPortraitInspection] = useState(
     () => location.id === "kharbranth" && detailLevel === "street",
   );

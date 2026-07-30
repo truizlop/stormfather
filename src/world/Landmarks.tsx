@@ -15,8 +15,7 @@ import {
   landmarkPresentationNodeIsHidden,
 } from "./terrain/landmarkTerrainDatum";
 import type { DetailLevel } from "./types";
-
-const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
+import { landmarkAssetUrl } from "./assets/landmarkAssets";
 
 const kharbranthMaterialTints = [
   ["plaster_red", "#955746"],
@@ -63,7 +62,7 @@ function LandmarkInstance({
   locationId: string;
   harborWaterShift?: number;
 }) {
-  const { scene } = useGLTF(MODEL_URL);
+  const { scene } = useGLTF(landmarkAssetUrl(rootName));
   const [
     plasterSource,
     kharbranthFacadeSource,

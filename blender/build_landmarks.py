@@ -5,7 +5,8 @@ Run with:
       --background --python blender/build_landmarks.py
 
 The script owns the empty background scene created by that command. It writes
-the editable .blend, the web GLB, and a presentation render.
+the editable .blend, one web GLB per landmark root, a shared actor/module
+runtime kit, and a presentation render.
 """
 
 from __future__ import annotations
@@ -23,10 +24,25 @@ from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[1]
 BLEND_PATH = ROOT / "blender" / "roshar-landmarks.blend"
-GLB_PATH = ROOT / "public" / "models" / "roshar-landmarks.glb"
+WEB_MODEL_DIR = ROOT / "public" / "models" / "landmarks"
+RUNTIME_KIT_PATH = WEB_MODEL_DIR / "runtime-kit.glb"
 PREVIEW_PATH = ROOT / "docs" / "blender-landmarks-preview.png"
 
-for path in (BLEND_PATH.parent, GLB_PATH.parent, PREVIEW_PATH.parent):
+LANDMARK_WEB_FILES = {
+    "Landmark_Akinah": "akinah.glb",
+    "Landmark_Azimir": "azimir.glb",
+    "Landmark_Kharbranth": "kharbranth.glb",
+    "Landmark_Kholinar": "kholinar.glb",
+    "Landmark_Oathgate": "oathgate.glb",
+    "Landmark_Purelake": "purelake.glb",
+    "Landmark_Shattered_Plains": "shattered-plains.glb",
+    "Landmark_Shinovar": "shinovar.glb",
+    "Landmark_ThaylenCity": "thaylen-city.glb",
+    "Landmark_Urithiru": "urithiru.glb",
+    "Landmark_Vedenar": "vedenar.glb",
+}
+
+for path in (BLEND_PATH.parent, WEB_MODEL_DIR, PREVIEW_PATH.parent):
     path.mkdir(parents=True, exist_ok=True)
 
 
@@ -7822,24 +7838,53 @@ except TypeError:
 scene.render.filepath = str(PREVIEW_PATH)
 bpy.ops.render.render(write_still=True)
 
+def export_web_roots(
+    filepath: Path,
+    roots: list[bpy.types.Object],
+) -> None:
+    """Export complete root hierarchies without pulling unrelated landmarks."""
+
+    bpy.ops.object.select_all(action="DESELECT")
+    selected: list[bpy.types.Object] = []
+    for export_root in sorted(roots, key=lambda obj: obj.name):
+        selected.append(export_root)
+        selected.extend(export_root.children_recursive)
+    for obj in selected:
+        obj.select_set(True)
+    if selected:
+        bpy.context.view_layer.objects.active = selected[0]
+    bpy.ops.export_scene.gltf(
+        filepath=str(filepath),
+        export_format="GLB",
+        use_selection=True,
+        export_apply=True,
+        export_extras=True,
+        export_meshopt_compression_enable=True,
+    )
+
+
 # Export only the web assets; the presentation rig stays in the editable blend.
-bpy.ops.object.select_all(action="DESELECT")
-for obj in assets.all_objects:
-    obj.select_set(True)
-if assets.all_objects:
-    bpy.context.view_layer.objects.active = assets.all_objects[0]
-bpy.ops.export_scene.gltf(
-    filepath=str(GLB_PATH),
-    export_format="GLB",
-    use_selection=True,
-    export_apply=True,
-    export_extras=True,
-    export_meshopt_compression_enable=True,
+# Every immersive city fetches its own graph. Actor and reusable street-module
+# roots live in one shared kit because they are consumed across city scenes.
+top_level_assets = sorted(
+    (obj for obj in assets.objects if obj.parent is None),
+    key=lambda obj: obj.name,
 )
+for root_name, filename in LANDMARK_WEB_FILES.items():
+    landmark_root = bpy.data.objects.get(root_name)
+    if landmark_root is None:
+        raise RuntimeError(f"Missing authored export root {root_name}")
+    export_web_roots(WEB_MODEL_DIR / filename, [landmark_root])
+
+runtime_roots = [
+    obj for obj in top_level_assets if not obj.name.startswith("Landmark_")
+]
+export_web_roots(RUNTIME_KIT_PATH, runtime_roots)
 
 bpy.ops.wm.save_as_mainfile(filepath=str(BLEND_PATH), compress=True)
 
 print(f"Built {len(assets.all_objects)} authored objects")
-print(f"GLB: {GLB_PATH}")
+print(f"Landmark GLBs: {WEB_MODEL_DIR}")
+print(f"Runtime kit: {RUNTIME_KIT_PATH}")
 print(f"Blend: {BLEND_PATH}")
 print(f"Preview: {PREVIEW_PATH}")

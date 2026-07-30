@@ -1,7 +1,21 @@
 import { open, readFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const modelPath = resolve("public/models/roshar-landmarks.glb");
+const modelDirectory = resolve("public/models/landmarks");
+const landmarkFileByRoot = new Map([
+  ["Landmark_Akinah", "akinah.glb"],
+  ["Landmark_Azimir", "azimir.glb"],
+  ["Landmark_Kharbranth", "kharbranth.glb"],
+  ["Landmark_Kholinar", "kholinar.glb"],
+  ["Landmark_Oathgate", "oathgate.glb"],
+  ["Landmark_Purelake", "purelake.glb"],
+  ["Landmark_Shattered_Plains", "shattered-plains.glb"],
+  ["Landmark_Shinovar", "shinovar.glb"],
+  ["Landmark_ThaylenCity", "thaylen-city.glb"],
+  ["Landmark_Urithiru", "urithiru.glb"],
+  ["Landmark_Vedenar", "vedenar.glb"],
+]);
+const runtimeKitFile = "runtime-kit.glb";
 const expectedRoots = [
   "Landmark_Urithiru",
   "Landmark_Kharbranth",
@@ -263,33 +277,114 @@ const expectedModeledCities = [
   },
 ];
 
-try {
-  const model = await stat(modelPath);
-  if (model.size < 1024) {
-    throw new Error(`Landmark GLB is unexpectedly small: ${model.size} bytes`);
+async function readBinaryGltf(fileName) {
+  const path = resolve(modelDirectory, fileName);
+  const asset = await stat(path);
+  if (asset.size < 1024) {
+    throw new Error(
+      `Split landmark GLB ${fileName} is unexpectedly small: ${asset.size} bytes`,
+    );
   }
-
-  const file = await open(modelPath, "r");
+  const file = await open(path, "r");
   const header = Buffer.alloc(20);
   await file.read(header, 0, header.length, 0);
   const magic = header.toString("utf8", 0, 4);
   const jsonLength = header.readUInt32LE(12);
   const jsonType = header.toString("utf8", 16, 20);
   if (magic !== "glTF" || jsonType !== "JSON") {
-    throw new Error("Asset is not a valid binary glTF file");
+    await file.close();
+    throw new Error(`${fileName} is not a valid binary glTF file`);
   }
   const jsonBuffer = Buffer.alloc(jsonLength);
   await file.read(jsonBuffer, 0, jsonLength, 20);
   await file.close();
-  const gltf = JSON.parse(jsonBuffer.toString("utf8").trim());
-  const names = new Set(gltf.nodes?.map((node) => node.name).filter(Boolean));
+  return {
+    fileName,
+    size: asset.size,
+    gltf: JSON.parse(jsonBuffer.toString("utf8").trim()),
+  };
+}
+
+function nodeIndexFor(gltf) {
+  return new Map(
+    gltf.nodes
+      ?.map((node, index) => [node.name, index])
+      .filter(([name]) => name),
+  );
+}
+
+try {
+  const topLevelModels = await readdir(resolve("public/models"));
+  if (topLevelModels.includes("roshar-landmarks.glb")) {
+    throw new Error(
+      "Legacy all-city roshar-landmarks.glb must not ship beside split assets",
+    );
+  }
+  const landmarkAssets = new Map(
+    await Promise.all(
+      [...landmarkFileByRoot].map(async ([rootName, fileName]) => [
+        rootName,
+        await readBinaryGltf(fileName),
+      ]),
+    ),
+  );
+  const runtimeKit = await readBinaryGltf(runtimeKitFile);
+  const allAssets = [...landmarkAssets.values(), runtimeKit];
+  const totalAssetBytes = allAssets.reduce(
+    (total, asset) => total + asset.size,
+    0,
+  );
+  const names = new Set(
+    allAssets.flatMap((asset) =>
+      asset.gltf.nodes?.map((node) => node.name).filter(Boolean) ?? [],
+    ),
+  );
   const missing = expectedRoots.filter((name) => !names.has(name));
   if (missing.length) {
     throw new Error(`Missing authored roots: ${missing.join(", ")}`);
   }
-  const nodeIndexByName = new Map(
-    gltf.nodes?.map((node, index) => [node.name, index]).filter(([name]) => name),
+  for (const [rootName, asset] of landmarkAssets) {
+    const assetNames = new Set(
+      asset.gltf.nodes?.map((node) => node.name).filter(Boolean),
+    );
+    if (!assetNames.has(rootName)) {
+      throw new Error(`${asset.fileName} does not contain ${rootName}`);
+    }
+    const unrelatedRoots = [...assetNames].filter(
+      (name) => name.startsWith("Landmark_") && name !== rootName,
+    );
+    if (unrelatedRoots.length) {
+      throw new Error(
+        `${asset.fileName} contains unrelated city roots: ${unrelatedRoots.join(", ")}`,
+      );
+    }
+  }
+  const runtimeLandmarks =
+    runtimeKit.gltf.nodes
+      ?.map((node) => node.name)
+      .filter((name) => name?.startsWith("Landmark_")) ?? [];
+  if (runtimeLandmarks.length) {
+    throw new Error(
+      `Runtime kit contains city geometry: ${runtimeLandmarks.join(", ")}`,
+    );
+  }
+  const largestAsset = allAssets.reduce((largest, asset) =>
+    asset.size > largest.size ? asset : largest,
   );
+  if (largestAsset.size > 24 * 1024 * 1024) {
+    throw new Error(
+      `${largestAsset.fileName} is ${(largestAsset.size / 1024 / 1024).toFixed(1)} MiB; split assets must stay below 24 MiB`,
+    );
+  }
+  console.log(
+    `✓ ${landmarkAssets.size} isolated landmark GLBs plus one shared runtime kit`,
+  );
+  console.log(
+    `✓ Largest first-visit asset is ${largestAsset.fileName} at ${(largestAsset.size / 1024 / 1024).toFixed(1)} MiB`,
+  );
+
+  const gltf = landmarkAssets.get("Landmark_Urithiru").gltf;
+  const nodeIndexByName = nodeIndexFor(gltf);
   const urithiruIndex = nodeIndexByName.get("Landmark_Urithiru");
   const destinationCityRoots = [
     "Landmark_Kharbranth",
@@ -383,8 +478,13 @@ try {
     console.log(`✓ ${cityNodeCount} modeled ${city.name} nodes`);
   }
 
+  const shatteredGltf =
+    landmarkAssets.get("Landmark_Shattered_Plains").gltf;
+  const shatteredNodeIndexByName = nodeIndexFor(shatteredGltf);
   const shatteredRoot =
-    gltf.nodes[nodeIndexByName.get("Landmark_Shattered_Plains")];
+    shatteredGltf.nodes[
+      shatteredNodeIndexByName.get("Landmark_Shattered_Plains")
+    ];
   if (
     shatteredRoot?.extras?.plateau_count !== 37 ||
     shatteredRoot?.extras?.bridge_count !== 9 ||
@@ -418,10 +518,15 @@ try {
   }
   for (const bridge of shatteredTopology.bridges) {
     const bridgeIndex = bridgeNodes
-      .map((name) => nodeIndexByName.get(name))
-      .find((index) => gltf.nodes[index]?.extras?.bridge_id === bridge.id);
+      .map((name) => shatteredNodeIndexByName.get(name))
+      .find(
+        (index) =>
+          shatteredGltf.nodes[index]?.extras?.bridge_id === bridge.id,
+      );
     const extras =
-      bridgeIndex === undefined ? undefined : gltf.nodes[bridgeIndex]?.extras;
+      bridgeIndex === undefined
+        ? undefined
+        : shatteredGltf.nodes[bridgeIndex]?.extras;
     if (
       extras?.source_plateau_id !== bridge.sourcePlateauId ||
       extras?.destination_plateau_id !== bridge.destinationPlateauId
@@ -436,6 +541,8 @@ try {
   const shinovarTrees = [...names].filter((name) =>
     /^Shinovar_Tree_\d{2}$/.test(name),
   );
+  const shinovarGltf = landmarkAssets.get("Landmark_Shinovar").gltf;
+  const shinovarNodeIndexByName = nodeIndexFor(shinovarGltf);
   if (shinovarTrees.length !== 36) {
     throw new Error(
       `Shinovar must export 36 human-scale orchard/shelterbelt trees, found ${shinovarTrees.length}`,
@@ -443,7 +550,8 @@ try {
   }
   const shinovarTreeRoles = { orchard: 0, shelterbelt: 0 };
   for (const treeName of shinovarTrees) {
-    const tree = gltf.nodes[nodeIndexByName.get(treeName)];
+    const tree =
+      shinovarGltf.nodes[shinovarNodeIndexByName.get(treeName)];
     const heightMeters = tree?.extras?.height_meters;
     if (
       typeof heightMeters !== "number" ||
@@ -469,7 +577,10 @@ try {
     "✓ 36 Shinovar trees remain within 5.2–10.8 m (12 orchard/24 shelterbelt)",
   );
 
-  const vedenarRoot = gltf.nodes[nodeIndexByName.get("Landmark_Vedenar")];
+  const vedenarGltf = landmarkAssets.get("Landmark_Vedenar").gltf;
+  const vedenarNodeIndexByName = nodeIndexFor(vedenarGltf);
+  const vedenarRoot =
+    vedenarGltf.nodes[vedenarNodeIndexByName.get("Landmark_Vedenar")];
   if (
     vedenarRoot?.extras?.authored_ward_count !== 74 ||
     vedenarRoot?.extras?.contains_destination_geometry !== true ||
@@ -479,18 +590,18 @@ try {
       "Vedenar root is missing its 74-ward independent-city/Oathgate metadata",
     );
   }
-  const vedenarMaterial = gltf.materials?.find(
+  const vedenarMaterial = vedenarGltf.materials?.find(
     (material) =>
       material.name === "SF_City_Vedenar_Stormstone_Restoration" &&
       material.pbrMetallicRoughness?.baseColorTexture,
   );
-  const vedenarWard = gltf.nodes[
-    nodeIndexByName.get("Vedenar_Ward_001_Building")
+  const vedenarWard = vedenarGltf.nodes[
+    vedenarNodeIndexByName.get("Vedenar_Ward_001_Building")
   ];
   const vedenarWardPrimitive =
     vedenarWard?.mesh === undefined
       ? undefined
-      : gltf.meshes?.[vedenarWard.mesh]?.primitives?.[0];
+      : vedenarGltf.meshes?.[vedenarWard.mesh]?.primitives?.[0];
   if (
     !vedenarMaterial ||
     vedenarWardPrimitive?.attributes?.TEXCOORD_0 === undefined
@@ -501,7 +612,9 @@ try {
   }
   console.log("✓ Vedenar exports 74 UV-textured, terrain-seated wards");
 
-  console.log(`✓ Roshar landmark kit: ${(model.size / 1024).toFixed(1)} KiB`);
+  console.log(
+    `✓ Roshar split landmark graph: ${(totalAssetBytes / 1024).toFixed(1)} KiB total`,
+  );
   console.log(`✓ ${expectedRoots.length} expected landmark and actor roots`);
   console.log(`✓ ${kharbranthNodeCount} modeled Kharbranth nodes`);
   for (const textureName of expectedTextures) {
@@ -537,6 +650,11 @@ try {
     .filter((fileName) => /\.(css|ts|tsx)$/.test(fileName));
   for (const fileName of sourceFiles) {
     const source = await readFile(resolve("src", fileName), "utf8");
+    if (source.includes("models/roshar-landmarks.glb")) {
+      throw new Error(
+        `Runtime source ${fileName} still fetches the legacy all-city GLB`,
+      );
+    }
     const forbidden = forbiddenRuntimeTokens.find((token) =>
       source.includes(token),
     );
@@ -548,7 +666,7 @@ try {
   }
   console.log("✓ Runtime contains no full-scene image relief or comparison path");
 } catch (error) {
-  console.error(`✗ Missing or invalid landmark kit at ${modelPath}`);
+  console.error(`✗ Missing or invalid split landmark kit at ${modelDirectory}`);
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 }

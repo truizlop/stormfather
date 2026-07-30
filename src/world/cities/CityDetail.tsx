@@ -3,6 +3,7 @@ import { useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import { LANDMARK_RUNTIME_KIT_URL } from "../assets/landmarkAssets";
 import { locationById } from "../locations";
 import type { DetailLevel } from "../types";
 import {
@@ -22,8 +23,6 @@ import {
   kharbranthRoadOffset,
 } from "./landmarkMetrics";
 import { cityProfile, type CityProfile } from "./profiles";
-
-const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
 function configureTexture(
   texture: THREE.Texture,
@@ -424,7 +423,7 @@ function ModuleInstance({
   masonryMicro: THREE.Texture;
   stormwoodMicro: THREE.Texture;
 }) {
-  const { scene } = useGLTF(MODEL_URL);
+  const { scene } = useGLTF(LANDMARK_RUNTIME_KIT_URL);
   const ownedClone = useMemo(() => {
     const source = scene.getObjectByName(name);
     if (!source) return null;
