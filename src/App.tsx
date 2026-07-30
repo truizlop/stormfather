@@ -3,6 +3,7 @@ import { useProgress } from "@react-three/drei";
 import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { AtlasUI } from "./ui/AtlasUI";
+import { INITIAL_ATLAS_CAMERA } from "./world/initialView";
 import { WorldScene } from "./world/WorldScene";
 
 function LoadingOverlay() {
@@ -48,7 +49,7 @@ export function App() {
         shadows="basic"
         dpr={[1, 1.6]}
         camera={{
-          position: [49, 14, 24],
+          position: [...INITIAL_ATLAS_CAMERA.position],
           fov: 42,
           near: 0.1,
           far: 450,

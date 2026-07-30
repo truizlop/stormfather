@@ -4,6 +4,7 @@ import {
   destinationAnchors,
   detailedLocationAnchors,
 } from "./cartography/geography";
+import { INITIAL_ATLAS_CAMERA } from "./initialView";
 
 function coordinateFor(id: keyof typeof destinationAnchors) {
   const detailAnchor =
@@ -23,7 +24,7 @@ const locationData = [
     subtitle: "The storm-shaped continent",
     kind: "continent",
     coordinates: coordinateFor("roshar"),
-    camera: { position: [-2, 100, 78], target: [-2, 0, 0] },
+    camera: INITIAL_ATLAS_CAMERA,
     arrivalDetail: "continent",
     regionColor: "#59654d",
     accentColor: "#caaa6b",
