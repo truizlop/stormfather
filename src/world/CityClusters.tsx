@@ -9,7 +9,6 @@ import {
 import * as THREE from "three";
 import { CityDetail } from "./cities/CityDetail";
 import {
-  NearContentReadySignal,
   ProgressiveCityLod,
 } from "./cities/ProgressiveCityLod";
 import {
@@ -129,7 +128,6 @@ function NearCityContent({
         detailLevel={detailLevel}
         locationId={location.id}
       />
-      <NearContentReadySignal />
     </Suspense>
   );
 }

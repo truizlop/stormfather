@@ -15,6 +15,10 @@ import {
 } from "./stormParticles";
 import { stormXAtTime } from "./storm";
 
+const highstormWorldBounds = new THREE.Box3();
+const highstormViewFrustum = new THREE.Frustum();
+const highstormProjectionView = new THREE.Matrix4();
+
 const stormParticleVertexShader = /* glsl */ `
   uniform float uTime;
   uniform float uKind;
@@ -621,10 +625,25 @@ function Lightning() {
 export function Highstorm() {
   const group = useRef<THREE.Group>(null);
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     if (!group.current) return;
     const time = useAtlasStore.getState().simulationTime;
-    group.current.position.x = stormXAtTime(time);
+    const stormX = stormXAtTime(time);
+    group.current.position.x = stormX;
+    highstormWorldBounds.min.set(stormX - 8, -2.5, -42);
+    highstormWorldBounds.max.set(stormX + 8, 29, 42);
+    highstormProjectionView.multiplyMatrices(
+      camera.projectionMatrix,
+      camera.matrixWorldInverse,
+    );
+    highstormViewFrustum.setFromProjectionMatrix(
+      highstormProjectionView,
+    );
+    // The particle shaders animate beyond their static buffer bounds, so the
+    // child objects cannot use ordinary frustum culling. Cull the complete,
+    // conservative storm volume here and submit zero storm draws offscreen.
+    group.current.visible =
+      highstormViewFrustum.intersectsBox(highstormWorldBounds);
   });
 
   return (

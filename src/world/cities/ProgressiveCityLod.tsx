@@ -1,9 +1,6 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import {
   type ReactNode,
-  createContext,
-  useCallback,
-  useContext,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -22,11 +19,6 @@ import {
   type CitySilhouette,
   updateCityNearLifecycle,
 } from "./progressiveLod";
-import {
-  applyNearOpacity,
-  registerNearFadeMaterials,
-  type NearFadeMaterial,
-} from "./nearFadeMaterials";
 import type { CityProfile } from "./profiles";
 
 function RoofGeometry({ style }: { style: CityProfile["roof"] }) {
@@ -230,73 +222,19 @@ function SilhouetteLayer({
   );
 }
 
-const NearContentReadyContext = createContext<(() => void) | null>(null);
-
-/**
- * Place this inside a Suspense boundary that supplies near-city content.
- * It only mounts after the authored subtree replaces the fallback, which
- * lets the fading layer re-register those newly mounted materials.
- */
-export function NearContentReadySignal() {
-  const onReady = useContext(NearContentReadyContext);
-
-  useLayoutEffect(() => {
-    onReady?.();
-  }, [onReady]);
-
-  return null;
-}
-
-function FadingNearLayer({
+function NearLayer({
   children,
-  contentGeneration,
-  lodState,
-  onContentReady,
   position,
 }: {
   children: ReactNode;
-  contentGeneration: number;
-  lodState: CityLodState;
-  onContentReady: () => void;
   position?: readonly [number, number, number];
 }) {
-  const group = useRef<THREE.Group>(null);
-  const fadeMaterials = useRef<NearFadeMaterial[]>([]);
-
-  useLayoutEffect(() => {
-    const root = group.current;
-    if (!root) return;
-    const registration = registerNearFadeMaterials(root);
-    fadeMaterials.current = registration.entries;
-    applyNearOpacity(
-      root,
-      registration.entries,
-      lodState.weights.near,
-    );
-
-    return () => {
-      fadeMaterials.current = [];
-      registration.dispose();
-    };
-  }, [children, contentGeneration, lodState]);
-
-  useFrame(() => {
-    applyNearOpacity(
-      group.current,
-      fadeMaterials.current,
-      lodState.weights.near,
-    );
-  });
-
   return (
     <group
-      ref={group}
       name="near-city-detail"
       position={position as [number, number, number] | undefined}
     >
-      <NearContentReadyContext.Provider value={onContentReady}>
-        {children}
-      </NearContentReadyContext.Provider>
+      {children}
     </group>
   );
 }
@@ -386,11 +324,7 @@ export function ProgressiveCityLod({
       retainOutgoingNear,
     ),
   );
-  const [nearContentGeneration, setNearContentGeneration] = useState(0);
   const nearMountedRef = useRef(nearMounted);
-  const onNearContentReady = useCallback(() => {
-    setNearContentGeneration((generation) => generation + 1);
-  }, []);
   const renderNear =
     forceNear ||
     (nearMounted && (allowNear || retainOutgoingNear));
@@ -434,14 +368,9 @@ export function ProgressiveCityLod({
         </>
       )}
       {renderNear && (
-        <FadingNearLayer
-          contentGeneration={nearContentGeneration}
-          lodState={lodState}
-          onContentReady={onNearContentReady}
-          position={nearOffset}
-        >
+        <NearLayer position={nearOffset}>
           {near}
-        </FadingNearLayer>
+        </NearLayer>
       )}
     </group>
   );

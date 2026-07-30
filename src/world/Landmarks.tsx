@@ -16,6 +16,7 @@ import {
 } from "./terrain/landmarkTerrainDatum";
 import type { DetailLevel } from "./types";
 import { landmarkAssetUrl } from "./assets/landmarkAssets";
+import { selectLandmarkShadowCasters } from "./assets/landmarkRenderBudget";
 
 const kharbranthMaterialTints = [
   ["plaster_red", "#955746"],
@@ -47,41 +48,65 @@ function disposeOwnedMaterials(materials: Iterable<THREE.Material>) {
   for (const material of materials) material.dispose();
 }
 
-function LandmarkInstance({
-  rootName,
-  position,
-  scale,
-  rotationY = 0,
-  locationId,
-  harborWaterShift = 0,
-}: {
+interface LandmarkInstanceProps {
   rootName: string;
   position: [number, number, number];
   scale: number;
   rotationY?: number;
   locationId: string;
   harborWaterShift?: number;
-}) {
-  const { scene } = useGLTF(landmarkAssetUrl(rootName));
-  const [
-    plasterSource,
-    kharbranthFacadeSource,
-    masonryMicroSource,
-    stormwoodMicroSource,
-  ] = useTexture([
+}
+
+function KharbranthLandmarkInstance(props: LandmarkInstanceProps) {
+  const [plasterSource, facadeSource] = useTexture([
     `${import.meta.env.BASE_URL}textures/kharbranth-plaster-subtle.jpg`,
     `${import.meta.env.BASE_URL}textures/kharbranth-facade-realistic.jpg`,
+  ]);
+  const textureSources = useMemo(
+    () => [plasterSource, facadeSource] as const,
+    [facadeSource, plasterSource],
+  );
+  return (
+    <LandmarkInstanceCore
+      {...props}
+      kharbranthTextureSources={textureSources}
+    />
+  );
+}
+
+function LandmarkInstance(props: LandmarkInstanceProps) {
+  return props.rootName === "Landmark_Kharbranth" ? (
+    <KharbranthLandmarkInstance {...props} />
+  ) : (
+    <LandmarkInstanceCore {...props} />
+  );
+}
+
+function LandmarkInstanceCore({
+  rootName,
+  position,
+  scale,
+  rotationY = 0,
+  locationId,
+  harborWaterShift = 0,
+  kharbranthTextureSources,
+}: LandmarkInstanceProps & {
+  kharbranthTextureSources?: readonly [THREE.Texture, THREE.Texture];
+}) {
+  const { scene } = useGLTF(landmarkAssetUrl(rootName));
+  const [masonryMicroSource, stormwoodMicroSource] = useTexture([
     `${import.meta.env.BASE_URL}textures/rosharan-masonry-microheight-v2.jpg`,
     `${import.meta.env.BASE_URL}textures/rosharan-stormwood-microheight-v2.jpg`,
   ]);
   const [plaster, kharbranthFacade, masonryMicro, stormwoodMicro] =
     useMemo(() => {
       return [
-        plasterSource,
-        kharbranthFacadeSource,
+        kharbranthTextureSources?.[0] ?? null,
+        kharbranthTextureSources?.[1] ?? null,
         masonryMicroSource,
         stormwoodMicroSource,
       ].map((source, index) => {
+        if (!source) return null;
         const texture = source.clone();
         texture.wrapS = texture.wrapT =
           index === 1 ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
@@ -92,17 +117,21 @@ function LandmarkInstance({
         texture.anisotropy = 8;
         texture.needsUpdate = true;
         return texture;
-      }) as [THREE.Texture, THREE.Texture, THREE.Texture, THREE.Texture];
+      }) as [
+        THREE.Texture | null,
+        THREE.Texture | null,
+        THREE.Texture,
+        THREE.Texture,
+      ];
     }, [
-      kharbranthFacadeSource,
+      kharbranthTextureSources,
       masonryMicroSource,
-      plasterSource,
       stormwoodMicroSource,
     ]);
   useEffect(
     () => () => {
-      plaster.dispose();
-      kharbranthFacade.dispose();
+      plaster?.dispose();
+      kharbranthFacade?.dispose();
       masonryMicro.dispose();
       stormwoodMicro.dispose();
     },
@@ -148,7 +177,7 @@ function LandmarkInstance({
         object.visible = false;
       }
       if (mesh.isMesh) {
-        mesh.castShadow = true;
+        mesh.castShadow = false;
         mesh.receiveShadow = true;
         const sourceMaterials = Array.isArray(mesh.material)
           ? mesh.material
@@ -306,6 +335,9 @@ function LandmarkInstance({
           : texturedMaterials[0];
       }
     });
+    for (const mesh of selectLandmarkShadowCasters(copy)) {
+      mesh.castShadow = true;
+    }
     return { materials, object: copy };
   }, [
     kharbranthFacade,
