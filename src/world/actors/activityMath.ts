@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { SHATTERED_PLAINS_BRIDGE_RUN_PATH } from "../terrain/shatteredPlainsTopology";
 
 export interface ActivityPose {
   x: number;
@@ -8,6 +9,53 @@ export interface ActivityPose {
 
 function positiveModulo(value: number, divisor: number) {
   return ((value % divisor) + divisor) % divisor;
+}
+
+const bridgeRunSegmentLengths =
+  SHATTERED_PLAINS_BRIDGE_RUN_PATH.slice(1).map(
+    (point, index) =>
+      Math.hypot(
+        point[0] - SHATTERED_PLAINS_BRIDGE_RUN_PATH[index][0],
+        point[1] - SHATTERED_PLAINS_BRIDGE_RUN_PATH[index][1],
+      ),
+  );
+const bridgeRunLength = bridgeRunSegmentLengths.reduce(
+  (total, length) => total + length,
+  0,
+);
+
+function sampleBridgeRunPath(progress: number) {
+  const distance = THREE.MathUtils.clamp(progress, 0, 1) * bridgeRunLength;
+  let traveled = 0;
+  for (
+    let index = 0;
+    index < bridgeRunSegmentLengths.length;
+    index += 1
+  ) {
+    const segmentLength = bridgeRunSegmentLengths[index];
+    if (
+      traveled + segmentLength >= distance ||
+      index === bridgeRunSegmentLengths.length - 1
+    ) {
+      const segmentProgress =
+        segmentLength === 0
+          ? 0
+          : THREE.MathUtils.clamp(
+              (distance - traveled) / segmentLength,
+              0,
+              1,
+            );
+      const start = SHATTERED_PLAINS_BRIDGE_RUN_PATH[index];
+      const end = SHATTERED_PLAINS_BRIDGE_RUN_PATH[index + 1];
+      return {
+        x: THREE.MathUtils.lerp(start[0], end[0], segmentProgress),
+        z: THREE.MathUtils.lerp(start[1], end[1], segmentProgress),
+        heading: Math.atan2(end[0] - start[0], end[1] - start[1]),
+      };
+    }
+    traveled += segmentLength;
+  }
+  return { x: 0, z: 0, heading: 0 };
 }
 
 export function bridgeRunPose(
@@ -23,11 +71,14 @@ export function bridgeRunPose(
   const routeProgress = cycle <= 1 ? cycle : 2 - cycle;
   const progress = THREE.MathUtils.lerp(routeProgress, 0.035, warning);
   const outbound = cycle <= 1;
+  const localPose = sampleBridgeRunPath(progress);
 
   return {
-    x: THREE.MathUtils.lerp(center[0] - 1.05, center[0] + 2.65, progress),
-    z: THREE.MathUtils.lerp(center[1] - 2.35, center[1] - 0.35, progress),
-    heading: outbound ? Math.atan2(3.7, 2) : Math.atan2(-3.7, -2),
+    x: center[0] + localPose.x,
+    z: center[1] + localPose.z,
+    heading: outbound
+      ? localPose.heading
+      : localPose.heading + Math.PI,
   };
 }
 

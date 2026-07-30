@@ -7,6 +7,7 @@ import {
   DETAILED_LOCATION_IDS,
   detailedLocationSurface,
 } from "../terrain/locationSurface";
+import { shatteredPlainsSurfaceAt } from "../terrain/shatteredPlainsTopology";
 import {
   createCrowdSeparationWorkspace,
   createNavigationField,
@@ -46,8 +47,9 @@ function surfaceTestContext() {
 }
 
 describe("pedestrian navigation", () => {
-  it("finds a valid authored-floor route for every detailed destination", () => {
-    for (const locationId of DETAILED_LOCATION_IDS) {
+  it.each(DETAILED_LOCATION_IDS)(
+    "finds a valid authored-floor route for %s",
+    (locationId) => {
       const location = locationById.get(locationId)!;
       const center = [
         location.coordinates.x,
@@ -83,7 +85,7 @@ describe("pedestrian navigation", () => {
         ).toBe(true);
       }
     }
-  });
+  );
 
   it("rotates authored landmark collision footprints with their render root", () => {
     const scene = new THREE.Group();
@@ -108,6 +110,37 @@ describe("pedestrian navigation", () => {
     expect(obstacle.halfWidth).toBeCloseTo(1);
     expect(obstacle.halfDepth).toBeCloseTo(2);
     tower.geometry.dispose();
+  });
+
+  it("uses the authored Shattered Plains bridge decks as pedestrian routes", () => {
+    const location = locationById.get("shattered-plains")!;
+    const center = [
+      location.coordinates.x,
+      location.coordinates.z,
+    ] as const;
+    const profile = cityProfile(location.id, location.culture);
+    const field = createNavigationField(
+      location.id,
+      profile,
+      center,
+      { buildings: [], modules: [] },
+    );
+    const bridgeRoutes = field.routes.filter((route) =>
+      route.id.startsWith("shattered-plains-bridge-"),
+    );
+
+    expect(bridgeRoutes).toHaveLength(9);
+    for (const route of bridgeRoutes) {
+      for (let sample = 0; sample <= 20; sample += 1) {
+        const pose = sampleNavigationRoute(route, sample / 20);
+        expect(
+          shatteredPlainsSurfaceAt(
+            pose.x - center[0],
+            pose.z - center[1],
+          )?.kind,
+        ).toBe("bridge");
+      }
+    }
   });
 
   it.each(cases)(

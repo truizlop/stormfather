@@ -15,6 +15,10 @@ const landmarkPlanSize: Record<string, readonly [number, number]> = {
   Landmark_Akinah: [10.2, 10.2],
   Landmark_ThaylenCity: [10.8, 11.4],
   Landmark_Shattered_Plains: [12.14, 12],
+  // The authored root is calibrated against its 11.4-unit cliff-cap width.
+  // The Tarat-facing docks project beyond the 10.9-unit civic plan and are
+  // covered separately by conservative arrival bounds.
+  Landmark_Vedenar: [11.4, 10.9],
   Landmark_Oathgate: [7.418, 7.757],
 };
 

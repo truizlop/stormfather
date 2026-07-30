@@ -14,16 +14,20 @@ import {
 
 describe("detailed location surface contracts", () => {
   it("covers every authored destination with finite support and walk heights", () => {
-    expect(DETAILED_LOCATION_IDS).toHaveLength(9);
+    expect(DETAILED_LOCATION_IDS).toHaveLength(10);
     for (const locationId of DETAILED_LOCATION_IDS) {
       const surface = detailedLocationSurface(locationId);
       const center = destinationAnchors[locationId];
       expect(surface?.id).toBe(locationId);
       expect(surface?.influenceRadius).toBeGreaterThan(4);
-      expect(settlementSupportY(locationId, ...center)).toSatisfy(
+      expect(
+        settlementSupportY(locationId, center[0], center[1]),
+      ).toSatisfy(
         Number.isFinite,
       );
-      expect(settlementWalkableY(locationId, ...center)).toSatisfy(
+      expect(
+        settlementWalkableY(locationId, center[0], center[1]),
+      ).toSatisfy(
         Number.isFinite,
       );
       expect(surface?.maximumWalkSlope).toBeGreaterThan(0);
@@ -55,6 +59,7 @@ describe("detailed location surface contracts", () => {
     expect(settlementWaterY("aimia")).toBe(OCEAN_WATER_HEIGHT);
     expect(settlementWaterY("kharbranth")).toBe(OCEAN_WATER_HEIGHT);
     expect(settlementWaterY("thaylen-city")).toBe(OCEAN_WATER_HEIGHT);
+    expect(settlementWaterY("vedenar")).toBe(OCEAN_WATER_HEIGHT);
   });
 
   it("drains the Purelake ahead of the highstorm", () => {
@@ -96,16 +101,46 @@ describe("detailed location surface contracts", () => {
     expect(
       isSettlementPointWalkable(
         "shattered-plains",
-        centerX - 3.15,
-        centerZ - 1.8,
+        centerX,
+        centerZ,
       ),
     ).toBe(true);
     expect(
       isSettlementPointWalkable(
         "shattered-plains",
-        centerX - 1.25,
-        centerZ - 0.9,
+        centerX + 4.2,
+        centerZ,
       ),
     ).toBe(false);
+  });
+
+  it("keeps Vedenar residents out of its river gorge and Tarat harbor", () => {
+    const [centerX, centerZ] = destinationAnchors.vedenar;
+
+    expect(
+      isSettlementPointWalkable("vedenar", centerX, centerZ),
+    ).toBe(true);
+    expect(
+      isSettlementPointWalkable(
+        "vedenar",
+        centerX - 4,
+        centerZ,
+      ),
+    ).toBe(false);
+    expect(
+      isSettlementPointWalkable(
+        "vedenar",
+        centerX + 0.55,
+        centerZ + 5.1,
+      ),
+    ).toBe(false);
+    expect(
+      isSettlementPointWalkable(
+        "vedenar",
+        centerX + 0.55,
+        centerZ + 5.1,
+        "watercraft",
+      ),
+    ).toBe(true);
   });
 });

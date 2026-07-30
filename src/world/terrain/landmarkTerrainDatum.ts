@@ -67,6 +67,16 @@ const authoredTerrainDatums: Partial<
     hidesNode: (nodeName) =>
       nodeName === "ThaylenCity_CoastalFoundation",
   },
+  vedenar: {
+    // The deterministic Blender root uses this cliff shelf only as an
+    // authoring datum. Runtime terrain supplies the river gorge, terrace toe,
+    // and harbor transition, leaving a narrow reveal beneath real foundations.
+    authoredSupportY: 0.58,
+    terrainRevealY: 0.1,
+    hidesNode: hidesAuthoredTerrainCradle(
+      "Vedenar_TerrainCradle_Cliff",
+    ),
+  },
 };
 
 export function landmarkPresentationNodeIsHidden(

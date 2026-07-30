@@ -7,7 +7,6 @@ import type { GazetteerPlace } from "./types";
 
 export const semanticSettlementIds = [
   "hearthstone",
-  "vedenar",
   "sesemalex-dar",
   "new-natanan",
   "yeddaw",
@@ -86,24 +85,6 @@ export const semanticSettlementProfiles = {
     pavingColor: "#746c5c",
     foundationColor: "#46453f",
     accentColor: "#b18b4f",
-  },
-  vedenar: {
-    id: "vedenar",
-    seed: 23,
-    layout: "ravine-rings",
-    signature: "highprince-citadel",
-    activity: "guard-patrol",
-    roof: "pitched",
-    radius: 3.35,
-    buildingCount: { city: 44, street: 64 },
-    height: [0.34, 0.88],
-    footprint: [0.22, 0.46],
-    palette: ["#98745f", "#756250", "#b1a184", "#71484a"],
-    roofPalette: ["#6c323d", "#31575c", "#8d6442"],
-    activityPalette: ["#7b2737", "#343f5c", "#a88a5b"],
-    pavingColor: "#75695d",
-    foundationColor: "#4c4541",
-    accentColor: "#b78d68",
   },
   "sesemalex-dar": {
     id: "sesemalex-dar",

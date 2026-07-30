@@ -23,6 +23,14 @@ const authoredHarborDatums: Partial<
     matchesNode: (nodeName) =>
       /^ThaylenCity_(?:Harbor|Dock|MerchantShip)/.test(nodeName),
   },
+  vedenar: {
+    // The burned quays were authored just above the 0.58 cliff-cap datum.
+    // Register only those working-water nodes to the Tarat Sea; the western
+    // river and inhabited terraces remain part of the terrain-seated root.
+    authoredWaterline: 0.58,
+    matchesNode: (nodeName) =>
+      /^Vedenar_BurnedHarbor_/.test(nodeName),
+  },
 };
 
 export function landmarkHarborNodeUsesWaterDatum(

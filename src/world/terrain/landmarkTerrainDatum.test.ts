@@ -62,6 +62,7 @@ describe("authored terrain registration", () => {
       ["azir", 0.6, 0.12, "Azimir_TerrainCradle"],
       ["shinovar", 0.36, 0, "Shinovar_TerrainCradle_Valley"],
       ["aimia", 0.56, 0, "Akinah_TerrainCradle_Island"],
+      ["vedenar", 0.58, 0.1, "Vedenar_TerrainCradle_Cliff"],
     ] as const;
 
     for (const [

@@ -32,6 +32,16 @@ describe("city architecture profiles", () => {
     expect(profile.modules).toContain("Module_Rope_Bridge");
   });
 
+  it("gives Vedenar a dense terraced-fortress identity", () => {
+    const profile = cityProfile("vedenar", "veden");
+
+    expect(profile.activity).toBe("fortress");
+    expect(profile.roof).toBe("pitched");
+    expect(profile.radius).toBe(4.9);
+    expect(profile.modules).toContain("Module_Terraced_House");
+    expect(profile.modules).toContain("Module_Warcamp_Scaffold");
+  });
+
   it("fits Blender landmarks to the same diameter as their local district", () => {
     const profile = cityProfile("kharbranth", "alethi");
     const plan = landmarkPlanDimensions("Landmark_Kharbranth")!;
@@ -49,6 +59,26 @@ describe("city architecture profiles", () => {
       "street",
       1280,
     );
+    expect(layout.buildings).toHaveLength(0);
+    expect(layout.modules.length).toBeGreaterThan(0);
+  });
+
+  it("fits Vedenar's authored root without stacking a generic district", () => {
+    const profile = cityProfile("vedenar", "veden");
+    const plan = landmarkPlanDimensions("Landmark_Vedenar")!;
+    const scale = landmarkLocalScale("Landmark_Vedenar", profile);
+    const layout = createDistrictLayout(
+      profile,
+      "vedenar",
+      [13.25711084817365, 9.719221057177],
+      "street",
+      1280,
+    );
+
+    expect(Math.max(...plan) * scale).toBeCloseTo(
+      profile.radius * 2,
+    );
+    expect(usesProceduralArchitecture("vedenar")).toBe(false);
     expect(layout.buildings).toHaveLength(0);
     expect(layout.modules.length).toBeGreaterThan(0);
   });

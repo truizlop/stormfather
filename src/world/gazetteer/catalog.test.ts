@@ -96,6 +96,22 @@ describe("source-backed Roshar gazetteer", () => {
     expect(transformed[1]).toBeCloseTo(751.86, 1);
   });
 
+  it("routes Vedenar's homography point to its independent authored city", () => {
+    const vedenar = gazetteerById.get("vedenar")!;
+
+    expect(vedenar.parentLocationId).toBe("vedenar");
+    expect(vedenar.world?.[0]).toBeCloseTo(13.25711084817365, 10);
+    expect(vedenar.world?.[1]).toBeCloseTo(9.719221057177, 10);
+  });
+
+  it("keeps Narak inside the authored Shattered Plains destination", () => {
+    const narak = gazetteerById.get("narak")!;
+
+    expect(narak.parentLocationId).toBe("shattered-plains");
+    expect(narak.canonicalName).toBe("Narak");
+    expect(narak.alternateNames).toContain("Stormseat");
+  });
+
   it("does not invent coordinates for places with unknown positions", () => {
     expect(unknownGazetteer.map((place) => place.id)).toEqual([
       "palanaeum",

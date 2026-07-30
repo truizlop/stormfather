@@ -7,6 +7,10 @@ import {
   preStormDrainage,
   stormXAtTime,
 } from "../weather/storm";
+import {
+  SHATTERED_PLAINS_PATCH,
+  shatteredPlainsSurfaceAt,
+} from "./shatteredPlainsTopology";
 import { terrainHeightAt } from "./terrainHeight";
 
 export const DETAILED_LOCATION_IDS = [
@@ -19,6 +23,7 @@ export const DETAILED_LOCATION_IDS = [
   "kharbranth",
   "kholinar",
   "thaylen-city",
+  "vedenar",
 ] as const;
 
 export type DetailedLocationId = (typeof DETAILED_LOCATION_IDS)[number];
@@ -77,10 +82,10 @@ const definitions: readonly SurfaceDefinition[] = [
   {
     id: "shattered-plains",
     radiusX: 5.65,
-    radiusZ: 3.9,
+    radiusZ: 4.95,
     influenceRadius: 6.4,
-    maximumWalkSlope: 0.36,
-    maximumStepHeight: 0.1,
+    maximumWalkSlope: 1.2,
+    maximumStepHeight: 0.2,
   },
   {
     id: "urithiru",
@@ -143,6 +148,15 @@ const definitions: readonly SurfaceDefinition[] = [
     maximumStepHeight: 0.11,
     water: "ocean",
   },
+  {
+    id: "vedenar",
+    radiusX: 4.9,
+    radiusZ: 5.55,
+    influenceRadius: 7.2,
+    maximumWalkSlope: 0.42,
+    maximumStepHeight: 0.12,
+    water: "ocean",
+  },
 ] as const;
 
 function insideEllipse(
@@ -155,22 +169,6 @@ function insideEllipse(
     (localX * localX) / (radiusX * radiusX) +
       (localZ * localZ) / (radiusZ * radiusZ) <=
     1
-  );
-}
-
-function insideShatteredPlateau(localX: number, localZ: number) {
-  const plateaus = [
-    { x: -3.15, z: -1.8, radiusX: 2.14, radiusZ: 1.38 },
-    { x: 0.45, z: -0.15, radiusX: 1.82, radiusZ: 1.28 },
-    { x: 3.15, z: 1.35, radiusX: 1.28, radiusZ: 0.94 },
-  ] as const;
-  return plateaus.some((plateau) =>
-    insideEllipse(
-      localX - plateau.x,
-      localZ - plateau.z,
-      plateau.radiusX,
-      plateau.radiusZ,
-    ),
   );
 }
 
@@ -189,6 +187,28 @@ function insidePurelakeFooting(localX: number, localZ: number) {
   );
 }
 
+function insideVedenarLand(
+  localX: number,
+  localZ: number,
+  role: WalkableSurfaceRole,
+) {
+  const riverGorge =
+    localX < -3.08 &&
+    Math.abs(localZ + 0.15) < 3.95 - (localX + 3.08) * 0.22;
+  const harborMouth =
+    localZ > 4.65 &&
+    Math.abs(localX - 0.55) < 3.05 + (localZ - 4.65) * 0.18;
+  if (role === "watercraft") return harborMouth;
+  if (role === "dock") {
+    return (
+      !riverGorge &&
+      localZ > 4.3 &&
+      Math.abs(localX - 0.55) < 3.55
+    );
+  }
+  return !riverGorge && !harborMouth;
+}
+
 function containsPoint(
   definition: SurfaceDefinition,
   center: readonly [number, number],
@@ -199,9 +219,14 @@ function containsPoint(
   const localX = x - center[0];
   const localZ = z - center[1];
   if (definition.id === "shattered-plains") {
-    return role === "watercraft"
-      ? false
-      : insideShatteredPlateau(localX, localZ);
+    if (role === "watercraft") return false;
+    return Boolean(
+      shatteredPlainsSurfaceAt(
+        localX,
+        localZ,
+        role === "structure" ? "structure" : "pedestrian",
+      ),
+    );
   }
   if (definition.id === "purelake") {
     if (
@@ -217,6 +242,16 @@ function containsPoint(
     return role === "watercraft" || role === "structure"
       ? true
       : insidePurelakeFooting(localX, localZ);
+  }
+  if (definition.id === "vedenar") {
+    return (
+      insideEllipse(
+        localX,
+        localZ,
+        definition.radiusX,
+        definition.radiusZ,
+      ) && insideVedenarLand(localX, localZ, role)
+    );
   }
   return insideEllipse(
     localX,
@@ -252,9 +287,26 @@ function createSurface(
         (definition.supportOffset ?? 0)
       );
     },
-    walkableY: (x, z) => {
+    walkableY: (x, z, role = "pedestrian") => {
       if (definition.id === "purelake") {
         return PURELAKE_PEDESTRIAN_HEIGHT;
+      }
+      if (definition.id === "shattered-plains") {
+        const hit = shatteredPlainsSurfaceAt(
+          x - center[0],
+          z - center[1],
+          role === "structure" ? "structure" : "pedestrian",
+        );
+        const landmarkDatum = terrainHeightAt(
+          center[0],
+          center[1],
+          definition.id,
+        );
+        return (
+          landmarkDatum +
+          (hit?.y ?? SHATTERED_PLAINS_PATCH.chasmFloorY) +
+          0.025
+        );
       }
       if (definition.id === "kharbranth") {
         const localThreeZ =

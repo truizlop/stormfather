@@ -25,6 +25,13 @@ import {
   detailedLocationSurface,
   type DetailedLocationId,
 } from "./locationSurface";
+import {
+  SHATTERED_PLAINS_PATCH,
+} from "./shatteredPlainsTopology";
+import {
+  createShatteredPlainsFloorGeometry,
+  createShatteredPlainsWallGeometry,
+} from "./shatteredPlainsTerrainPatch";
 import { THAYLEN_CITY_TERRAIN_PATCH } from "./thaylenTerrainPatch";
 
 const landPolygons: readonly (readonly GeographyPoint[])[] = [
@@ -127,6 +134,46 @@ function worldXToRasterColumn(x: number, width: number) {
   );
 }
 
+function rasterColumnToWorldX(column: number, width: number) {
+  return (
+    ROSHAR_MAP_BOUNDS.minX +
+    (column / (width - 1)) *
+      (ROSHAR_MAP_BOUNDS.maxX - ROSHAR_MAP_BOUNDS.minX)
+  );
+}
+
+function clearEllipse(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  center: readonly [number, number],
+  radiusX: number,
+  radiusZ: number,
+) {
+  for (let row = 0; row < height; row += 1) {
+    const z = rasterRowToWorldZ(row, height);
+    if (Math.abs(z - center[1]) > radiusZ) continue;
+    for (let column = 0; column < width; column += 1) {
+      const x = rasterColumnToWorldX(column, width);
+      if (Math.abs(x - center[0]) > radiusX) continue;
+      const localX = x - center[0];
+      const localZ = z - center[1];
+      if (
+        (localX * localX) / (radiusX * radiusX) +
+          (localZ * localZ) / (radiusZ * radiusZ) >
+        1
+      ) {
+        continue;
+      }
+      const offset = (row * width + column) * 4;
+      data[offset] = 0;
+      data[offset + 1] = 0;
+      data[offset + 2] = 0;
+      data[offset + 3] = 0;
+    }
+  }
+}
+
 function fillPolygon(
   data: Uint8Array,
   width: number,
@@ -194,6 +241,17 @@ function createLandMaskTexture(
   inlandWaterPolygons.forEach((water) =>
     fillPolygon(data, width, height, water.points, 0),
   );
+  if (focusedLocationId === "shattered-plains") {
+    const center = detailedLocationSurface("shattered-plains")!.center;
+    clearEllipse(
+      data,
+      width,
+      height,
+      center,
+      SHATTERED_PLAINS_PATCH.innerRadiusX,
+      SHATTERED_PLAINS_PATCH.innerRadiusZ,
+    );
+  }
   const texture = new THREE.DataTexture(
     data,
     width,
@@ -370,6 +428,96 @@ function TerrainSurface() {
         metalness={0.015}
       />
     </mesh>
+  );
+}
+
+function ShatteredPlainsTerrainPatch() {
+  const viewportWidth = useThree((state) => state.size.width);
+  const selectedId = useAtlasStore((state) => state.selectedId);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
+  const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const source = useTexture(
+    `${import.meta.env.BASE_URL}textures/cities/shattered-plains-crem-fracture-atlas.jpg`,
+  );
+  const mobile = viewportWidth < 720;
+  const visible =
+    proximityLocationId === "shattered-plains" ||
+    ((detailLevel === "city" || detailLevel === "street") &&
+      selectedId === "shattered-plains");
+  const center = detailedLocationSurface("shattered-plains")!.center;
+  const landmarkDatum = terrainHeightAt(
+    center[0],
+    center[1],
+    "shattered-plains",
+  );
+  const floorGeometry = useMemo(
+    () =>
+      visible
+        ? createShatteredPlainsFloorGeometry(
+            center,
+            landmarkDatum,
+            (x, z) => terrainHeightAt(x, z, "shattered-plains"),
+            mobile ? 56 : 96,
+          )
+        : null,
+    [center, landmarkDatum, mobile, visible],
+  );
+  const wallGeometry = useMemo(
+    () =>
+      visible
+        ? createShatteredPlainsWallGeometry(center, landmarkDatum)
+        : null,
+    [center, landmarkDatum, visible],
+  );
+  const materialTexture = useMemo(() => {
+    const copy = source.clone();
+    copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
+    copy.repeat.set(7.5, 6.8);
+    copy.anisotropy = mobile ? 2 : 8;
+    copy.colorSpace = THREE.SRGBColorSpace;
+    copy.needsUpdate = true;
+    return copy;
+  }, [mobile, source]);
+
+  useEffect(
+    () => () => {
+      floorGeometry?.dispose();
+      wallGeometry?.dispose();
+      materialTexture.dispose();
+    },
+    [floorGeometry, materialTexture, wallGeometry],
+  );
+
+  if (!floorGeometry || !wallGeometry) return null;
+  return (
+    <group name="Carved Shattered Plains terrain">
+      <mesh geometry={floorGeometry} receiveShadow>
+        <meshStandardMaterial
+          map={materialTexture}
+          bumpMap={materialTexture}
+          bumpScale={0.026}
+          vertexColors
+          roughness={0.97}
+          metalness={0.01}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
+        />
+      </mesh>
+      <mesh geometry={wallGeometry} receiveShadow castShadow>
+        <meshStandardMaterial
+          map={materialTexture}
+          bumpMap={materialTexture}
+          bumpScale={0.034}
+          color="#635d52"
+          roughness={0.98}
+          metalness={0.008}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </group>
   );
 }
 
@@ -561,6 +709,7 @@ export function RosharTerrain() {
     <group>
       <WaterSystem />
       <TerrainSurface />
+      <ShatteredPlainsTerrainPatch />
       <CoastSkirts />
       <GeographicCoastlines />
       <RiverNetwork />

@@ -233,6 +233,34 @@ const locationData = [
     activity: "Crowded docks and night markets",
   },
   {
+    id: "vedenar",
+    name: "Vedenar",
+    subtitle: "Capital of Jah Keved",
+    kind: "city",
+    coordinates: coordinateFor("vedenar"),
+    // Approach from the northeast so the complete Tarat-facing terraces,
+    // Valhav Oathgate quarter, and damaged palace remain visible without the
+    // nearby Kharbranth proximity lens taking ownership of the view.
+    camera: {
+      position: [27.8, 18.6, 0.4],
+      target: [13.25711084817365, 2.2, 9.719221057177],
+    },
+    arrivalDetail: "city",
+    regionColor: "#625747",
+    accentColor: "#a96b78",
+    description:
+      "Jah Keved's capital rises through fortified terraces above the Tarat Sea, where the Valhav Oathgate quarter and river markets endure beside war-damaged wards.",
+    facts: [
+      "Capital of Jah Keved",
+      "Valhav Oathgate garden",
+      "Palace and harbor under reconstruction",
+    ],
+    culture: "veden",
+    modelRoot: "Landmark_Vedenar",
+    population: 210_000,
+    activity: "Oathgate restoration and river trade",
+  },
+  {
     id: "kholinar",
     name: "Kholinar",
     subtitle: "The city of windblades",

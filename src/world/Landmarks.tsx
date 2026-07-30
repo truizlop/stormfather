@@ -316,12 +316,6 @@ export function Landmarks({
     (state) => locationId ?? state.selectedId,
   );
   if (detailLevel === "continent" || detailLevel === "region") return null;
-  if (
-    detailLevel === "street" &&
-    activeLocationId === "shattered-plains"
-  ) {
-    return null;
-  }
 
   return (
     <group>

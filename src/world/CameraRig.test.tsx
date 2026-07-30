@@ -197,6 +197,26 @@ describe("CameraRig navigation regressions", () => {
     expect(controlsHarness.zoomToCursor).toBe(true);
   });
 
+  it("routes an exact Vedenar search to its authored exterior camera", () => {
+    useAtlasStore.getState().focusGazetteerPlace("vedenar");
+    render(<CameraRig />);
+    runFrame();
+
+    const vedenar = locationById.get("vedenar")!;
+    expect(useAtlasStore.getState()).toMatchObject({
+      selectedId: "vedenar",
+      selectedGazetteerId: "vedenar",
+    });
+    expectVectorCloseTo(
+      fiberHarness.camera!.position,
+      vedenar.camera.position,
+    );
+    expectVectorCloseTo(
+      controlsHarness.instance!.target,
+      vedenar.camera.target,
+    );
+  });
+
   it("keeps every list/search arrival camera outside its authored bounds", () => {
     for (const location of modeledLocations) {
       const bounds = modeledArrivalBounds(location)!;

@@ -10,7 +10,8 @@ export type TerrainCradleKind =
   | "island"
   | "cliff"
   | "ravines"
-  | "harbor";
+  | "harbor"
+  | "river-cliff";
 
 export interface LocationTerrainCradle {
   id: DetailedLocationId;
@@ -99,6 +100,14 @@ const cradleInputs: readonly Omit<LocationTerrainCradle, "center">[] = [
     coreRadiusZ: 4.1,
     influenceRadiusX: 6.65,
     influenceRadiusZ: 5.75,
+  },
+  {
+    id: "vedenar",
+    kind: "river-cliff",
+    coreRadiusX: 5.05,
+    coreRadiusZ: 5.55,
+    influenceRadiusX: 7.15,
+    influenceRadiusZ: 7.65,
   },
 ] as const;
 
@@ -296,6 +305,37 @@ function localCradleTarget(
         1 - smoothstep((Math.abs(localX) - 2.9) / 1.25);
       const harborMouth = clamp01(harborward * basinWidth);
       return coastalTarget + (-0.235 - coastalTarget) * harborMouth;
+    }
+    case "river-cliff": {
+      // Vedenar occupies broad, plate-like terraces between a river gorge on
+      // its west and the Tarat-facing cliff/harbor to the south. The central
+      // civic shelf remains buildable while both cuts descend continuously
+      // into the surrounding natural heightfield.
+      const terrace =
+        Math.floor(clamp01((4.6 - localZ) / 9.2) * 5) * 0.065;
+      const inlandRise = Math.max(0, -localZ - 0.35) * 0.045;
+      const civicShelf =
+        anchorNaturalHeight -
+        0.13 +
+        inlandRise +
+        terrace +
+        strata * 0.7;
+      const riverGorge =
+        Math.exp(
+          -(
+            Math.pow((localX + 3.65) / 0.78, 2) +
+            Math.pow((localZ + 0.15) / 4.9, 2)
+          ),
+        ) * 0.42;
+      const harborward = smoothstep((localZ - 4.35) / 0.9);
+      const harborWidth =
+        1 - smoothstep((Math.abs(localX - 0.55) - 3.45) / 1.35);
+      const harborMouth = clamp01(harborward * harborWidth);
+      return (
+        civicShelf -
+        riverGorge +
+        (-0.24 - civicShelf) * harborMouth
+      );
     }
   }
 }

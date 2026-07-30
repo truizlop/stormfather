@@ -89,7 +89,7 @@ function segmentIntersectsExpandedObstacle(
 }
 
 describe("selected semantic settlement profiles", () => {
-  it("defines a distinct visual and activity identity for all eight settlements", () => {
+  it("defines a distinct visual and activity identity for all seven settlements", () => {
     expect(Object.keys(semanticSettlementProfiles)).toEqual([
       ...semanticSettlementIds,
     ]);
@@ -97,9 +97,9 @@ describe("selected semantic settlement profiles", () => {
       (id) => semanticSettlementProfiles[id],
     );
 
-    expect(new Set(profiles.map((profile) => profile.layout)).size).toBe(8);
-    expect(new Set(profiles.map((profile) => profile.signature)).size).toBe(8);
-    expect(new Set(profiles.map((profile) => profile.activity)).size).toBe(8);
+    expect(new Set(profiles.map((profile) => profile.layout)).size).toBe(7);
+    expect(new Set(profiles.map((profile) => profile.signature)).size).toBe(7);
+    expect(new Set(profiles.map((profile) => profile.activity)).size).toBe(7);
     for (const profile of profiles) {
       expect(profile.radius).toBeGreaterThan(2);
       expect(profile.buildingCount.street).toBeGreaterThan(
@@ -110,6 +110,7 @@ describe("selected semantic settlement profiles", () => {
       expect(semanticSettlementProfile(profile.id)).toBe(profile);
     }
     expect(semanticSettlementProfile("kholinar")).toBeUndefined();
+    expect(semanticSettlementProfile("vedenar")).toBeUndefined();
   });
 
   it("only replaces selected profile markers at city and street detail", () => {
@@ -127,6 +128,12 @@ describe("selected semantic settlement profiles", () => {
     expect(
       isSemanticSettlementDetailEligible(
         gazetteerById.get("kholinar"),
+        "street",
+      ),
+    ).toBe(false);
+    expect(
+      isSemanticSettlementDetailEligible(
+        gazetteerById.get("vedenar"),
         "street",
       ),
     ).toBe(false);
@@ -199,7 +206,7 @@ describe("selected semantic settlement profiles", () => {
   });
 
   it("reduces selected-district budgets on compact viewports", () => {
-    const profile = semanticSettlementProfiles.vedenar;
+    const profile = semanticSettlementProfiles.hearthstone;
     const heightAt = () => 1;
     const full = createSemanticSettlementLayout(
       profile,

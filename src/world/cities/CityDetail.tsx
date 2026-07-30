@@ -16,6 +16,7 @@ import {
   type BuildingSeed,
   type ModuleSeed,
 } from "./districtLayout";
+import { isShatteredPlainsFootprintSupported } from "../terrain/shatteredPlainsTopology";
 import {
   KHARBRANTH_LANDMARK_SCALE,
   kharbranthRoadOffset,
@@ -349,12 +350,10 @@ function DistrictGround({
   locationId,
   center,
   profile,
-  street,
 }: {
   locationId: string;
   center: readonly [number, number];
   profile: CityProfile;
-  street: boolean;
 }) {
   const pavingSource = useTexture(
     `${import.meta.env.BASE_URL}textures/shattered-paving-albedo.jpg`,
@@ -362,65 +361,10 @@ function DistrictGround({
   const paving = useConfiguredTextureClone(pavingSource, 4.4);
   const y = localSurfaceY(locationId, center[0], center[1]) - 0.012;
 
-  if (locationId === "shattered-plains") {
-    if (!street) return null;
-    const plateaus = [
-      { x: -3.15, z: -1.8, sx: 2.4, sz: 1.65, sides: 9 },
-      { x: 0.45, z: -0.15, sx: 2.1, sz: 1.55, sides: 8 },
-      { x: 3.15, z: 1.35, sx: 1.55, sz: 1.2, sides: 7 },
-    ] as const;
-    return (
-      <group name="Shattered Plains local chasm edge">
-        {plateaus.map((plateau, index) => {
-          const x = center[0] + plateau.x;
-          const z = center[1] + plateau.z;
-          const surface = localSurfaceY(locationId, x, z);
-          return (
-            <mesh
-              key={index}
-              position={[x, surface - 0.14, z]}
-              scale={[plateau.sx, 1, plateau.sz]}
-              receiveShadow
-              castShadow
-            >
-              <cylinderGeometry args={[1, 1.08, 0.34, plateau.sides]} />
-              <meshStandardMaterial
-                bumpMap={paving}
-                bumpScale={0.024}
-                color={index === 1 ? "#827b69" : "#736d60"}
-                roughness={0.91}
-                metalness={0.025}
-              />
-            </mesh>
-          );
-        })}
-        <mesh
-          position={[center[0] - 1.2, y - 0.23, center[1] - 0.82]}
-          rotation={[0, -0.48, 0]}
-          receiveShadow
-        >
-          <boxGeometry args={[0.72, 0.09, 6.4]} />
-          <meshStandardMaterial
-            color="#111c21"
-            roughness={0.98}
-            metalness={0.02}
-          />
-        </mesh>
-        <mesh
-          position={[center[0] + 1.85, y - 0.2, center[1] + 0.75]}
-          rotation={[0, -0.44, 0]}
-          receiveShadow
-        >
-          <boxGeometry args={[0.5, 0.08, 4.2]} />
-          <meshStandardMaterial
-            color="#17252a"
-            roughness={0.98}
-            metalness={0.02}
-          />
-        </mesh>
-      </group>
-    );
-  }
+  // The Shattered Plains ground is the authored 37-plateau landmark over the
+  // carved terrain patch. A second three-cylinder approximation here used to
+  // replace that topology at Street detail and made camps appear to float.
+  if (locationId === "shattered-plains") return null;
 
   if (locationId === "kharbranth") {
     return (
@@ -669,6 +613,18 @@ export function CityDetail({
         : { buildings: [], modules: [] },
     [center, detailLevel, location, profile, width],
   );
+  const supportedModules = useMemo(() => {
+    if (location?.id !== "shattered-plains") return layout.modules;
+    return layout.modules.filter((module) =>
+      isShatteredPlainsFootprintSupported(
+        module.x - center[0],
+        module.z - center[1],
+        module.foundationWidth / 2,
+        module.foundationDepth / 2,
+        module.rotation,
+      ),
+    );
+  }, [center, layout.modules, location?.id]);
 
   if (
     !location ||
@@ -685,14 +641,13 @@ export function CityDetail({
         locationId={location.id}
         center={center}
         profile={profile}
-        street={detailLevel === "street"}
       />
       <InstancedArchitecture
         seeds={layout.buildings}
         profile={profile}
         locationId={location.id}
       />
-      <DistrictModules seeds={layout.modules} />
+      <DistrictModules seeds={supportedModules} />
     </group>
   );
 }

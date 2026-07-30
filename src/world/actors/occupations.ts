@@ -81,6 +81,16 @@ const locationOverrides: Record<string, readonly Occupation[]> = {
     "pilgrim",
   ],
   shinovar: ["farmer", "farmer", "herder", "vendor", "child", "pilgrim"],
+  vedenar: [
+    "guard",
+    "builder",
+    "artisan",
+    "courier",
+    "scribe",
+    "merchant",
+    "porter",
+    "child",
+  ],
   "thaylen-city": [
     "sailor",
     "dockworker",

@@ -21,7 +21,7 @@ import { localSurfaceY } from "./terrain/localSurface";
 const modeledLocations = locations.filter((location) => location.modelRoot);
 
 describe("gazetteer arrival framing", () => {
-  it.each(["hearthstone", "vedenar", "sesemalex-dar"] as const)(
+  it.each(["hearthstone", "sesemalex-dar"] as const)(
     "lands the semantic settlement %s at visible city detail",
     (id) => {
       for (const mobile of [false, true]) {
@@ -106,7 +106,7 @@ describe("modeled mobile arrival fitting", () => {
   );
 
   it("fits every authored city inside its own portrait proximity lens", () => {
-    expect(modeledLocations).toHaveLength(9);
+    expect(modeledLocations).toHaveLength(10);
 
     for (const location of modeledLocations) {
       const pose = fittedModeledArrivalPose(
@@ -161,6 +161,20 @@ describe("modeled mobile arrival fitting", () => {
 
     expect(modeledArrivalBounds(location)!.halfSize[0]).toBeCloseTo(
       8.25 * scale,
+    );
+  });
+
+  it("includes Vedenar's Tarat-facing docks in arrival framing", () => {
+    const location = modeledLocations.find(
+      (entry) => entry.id === "vedenar",
+    )!;
+    const scale = landmarkLocalScale(
+      location.modelRoot!,
+      cityProfile(location.id, location.culture),
+    );
+
+    expect(modeledArrivalBounds(location)!.halfSize[2]).toBeCloseTo(
+      6.2 * scale,
     );
   });
 

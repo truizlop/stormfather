@@ -21,13 +21,13 @@ describe("atlas selection recentering", () => {
     const focused = useAtlasStore.getState();
 
     expect(focused.selectedGazetteerId).toBe("vedenar");
-    expect(focused.selectedId).toBe("roshar");
+    expect(focused.selectedId).toBe("vedenar");
 
     focused.recenterSelection();
 
     const recentered = useAtlasStore.getState();
     expect(recentered.selectedGazetteerId).toBe("vedenar");
-    expect(recentered.selectedId).toBe("roshar");
+    expect(recentered.selectedId).toBe("vedenar");
     expect(recentered.travelEpoch).toBe(focused.travelEpoch + 1);
   });
 

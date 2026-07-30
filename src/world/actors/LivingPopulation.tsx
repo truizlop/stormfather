@@ -1323,9 +1323,7 @@ function ActiveLivingPopulation({
   const landmarkObstacles = useMemo(() => {
     if (
       !closeDetail ||
-      !fallbackLocation.modelRoot ||
-      (fallbackLocation.id === "shattered-plains" &&
-        detailLevel === "street")
+      !fallbackLocation.modelRoot
     ) {
       return [];
     }
@@ -1339,7 +1337,6 @@ function ActiveLivingPopulation({
   }, [
     center,
     closeDetail,
-    detailLevel,
     fallbackLocation.id,
     fallbackLocation.modelRoot,
     profile,

@@ -5,6 +5,10 @@ import {
   fishingRaftPose,
   floatingWatercraftY,
 } from "./activityMath";
+import {
+  SHATTERED_PLAINS_BRIDGE_RUN_PATH,
+  shatteredPlainsSurfaceAt,
+} from "../terrain/shatteredPlainsTopology";
 
 describe("city activity motion", () => {
   it("moves bridge crews between the warcamp and plateau edge", () => {
@@ -12,10 +16,20 @@ describe("city activity motion", () => {
     const start = bridgeRunPose(0, 0, center);
     const crossing = bridgeRunPose(5, 0, center);
 
-    expect(start.x).toBeCloseTo(38.95);
-    expect(start.z).toBeCloseTo(11.41);
-    expect(crossing.x).toBeGreaterThan(start.x + 1);
+    expect(start.x).toBeCloseTo(
+      center[0] + SHATTERED_PLAINS_BRIDGE_RUN_PATH[0][0],
+    );
+    expect(start.z).toBeCloseTo(
+      center[1] + SHATTERED_PLAINS_BRIDGE_RUN_PATH[0][1],
+    );
+    expect(crossing.x).toBeGreaterThan(start.x + 0.2);
     expect(crossing.z).toBeGreaterThan(start.z);
+    expect(
+      shatteredPlainsSurfaceAt(
+        crossing.x - center[0],
+        crossing.z - center[1],
+      )?.id,
+    ).toBe("plateau-31");
   });
 
   it("recalls bridge crews to shelter as the highstorm arrives", () => {
@@ -24,7 +38,7 @@ describe("city activity motion", () => {
     const sheltering = bridgeRunPose(5, 1, center);
 
     expect(sheltering.x).toBeLessThan(exposed.x);
-    expect(sheltering.x).toBeCloseTo(39.08, 1);
+    expect(sheltering.x).toBeCloseTo(center[0] - 3.46, 1);
   });
 
   it("brings fishing rafts into their village and lowers cargo", () => {

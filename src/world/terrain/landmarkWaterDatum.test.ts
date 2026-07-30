@@ -70,6 +70,34 @@ describe("authored harbor water registration", () => {
     );
   });
 
+  it("registers only Vedenar's burned quays to the Tarat Sea", () => {
+    for (const nodeName of [
+      "Vedenar_BurnedHarbor_Dock_01",
+      "Vedenar_BurnedHarbor_Dock_01_Post_-1",
+    ]) {
+      expect(
+        landmarkHarborNodeUsesWaterDatum("vedenar", nodeName),
+        nodeName,
+      ).toBe(true);
+    }
+    for (const nodeName of [
+      "Vedenar_RiverWest_ChannelBatch",
+      "Vedenar_Terrace_01_Harbor",
+    ]) {
+      expect(
+        landmarkHarborNodeUsesWaterDatum("vedenar", nodeName),
+        nodeName,
+      ).toBe(false);
+    }
+
+    const baseY = 1.12;
+    const scale = 0.86;
+    const shift = landmarkHarborWaterShift("vedenar", baseY, scale);
+    expect(baseY + (0.58 + shift) * scale).toBeCloseTo(
+      OCEAN_WATER_HEIGHT,
+    );
+  });
+
   it("does not translate inland or unsupported landmark roots", () => {
     expect(landmarkHarborWaterShift("kholinar", 1, 0.8)).toBe(0);
     expect(landmarkHarborWaterShift("kharbranth", 1, 0)).toBe(0);

@@ -44,6 +44,7 @@ const authoredLandmarkBounds: Record<
     minY: number;
     maxY: number;
     sourceHalfX?: number;
+    sourceHalfZ?: number;
   }
 > = {
   Landmark_Akinah: { minY: -0.9, maxY: 2.8 },
@@ -56,6 +57,12 @@ const authoredLandmarkBounds: Record<
   Landmark_Shinovar: { minY: -0.6, maxY: 3.7 },
   Landmark_ThaylenCity: { minY: -0.1, maxY: 3.1 },
   Landmark_Urithiru: { minY: -0.7, maxY: 11.6 },
+  Landmark_Vedenar: {
+    minY: -0.9,
+    maxY: 3.2,
+    // Burned docks project Tarat-ward beyond the civic cliff-cap plan.
+    sourceHalfZ: 6.2,
+  },
 };
 
 function pointDistance(a: CameraPoint, b: CameraPoint) {
@@ -96,13 +103,15 @@ export function modeledArrivalBounds(
   const rotated = landmarkRotationY(location.id) === Math.PI / 2;
   const planHalfX = (rotated ? plan[1] : plan[0]) * scale * 0.5;
   const planHalfZ = (rotated ? plan[0] : plan[1]) * scale * 0.5;
+  const sourceHalfX = sourceBounds.sourceHalfX ?? 0;
+  const sourceHalfZ = sourceBounds.sourceHalfZ ?? 0;
   const halfX = Math.max(
     planHalfX,
-    (rotated ? 0 : sourceBounds.sourceHalfX ?? 0) * scale,
+    (rotated ? sourceHalfZ : sourceHalfX) * scale,
   );
   const halfZ = Math.max(
     planHalfZ,
-    (rotated ? sourceBounds.sourceHalfX ?? 0 : 0) * scale,
+    (rotated ? sourceHalfX : sourceHalfZ) * scale,
   );
   const centerY =
     baseY + ((sourceBounds.minY + sourceBounds.maxY) / 2) * scale;

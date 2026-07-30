@@ -362,6 +362,7 @@ export function nearWorldSpaceOffset(
 export type CitySilhouetteStyle =
   | "tower"
   | "terraced-port"
+  | "terraced-fortress"
   | "harbor"
   | "fortress"
   | "civic"
@@ -489,6 +490,7 @@ function silhouetteStyle(
 ): CitySilhouetteStyle {
   if (locationId === "urithiru") return "tower";
   if (locationId === "kharbranth") return "terraced-port";
+  if (locationId === "vedenar") return "terraced-fortress";
   if (locationId === "thaylen-city") return "harbor";
   if (profile.activity === "fortress") return "fortress";
   if (profile.activity === "civic") return "civic";
@@ -567,6 +569,42 @@ function rawSeed(
     width *= 1.45;
     depth *= 1.15;
     rotation = 0;
+  } else if (style === "terraced-fortress") {
+    if (index === 0) {
+      // Broad central Valhav Oathgate precinct.
+      return {
+        x: -profile.radius * 0.04,
+        z: 0,
+        width: profile.radius * 0.48,
+        depth: profile.radius * 0.4,
+        height: profile.radius * 0.34,
+        rotation: 0,
+      };
+    }
+    if (index === 1) {
+      // The broken upper palace remains Vedenar's far-distance landmark.
+      return {
+        x: profile.radius * 0.18,
+        z: -profile.radius * 0.54,
+        width: profile.radius * 0.42,
+        depth: profile.radius * 0.3,
+        height: profile.radius * 0.62,
+        rotation: -0.08,
+      };
+    }
+    const terrace = (index - 2) % 5;
+    const slot = Math.floor((index - 2) / 5);
+    const side = slot % 2 === 0 ? -1 : 1;
+    x =
+      side * profile.radius * (0.2 + Math.floor(slot / 2) * 0.14) +
+      ((index * 17) % 5) * 0.045;
+    z = profile.radius * (0.5 - terrace * 0.245);
+    width *= 1.52;
+    depth *= 1.08;
+    height =
+      profile.radius *
+      (0.15 + terrace * 0.042 + (index % 3) * 0.018);
+    rotation = side * 0.035;
   } else if (style === "harbor") {
     if (index === 0) {
       return {

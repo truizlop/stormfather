@@ -23,6 +23,7 @@ describe("authored location terrain cradles", () => {
         "shinovar",
         "thaylen-city",
         "urithiru",
+        "vedenar",
       ],
     );
   });
@@ -168,6 +169,31 @@ describe("authored location terrain cradles", () => {
         "thaylen-city",
       ),
     ).toBeGreaterThan(OCEAN_WATER_HEIGHT + 0.35);
+  });
+
+  it("carves Vedenar's Tarat harbor below water while retaining its civic shelf", () => {
+    const vedenar = LOCATION_TERRAIN_CRADLES.find(
+      (cradle) => cradle.id === "vedenar",
+    )!;
+    const civic = terrainHeightAt(
+      vedenar.center[0],
+      vedenar.center[1],
+      "vedenar",
+    );
+    const harbor = terrainHeightAt(
+      vedenar.center[0] + 0.55,
+      vedenar.center[1] + 5.35,
+      "vedenar",
+    );
+    const river = terrainHeightAt(
+      vedenar.center[0] - 3.65,
+      vedenar.center[1],
+      "vedenar",
+    );
+
+    expect(civic).toBeGreaterThan(OCEAN_WATER_HEIGHT + 0.55);
+    expect(harbor).toBeLessThan(OCEAN_WATER_HEIGHT - 0.025);
+    expect(river).toBeLessThan(civic - 0.25);
   });
 
   it("blends overlapping coastal cradles without a global terrain seam", () => {

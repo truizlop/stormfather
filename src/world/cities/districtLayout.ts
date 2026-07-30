@@ -151,6 +151,7 @@ const authoredLandmarkLocations = new Set([
   "kharbranth",
   "kholinar",
   "thaylen-city",
+  "vedenar",
 ]);
 
 export function usesProceduralArchitecture(locationId: string) {

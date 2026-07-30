@@ -144,6 +144,7 @@ describe("authored destination arrival framing", () => {
   it.each([
     ["azimir", "azir", "Azimir"],
     ["akinah", "aimia", "Akinah"],
+    ["vedenar", "vedenar", "Vedenar"],
   ] as const)(
     "resolves exact %s searches to the exterior %s authored scene and label",
     (gazetteerId, locationId, expectedLabel) => {
@@ -154,4 +155,19 @@ describe("authored destination arrival framing", () => {
       expect(locationDisplayName(location, place)).toBe(expectedLabel);
     },
   );
+
+  it("keeps Vedenar geographically independent from its Urithiru portal label", () => {
+    const vedenar = locationById.get("vedenar")!;
+    const urithiru = locationById.get("urithiru")!;
+    const place = gazetteerById.get("vedenar")!;
+
+    expect([vedenar.coordinates.x, vedenar.coordinates.z]).toEqual([
+      13.25711084817365,
+      9.719221057177,
+    ]);
+    expect(vedenar.modelRoot).toBe("Landmark_Vedenar");
+    expect(vedenar.modelRoot).not.toBe(urithiru.modelRoot);
+    expect(place.parentLocationId).toBe("vedenar");
+    expect(modeledLocationForGazetteer(place)).toBe(vedenar);
+  });
 });

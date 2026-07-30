@@ -12,6 +12,12 @@ import {
   kharbranthRoadOffset,
 } from "../cities/landmarkMetrics";
 import type { CityProfile } from "../cities/profiles";
+import {
+  SHATTERED_PLAINS_NAVIGATION_RADIUS_X,
+  SHATTERED_PLAINS_NAVIGATION_RADIUS_Z,
+  shatteredPlainsBridgeRoutes,
+  shatteredPlainsSurfaceAt,
+} from "../terrain/shatteredPlainsTopology";
 
 export interface NavigationPoint {
   x: number;
@@ -28,6 +34,8 @@ export interface NavigationSurfaceConstraints {
   maximumStepHeight?: number;
   /** Maximum vertical rise per horizontal unit. */
   maximumSlope?: number;
+  /** Samples used to prove an edge continuously follows a narrow surface. */
+  edgeSampleCount?: number;
 }
 
 export interface NavigationObstacle {
@@ -141,16 +149,9 @@ export function isInsideWalkableDistrict(
   const localX = point.x - center[0];
   const localZ = point.z - center[1];
   if (locationId === "shattered-plains") {
-    const plateaus = [
-      { x: -3.15, z: -1.8, rx: 2.14, rz: 1.38 },
-      { x: 0.45, z: -0.15, rx: 1.82, rz: 1.28 },
-      { x: 3.15, z: 1.35, rx: 1.28, rz: 0.94 },
-    ] as const;
-    return plateaus.some((plateau) => {
-      const dx = (localX - plateau.x) / plateau.rx;
-      const dz = (localZ - plateau.z) / plateau.rz;
-      return dx * dx + dz * dz <= 1;
-    });
+    return Boolean(
+      shatteredPlainsSurfaceAt(localX, localZ, "pedestrian"),
+    );
   }
   const radiusX = profile.radius * 0.94;
   const radiusZ = profile.radius * 0.69;
@@ -292,12 +293,18 @@ function edgeIsClear(
     );
   }
 
-  const samples = [0, 0.25, 0.5, 0.75, 1].map(
-    (progress): NavigationPoint => ({
+  // Shattered Plains lips are intentionally irregular and some navigable
+  // decks are only a few centimetres wider than an actor at local scale.
+  // Dense edge sampling prevents an A* segment whose endpoints are valid from
+  // skipping over a narrow chasm slit between them.
+  const sampleCount = Math.max(3, surface.edgeSampleCount ?? 9);
+  const samples = Array.from({ length: sampleCount }, (_, index) => {
+    const progress = index / (sampleCount - 1);
+    return {
       x: THREE.MathUtils.lerp(start.x, end.x, progress),
       z: THREE.MathUtils.lerp(start.z, end.z, progress),
-    }),
-  );
+    };
+  });
   if (
     !samples.every(
       (point, index) =>
@@ -495,6 +502,48 @@ function kharbranthRalinsaRoutes(
   }).filter((route): route is NavigationRoute => Boolean(route));
 }
 
+function authoredShatteredPlainsBridgeRoutes(
+  center: readonly [number, number],
+  obstacles: readonly NavigationObstacle[],
+  surface: NavigationSurfaceConstraints | undefined,
+) {
+  return shatteredPlainsBridgeRoutes(center)
+    .map((route): NavigationRoute | null => {
+      const [start, end] = route.points;
+      const points = Array.from({ length: 9 }, (_, index) => {
+        const progress = index / 8;
+        return {
+          x: THREE.MathUtils.lerp(start.x, end.x, progress),
+          z: THREE.MathUtils.lerp(start.z, end.z, progress),
+        };
+      });
+      if (
+        !points.every(
+          (point) =>
+            isSurfacePointWalkable(point, surface) &&
+            isPointClear(
+              point,
+              obstacles,
+              PEDESTRIAN_ENVIRONMENT_CLEARANCE,
+            ),
+        ) ||
+        !points
+          .slice(1)
+          .every((point, index) =>
+            edgeIsClear(points[index], point, obstacles, surface),
+          )
+      ) {
+        return null;
+      }
+      return {
+        id: route.id,
+        points,
+        length: routeLength(points),
+      };
+    })
+    .filter((route): route is NavigationRoute => Boolean(route));
+}
+
 export function createNavigationField(
   locationId: string,
   profile: CityProfile,
@@ -506,15 +555,34 @@ export function createNavigationField(
   // Route construction revisits the same grid vertices and quarter-edge
   // samples thousands of times. Keep this cache local to one build so the
   // expensive terrain sampler is deduplicated without growing during frames.
-  const routeSurface = memoizedSurfaceConstraints(surface);
+  const navigationSurface =
+    locationId === "shattered-plains"
+      ? ({
+          ...surface,
+          isWalkable: (point: NavigationPoint) =>
+            Boolean(
+              shatteredPlainsSurfaceAt(
+                point.x - center[0],
+                point.z - center[1],
+                "pedestrian",
+              ),
+            ) && (!surface?.isWalkable || surface.isWalkable(point)),
+          edgeSampleCount: 33,
+        } satisfies NavigationSurfaceConstraints)
+      : surface;
+  const routeSurface = memoizedSurfaceConstraints(navigationSurface);
   const obstacles = [
     ...layoutNavigationObstacles(layout),
     ...landmarkObstacles,
   ];
   const radiusX =
-    locationId === "shattered-plains" ? 5.65 : profile.radius * 0.98;
+    locationId === "shattered-plains"
+      ? SHATTERED_PLAINS_NAVIGATION_RADIUS_X
+      : profile.radius * 0.98;
   const radiusZ =
-    locationId === "shattered-plains" ? 3.9 : profile.radius * 0.74;
+    locationId === "shattered-plains"
+      ? SHATTERED_PLAINS_NAVIGATION_RADIUS_Z
+      : profile.radius * 0.74;
   const nodes = new Map<string, GridNode>();
   const columns = Math.ceil((radiusX * 2) / GRID_STEP);
   const rows = Math.ceil((radiusZ * 2) / GRID_STEP);
@@ -525,7 +593,8 @@ export function createNavigationField(
         z: center[1] - radiusZ + gz * GRID_STEP,
       };
       if (
-        !isInsideWalkableDistrict(locationId, profile, center, point) ||
+        (locationId !== "shattered-plains" &&
+          !isInsideWalkableDistrict(locationId, profile, center, point)) ||
         !isPointClear(point, obstacles) ||
         !isSurfacePointWalkable(point, routeSurface)
       ) {
@@ -587,6 +656,14 @@ export function createNavigationField(
           routeSurface,
         )
       : [];
+  const authoredBridgeRoutes =
+    locationId === "shattered-plains"
+      ? authoredShatteredPlainsBridgeRoutes(
+          center,
+          obstacles,
+          routeSurface,
+        )
+      : [];
 
   return {
     center,
@@ -596,8 +673,8 @@ export function createNavigationField(
     routes:
       authoredKharbranthRoutes.length > 0
         ? authoredKharbranthRoutes
-        : routes,
-    ...(surface ? { surface } : {}),
+        : [...authoredBridgeRoutes, ...routes],
+    ...(navigationSurface ? { surface: navigationSurface } : {}),
   };
 }
 

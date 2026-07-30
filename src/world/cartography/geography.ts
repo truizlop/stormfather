@@ -57,10 +57,15 @@ export const destinationAnchors = {
   kharbranth: referencePixelToWorld([1105, 885]),
   kholinar: referencePixelToWorld([1405, 540]),
   "thaylen-city": referencePixelToWorld([1090, 970]),
+  // Registered from Vedenar's source-map point through the pinned
+  // source-to-reference homography. Keep the resulting world coordinate
+  // literal so the authored city, search marker, terrain, and camera lens use
+  // one canonical point without repeating that transform in runtime code.
+  vedenar: [13.25711084817365, 9.719221057177] as GeographyPoint,
 } as const;
 
 /**
- * Physical centers of the nine authored close-detail scenes.
+ * Physical centers of the ten authored close-detail scenes.
  *
  * Azir and Aimia are broad travel regions, while their GLB roots depict the
  * specific cities of Azimir and Akinah. Keeping those city centers separate
@@ -80,6 +85,7 @@ export const detailedLocationAnchors = {
   kharbranth: destinationAnchors.kharbranth,
   kholinar: destinationAnchors.kholinar,
   "thaylen-city": destinationAnchors["thaylen-city"],
+  vedenar: destinationAnchors.vedenar,
 } as const;
 
 export interface MountainRidge {

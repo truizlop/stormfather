@@ -468,6 +468,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "narak",
     canonicalName: "Narak",
+    parentLocationId: "shattered-plains",
     kind: "ruin",
     nationOrRegion: "Shattered Plains",
     minimumLod: "region",
@@ -553,6 +554,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "vedenar",
     canonicalName: "Vedenar",
+    parentLocationId: "vedenar",
     kind: "city",
     nationOrRegion: "Jah Keved",
     minimumLod: "region",

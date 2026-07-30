@@ -82,6 +82,7 @@ describe("progressive city LOD", () => {
       "kholinar",
       "thaylen-city",
       "shattered-plains",
+      "vedenar",
     ].map(cityProximityCandidate);
     const azir = candidates.find(
       (candidate) => candidate.locationId === "azir",
@@ -146,6 +147,34 @@ describe("progressive city LOD", () => {
     expect(
       nearestCityFocusOwner(thaylen.center, candidates),
     ).toBe("thaylen-city");
+  });
+
+  it("hands the overlapping Kharbranth lens to the independently viewed Vedenar", () => {
+    const candidates = ["kharbranth", "vedenar"].map(
+      cityProximityCandidate,
+    );
+    const kharbranth = candidates[0];
+    const vedenar = candidates[1];
+    const centerDistance = Math.hypot(
+      kharbranth.center[0] - vedenar.center[0],
+      kharbranth.center[1] - vedenar.center[1],
+      kharbranth.center[2] - vedenar.center[2],
+    );
+
+    expect(centerDistance).toBeLessThan(kharbranth.nearDistance);
+    expect(centerDistance).toBeLessThan(vedenar.nearDistance);
+    expect(
+      nearestCityProximityOwner(vedenar.center, candidates, {
+        currentOwnerId: "kharbranth",
+        focusPosition: vedenar.center,
+      }),
+    ).toBe("vedenar");
+    expect(
+      nearestCityProximityOwner(kharbranth.center, candidates, {
+        currentOwnerId: "vedenar",
+        focusPosition: kharbranth.center,
+      }),
+    ).toBe("kharbranth");
   });
 
   it("keeps a manual, north-facing lower-road view owned by Kharbranth", () => {
@@ -471,10 +500,12 @@ describe("progressive city LOD", () => {
     const urithiru = createCitySilhouette("urithiru", "far");
     const purelake = createCitySilhouette("purelake", "far");
     const kharbranth = createCitySilhouette("kharbranth", "mid");
+    const vedenar = createCitySilhouette("vedenar", "mid");
 
     expect(urithiru.style).toBe("tower");
     expect(purelake.style).toBe("lake");
     expect(kharbranth.style).toBe("terraced-port");
+    expect(vedenar.style).toBe("terraced-fortress");
     expect(
       Math.max(...urithiru.seeds.map((seed) => seed.height)),
     ).toBeGreaterThan(
@@ -482,6 +513,9 @@ describe("progressive city LOD", () => {
     );
     expect(new Set(kharbranth.seeds.map((seed) => seed.y)).size).toBeGreaterThan(
       2,
+    );
+    expect(new Set(vedenar.seeds.map((seed) => seed.z)).size).toBeGreaterThan(
+      4,
     );
   });
 
@@ -492,6 +526,7 @@ describe("progressive city LOD", () => {
       "kholinar",
       "purelake",
       "shinovar",
+      "vedenar",
     ]) {
       const silhouette = createCitySilhouette(locationId, "mid");
       for (const seed of silhouette.seeds) {
