@@ -388,11 +388,12 @@ try {
   if (
     shatteredRoot?.extras?.plateau_count !== 37 ||
     shatteredRoot?.extras?.bridge_count !== 9 ||
+    shatteredRoot?.extras?.vertical_compression !== 0.46 ||
     shatteredRoot?.extras?.topology_source !==
       "src/world/terrain/shatteredPlainsTopology.json"
   ) {
     throw new Error(
-      "Shattered Plains root is missing its shared 37-plateau/9-bridge topology metadata",
+      "Shattered Plains root is missing its shared 37-plateau/9-bridge compressed-topology metadata",
     );
   }
   const shatteredTopology = JSON.parse(

@@ -155,6 +155,11 @@ const definitions: readonly SurfaceDefinition[] = [
     influenceRadius: 7.2,
     maximumWalkSlope: 0.42,
     maximumStepHeight: 0.12,
+    // Vedenar's runtime heightfield rises through five world-space ledges.
+    // Register the authored root against the natural cliff datum so each
+    // ward foundation, rather than a single presentation slab, meets its
+    // corresponding terrain shelf.
+    supportOffset: -0.505,
     water: "ocean",
   },
 ] as const;

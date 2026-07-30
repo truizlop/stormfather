@@ -8,7 +8,8 @@
     "innerRadiusZ": 4.35,
     "outerRadiusX": 5.45,
     "outerRadiusZ": 4.95,
-    "chasmFloorY": -0.24
+    "chasmFloorY": -0.24,
+    "verticalCompression": 0.46
   },
   "plateaus": [
     {

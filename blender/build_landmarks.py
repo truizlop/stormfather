@@ -5627,7 +5627,26 @@ def build_shattered_plains() -> None:
         raise RuntimeError(
             "Shattered Plains topology must define 37 plateaus and 9 bridges"
         )
-    chasm_floor_y = topology["patch"]["chasmFloorY"]
+    source_chasm_floor_y = topology["patch"]["chasmFloorY"]
+    vertical_compression = topology["patch"]["verticalCompression"]
+    source_mean_cap_y = sum(
+        plateau["capY"] for plateau in topology["plateaus"]
+    ) / len(topology["plateaus"])
+
+    def display_y(source_y):
+        return (
+            source_y - source_mean_cap_y
+        ) * vertical_compression
+
+    for plateau in topology["plateaus"]:
+        plateau["capY"] = display_y(plateau["capY"])
+    for bridge_spec in topology["bridges"]:
+        bridge_spec["startY"] = display_y(bridge_spec["startY"])
+        bridge_spec["endY"] = display_y(bridge_spec["endY"])
+    foundation = topology["districts"]["westernWarcamp"]["foundation"]
+    foundation["baseY"] = display_y(foundation["baseY"])
+    foundation["surfaceY"] = display_y(foundation["surfaceY"])
+    chasm_floor_y = display_y(source_chasm_floor_y)
     # This authored floor remains a named QA datum but is hidden at runtime;
     # the selected-detail patch supplies the continuous floor and outer blend.
     cyl(
@@ -6032,6 +6051,7 @@ def build_shattered_plains() -> None:
     r["topology_source"] = "src/world/terrain/shatteredPlainsTopology.json"
     r["plateau_count"] = len(topology["plateaus"])
     r["bridge_count"] = len(topology["bridges"])
+    r["vertical_compression"] = vertical_compression
 
 
 def build_detail_modules() -> None:

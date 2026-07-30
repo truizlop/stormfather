@@ -211,7 +211,11 @@ function localCradleTarget(
           Math.sin(Math.atan2(localZ, localX) * 7 + normalizedRadius * 4.2),
         ) *
         0.055;
-      return anchorNaturalHeight - 0.28 - cymatic + strata * 0.6;
+      // The plateau crowns should meet the surrounding southeast highland;
+      // only the chasm floor belongs far below. Registering the landmark
+      // datum beneath the natural plain made the complete topology read as a
+      // circular quarry rather than fissures carved into a broad tableland.
+      return anchorNaturalHeight + 0.22 - cymatic + strata * 0.6;
     }
     case "mountain": {
       const distance = Math.hypot(localX, localZ);
@@ -307,18 +311,20 @@ function localCradleTarget(
       return coastalTarget + (-0.235 - coastalTarget) * harborMouth;
     }
     case "river-cliff": {
-      // Vedenar occupies broad, plate-like terraces between a river gorge on
-      // its west and the Tarat-facing cliff/harbor to the south. The central
-      // civic shelf remains buildable while both cuts descend continuously
-      // into the surrounding natural heightfield.
-      const terrace =
-        Math.floor(clamp01((4.6 - localZ) / 9.2) * 5) * 0.065;
-      const inlandRise = Math.max(0, -localZ - 0.35) * 0.045;
+      // Vedenar's five authored wards rise inland in 0.18 Blender-unit
+      // increments. Their runtime scale converts that to roughly 0.155 world
+      // units, so the terrain itself forms five matching ledges. A shallow
+      // northern shelf seats the agricultural fields above the palace ward.
+      const terraceIndex = Math.floor(
+        clamp01((4.6 - localZ) / 9.2) * 5,
+      );
+      const terraceHeight = 0.19 + terraceIndex * 0.1575;
+      const fieldShelf =
+        0.05 * smoothstep((-localZ - 4.15) / 0.45);
       const civicShelf =
-        anchorNaturalHeight -
-        0.13 +
-        inlandRise +
-        terrace +
+        anchorNaturalHeight +
+        terraceHeight +
+        fieldShelf +
         strata * 0.7;
       const riverGorge =
         Math.exp(

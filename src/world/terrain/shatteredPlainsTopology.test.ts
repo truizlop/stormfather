@@ -3,6 +3,7 @@ import {
   SHATTERED_PLAINS_BRIDGES,
   SHATTERED_PLAINS_BRIDGE_RUN_PATH,
   SHATTERED_PLAINS_NARAK,
+  SHATTERED_PLAINS_PATCH,
   SHATTERED_PLAINS_PLATEAUS,
   SHATTERED_PLAINS_WESTERN_WARCAMP,
   isShatteredPlainsFootprintSupported,
@@ -46,6 +47,25 @@ describe("Shattered Plains shared topology", () => {
         (plateau) => plateau.polygon.length >= 7,
       ),
     ).toBe(true);
+  });
+
+  it("keeps the meter-calibrated tableland broader than its chasm depth", () => {
+    expect(SHATTERED_PLAINS_PATCH.verticalCompression).toBe(0.46);
+    const meanCap =
+      SHATTERED_PLAINS_PLATEAUS.reduce(
+        (total, plateau) => total + plateau.capY,
+        0,
+      ) / SHATTERED_PLAINS_PLATEAUS.length;
+    const maximumDepth = Math.max(
+      ...SHATTERED_PLAINS_PLATEAUS.map(
+        (plateau) =>
+          plateau.capY - SHATTERED_PLAINS_PATCH.chasmFloorY,
+      ),
+    );
+    expect(meanCap).toBeCloseTo(0, 6);
+    expect(SHATTERED_PLAINS_PATCH.chasmFloorY).toBeLessThan(-0.58);
+    expect(maximumDepth).toBeLessThan(0.75);
+    expect(maximumDepth).toBeGreaterThan(0.5);
   });
 
   it("distinguishes plateau caps, bridge decks, and carved chasms", () => {

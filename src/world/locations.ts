@@ -88,8 +88,8 @@ const locationData = [
     // from the interior/west so the oblique view never sees beyond Roshar's
     // finite eastern terrain mesh.
     camera: {
-      position: [29.5, 11.5, 4.5],
-      target: [40, 1.55, 13.76],
+      position: [31.2, 8.1, 6.1],
+      target: [40, 1.25, 13.76],
     },
     arrivalDetail: "city",
     regionColor: "#504a3e",
@@ -137,7 +137,10 @@ const locationData = [
     kind: "nation",
     coordinates: coordinateFor("shinovar"),
     camera: {
-      position: [-30.85, 14.86, 13.39],
+      // Approach from the open western pasture, keeping the Misted Mountain
+      // wall as a backdrop instead of letting its eastern toe occlude the
+      // village, sheep lanes, and shepherd stormbreaks at Street zoom.
+      position: [-39, 12.5, 12.5],
       target: [-39, 1, -2.5],
     },
     arrivalDetail: "city",
@@ -242,8 +245,8 @@ const locationData = [
     // Valhav Oathgate quarter, and damaged palace remain visible without the
     // nearby Kharbranth proximity lens taking ownership of the view.
     camera: {
-      position: [27.8, 18.6, 0.4],
-      target: [13.25711084817365, 2.2, 9.719221057177],
+      position: [27.5, 12.4, 22.5],
+      target: [13.25711084817365, 2.4, 9.719221057177],
     },
     arrivalDetail: "city",
     regionColor: "#625747",

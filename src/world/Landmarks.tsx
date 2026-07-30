@@ -216,6 +216,32 @@ function LandmarkInstance({
             }
             material.roughness = Math.max(material.roughness ?? 0.8, 0.9);
           }
+          if (
+            rootName === "Landmark_Shattered_Plains" &&
+            object.name.startsWith("ShatteredPlains_Plateau_")
+          ) {
+            // These irregular prisms intentionally have no atlas UVs. Let
+            // their real geometry and crem micro-relief carry the read rather
+            // than sampling one near-black atlas texel across every plateau.
+            material.map = null;
+            material.color.set("#817766");
+            material.bumpMap = masonryMicro;
+            material.bumpScale = 0.012;
+            material.roughness = 0.96;
+            material.metalness = 0.01;
+            material.emissive.set("#454037");
+            material.emissiveIntensity = 0.14;
+          }
+          if (
+            rootName === "Landmark_Vedenar" &&
+            material.name.toLowerCase().includes("city_vedenar")
+          ) {
+            material.color.set("#b7b2a3");
+            material.roughness = Math.max(
+              material.roughness ?? 0.8,
+              0.91,
+            );
+          }
           if (!excludesTexture && "roughness" in material) {
             const isStormwood =
               /(wood|rope|timber|dock|balcony|shutter|door)/.test(lowerName) &&
@@ -246,11 +272,17 @@ function LandmarkInstance({
               // or storm shadow. A restrained diffuse fill keeps the
               // generated masonry/timber atlas legible without flattening its
               // directional lighting or making the city glow.
-              material.emissive.copy(material.color).multiplyScalar(0.08);
+              material.emissive
+                .copy(material.color)
+                .multiplyScalar(
+                  rootName === "Landmark_Vedenar" ? 0.22 : 0.08,
+                );
               material.emissiveIntensity =
                 rootName === "Landmark_Shattered_Plains"
                   ? 0.22
-                  : rootName === "Landmark_Kholinar"
+                  : rootName === "Landmark_Vedenar"
+                    ? 0.38
+                    : rootName === "Landmark_Kholinar"
                     ? 0.18
                     : 0.12;
             } else {

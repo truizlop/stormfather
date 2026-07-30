@@ -103,6 +103,48 @@ describe("authored terrain registration", () => {
     }
   });
 
+  it("lets Vedenar's heightfield replace only the obsolete terrace caps", () => {
+    for (const terrace of [
+      "Harbor",
+      "Lower",
+      "Civic",
+      "Temple",
+      "Palace",
+    ] as const) {
+      const index = [
+        "Harbor",
+        "Lower",
+        "Civic",
+        "Temple",
+        "Palace",
+      ].indexOf(terrace) + 1;
+      const prefix = `Vedenar_Terrace_${String(index).padStart(2, "0")}_${terrace}`;
+      expect(
+        landmarkPresentationNodeIsHidden("vedenar", prefix),
+        prefix,
+      ).toBe(true);
+      expect(
+        landmarkPresentationNodeIsHidden(
+          "vedenar",
+          `${prefix}_RetainingWall`,
+        ),
+        `${prefix}_RetainingWall`,
+      ).toBe(false);
+    }
+    expect(
+      landmarkPresentationNodeIsHidden(
+        "vedenar",
+        "Vedenar_NorthernAgriculturalShelf",
+      ),
+    ).toBe(true);
+    expect(
+      landmarkPresentationNodeIsHidden(
+        "vedenar",
+        "Vedenar_NorthernField_01",
+      ),
+    ).toBe(false);
+  });
+
   it("preserves the independent ocean datum for docks and ships", () => {
     const harborShift = -1.37;
     for (const nodeName of [

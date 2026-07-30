@@ -142,5 +142,12 @@ describe("detailed location surface contracts", () => {
         "watercraft",
       ),
     ).toBe(true);
+
+    // The landmark root stays on the natural cliff datum while residents
+    // walk on the civic terrace formed by the runtime heightfield.
+    expect(
+      settlementWalkableY("vedenar", centerX, centerZ) -
+        settlementSupportY("vedenar", centerX, centerZ),
+    ).toBeCloseTo(0.53, 3);
   });
 });

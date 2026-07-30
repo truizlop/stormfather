@@ -47,6 +47,13 @@ interface ShatteredPlainsTopology {
     outerRadiusX: number;
     outerRadiusZ: number;
     chasmFloorY: number;
+    /**
+     * Compresses the old presentation-scale cliffs about the mean plateau
+     * crown, keeping the crowns at terrain datum while the chasms descend.
+     * Horizontal distances are already meter-calibrated; this keeps the
+     * plateaus reading as broad tableland instead of freestanding towers.
+     */
+    verticalCompression: number;
   };
   plateaus: readonly ShatteredPlainsPlateau[];
   bridges: readonly ShatteredPlainsBridge[];
@@ -75,8 +82,53 @@ interface ShatteredPlainsTopology {
   };
 }
 
-export const SHATTERED_PLAINS_TOPOLOGY =
+const sourceTopology =
   topologyJson as unknown as ShatteredPlainsTopology;
+const sourceFloorY = sourceTopology.patch.chasmFloorY;
+const sourceMeanCapY =
+  sourceTopology.plateaus.reduce(
+    (total, plateau) => total + plateau.capY,
+    0,
+  ) / sourceTopology.plateaus.length;
+
+export function shatteredPlainsDisplayY(sourceY: number) {
+  return (
+    (sourceY - sourceMeanCapY) *
+    sourceTopology.patch.verticalCompression
+  );
+}
+
+export const SHATTERED_PLAINS_TOPOLOGY: ShatteredPlainsTopology = {
+  ...sourceTopology,
+  patch: {
+    ...sourceTopology.patch,
+    chasmFloorY: shatteredPlainsDisplayY(sourceFloorY),
+  },
+  plateaus: sourceTopology.plateaus.map((plateau) => ({
+    ...plateau,
+    capY: shatteredPlainsDisplayY(plateau.capY),
+  })),
+  bridges: sourceTopology.bridges.map((bridge) => ({
+    ...bridge,
+    startY: shatteredPlainsDisplayY(bridge.startY),
+    endY: shatteredPlainsDisplayY(bridge.endY),
+  })),
+  districts: {
+    ...sourceTopology.districts,
+    westernWarcamp: {
+      ...sourceTopology.districts.westernWarcamp,
+      foundation: {
+        ...sourceTopology.districts.westernWarcamp.foundation,
+        baseY: shatteredPlainsDisplayY(
+          sourceTopology.districts.westernWarcamp.foundation.baseY,
+        ),
+        surfaceY: shatteredPlainsDisplayY(
+          sourceTopology.districts.westernWarcamp.foundation.surfaceY,
+        ),
+      },
+    },
+  },
+};
 
 export const SHATTERED_PLAINS_PLATEAUS =
   SHATTERED_PLAINS_TOPOLOGY.plateaus;

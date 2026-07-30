@@ -47,6 +47,24 @@ describe("authored location terrain cradles", () => {
     }
   });
 
+  it("registers Shattered Plains crowns into the surrounding highland", () => {
+    const plains = LOCATION_TERRAIN_CRADLES.find(
+      (cradle) => cradle.id === "shattered-plains",
+    )!;
+    const natural = naturalTerrainHeightAt(
+      plains.center[0],
+      plains.center[1],
+    );
+    const datum = terrainHeightAt(
+      plains.center[0],
+      plains.center[1],
+      "shattered-plains",
+    );
+
+    expect(datum).toBeGreaterThan(natural + 0.18);
+    expect(datum).toBeLessThan(natural + 0.26);
+  });
+
   it("returns continuously to the natural heightfield at every influence edge", () => {
     for (const cradle of LOCATION_TERRAIN_CRADLES) {
       const insideX =
@@ -194,6 +212,31 @@ describe("authored location terrain cradles", () => {
     expect(civic).toBeGreaterThan(OCEAN_WATER_HEIGHT + 0.55);
     expect(harbor).toBeLessThan(OCEAN_WATER_HEIGHT - 0.025);
     expect(river).toBeLessThan(civic - 0.25);
+
+    const terraceSamples = [3.72, 2.02, 0.18, -1.72, -3.55].map(
+      (localZ) =>
+        terrainHeightAt(
+          vedenar.center[0],
+          vedenar.center[1] + localZ,
+          "vedenar",
+        ),
+    );
+    for (let index = 1; index < terraceSamples.length; index += 1) {
+      expect(
+        terraceSamples[index] - terraceSamples[index - 1],
+      ).toBeGreaterThan(0.12);
+      expect(
+        terraceSamples[index] - terraceSamples[index - 1],
+      ).toBeLessThan(0.2);
+    }
+    const northernFields = terrainHeightAt(
+      vedenar.center[0],
+      vedenar.center[1] - 4.55,
+      "vedenar",
+    );
+    expect(northernFields).toBeGreaterThan(
+      terraceSamples.at(-1)! + 0.035,
+    );
   });
 
   it("blends overlapping coastal cradles without a global terrain seam", () => {

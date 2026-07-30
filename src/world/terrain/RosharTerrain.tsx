@@ -29,9 +29,16 @@ import {
   SHATTERED_PLAINS_PATCH,
 } from "./shatteredPlainsTopology";
 import {
+  createShatteredPlainsCapGeometry,
   createShatteredPlainsFloorGeometry,
   createShatteredPlainsWallGeometry,
+  SHATTERED_PLAINS_HANDOFF_PROGRESS,
+  shatteredPlainsBoundaryScale,
 } from "./shatteredPlainsTerrainPatch";
+import {
+  showCartographicLinework,
+  terrainMeshSegments,
+} from "./terrainMeshLod";
 import { THAYLEN_CITY_TERRAIN_PATCH } from "./thaylenTerrainPatch";
 
 const landPolygons: readonly (readonly GeographyPoint[])[] = [
@@ -149,18 +156,34 @@ function clearEllipse(
   center: readonly [number, number],
   radiusX: number,
   radiusZ: number,
+  boundaryScaleAt: (angle: number) => number = () => 1,
 ) {
+  const maximumBoundaryScale = 1.07;
   for (let row = 0; row < height; row += 1) {
     const z = rasterRowToWorldZ(row, height);
-    if (Math.abs(z - center[1]) > radiusZ) continue;
+    if (
+      Math.abs(z - center[1]) >
+      radiusZ * maximumBoundaryScale
+    ) {
+      continue;
+    }
     for (let column = 0; column < width; column += 1) {
       const x = rasterColumnToWorldX(column, width);
-      if (Math.abs(x - center[0]) > radiusX) continue;
+      if (
+        Math.abs(x - center[0]) >
+        radiusX * maximumBoundaryScale
+      ) {
+        continue;
+      }
       const localX = x - center[0];
       const localZ = z - center[1];
+      const angle = Math.atan2(localZ / radiusZ, localX / radiusX);
+      const boundaryScale = boundaryScaleAt(angle);
       if (
-        (localX * localX) / (radiusX * radiusX) +
-          (localZ * localZ) / (radiusZ * radiusZ) >
+        (localX * localX) /
+            (radiusX * radiusX * boundaryScale * boundaryScale) +
+          (localZ * localZ) /
+            (radiusZ * radiusZ * boundaryScale * boundaryScale) >
         1
       ) {
         continue;
@@ -243,13 +266,24 @@ function createLandMaskTexture(
   );
   if (focusedLocationId === "shattered-plains") {
     const center = detailedLocationSurface("shattered-plains")!.center;
+    const handoffRadiusX = THREE.MathUtils.lerp(
+      SHATTERED_PLAINS_PATCH.innerRadiusX,
+      SHATTERED_PLAINS_PATCH.outerRadiusX,
+      SHATTERED_PLAINS_HANDOFF_PROGRESS,
+    );
+    const handoffRadiusZ = THREE.MathUtils.lerp(
+      SHATTERED_PLAINS_PATCH.innerRadiusZ,
+      SHATTERED_PLAINS_PATCH.outerRadiusZ,
+      SHATTERED_PLAINS_HANDOFF_PROGRESS,
+    );
     clearEllipse(
       data,
       width,
       height,
       center,
-      SHATTERED_PLAINS_PATCH.innerRadiusX,
-      SHATTERED_PLAINS_PATCH.innerRadiusZ,
+      handoffRadiusX,
+      handoffRadiusZ,
+      shatteredPlainsBoundaryScale,
     );
   }
   const texture = new THREE.DataTexture(
@@ -368,14 +402,18 @@ function TerrainSurface() {
     : detailLevel === "city" || detailLevel === "street"
       ? detailedLocationSurface(selectedId)?.id
       : undefined;
+  const [segmentsX, segmentsZ] = terrainMeshSegments(
+    mobile,
+    focusedLocationId !== undefined,
+  );
   const geometry = useMemo(
     () =>
       createTerrainGeometry(
-        mobile ? 190 : 320,
-        mobile ? 100 : 168,
+        segmentsX,
+        segmentsZ,
         focusedLocationId,
       ),
-    [focusedLocationId, mobile],
+    [focusedLocationId, segmentsX, segmentsZ],
   );
   const alphaMap = useMemo(
     () =>
@@ -438,9 +476,10 @@ function ShatteredPlainsTerrainPatch() {
     (state) => state.proximityLocationId,
   );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
-  const source = useTexture(
+  const [source, macroSource] = useTexture([
     `${import.meta.env.BASE_URL}textures/cities/shattered-plains-crem-fracture-atlas.jpg`,
-  );
+    `${import.meta.env.BASE_URL}textures/roshar-crem-macro.jpg`,
+  ]);
   const mobile = viewportWidth < 720;
   const visible =
     proximityLocationId === "shattered-plains" ||
@@ -460,6 +499,11 @@ function ShatteredPlainsTerrainPatch() {
             landmarkDatum,
             (x, z) => terrainHeightAt(x, z, "shattered-plains"),
             mobile ? 56 : 96,
+            (x, z, y) => terrainColorAt(x, z, y),
+            (x, z) => [
+              (x - ROSHAR_MAP_BOUNDS.minX) / mapWidth,
+              (ROSHAR_MAP_BOUNDS.maxZ - z) / mapDepth,
+            ],
           )
         : null,
     [center, landmarkDatum, mobile, visible],
@@ -471,10 +515,35 @@ function ShatteredPlainsTerrainPatch() {
         : null,
     [center, landmarkDatum, visible],
   );
+  const capGeometry = useMemo(
+    () =>
+      visible
+        ? createShatteredPlainsCapGeometry(center, landmarkDatum)
+        : null,
+    [center, landmarkDatum, visible],
+  );
   const materialTexture = useMemo(() => {
     const copy = source.clone();
     copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
     copy.repeat.set(7.5, 6.8);
+    copy.anisotropy = mobile ? 2 : 8;
+    copy.colorSpace = THREE.NoColorSpace;
+    copy.needsUpdate = true;
+    return copy;
+  }, [mobile, source]);
+  const macroTexture = useMemo(() => {
+    const copy = macroSource.clone();
+    copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
+    copy.repeat.set(12, 6.25);
+    copy.anisotropy = mobile ? 2 : 8;
+    copy.colorSpace = THREE.SRGBColorSpace;
+    copy.needsUpdate = true;
+    return copy;
+  }, [macroSource, mobile]);
+  const cremAlbedoTexture = useMemo(() => {
+    const copy = source.clone();
+    copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
+    copy.repeat.set(3.8, 3.4);
     copy.anisotropy = mobile ? 2 : 8;
     copy.colorSpace = THREE.SRGBColorSpace;
     copy.needsUpdate = true;
@@ -484,23 +553,52 @@ function ShatteredPlainsTerrainPatch() {
   useEffect(
     () => () => {
       floorGeometry?.dispose();
+      capGeometry?.dispose();
       wallGeometry?.dispose();
       materialTexture.dispose();
+      macroTexture.dispose();
+      cremAlbedoTexture.dispose();
     },
-    [floorGeometry, materialTexture, wallGeometry],
+    [
+      capGeometry,
+      cremAlbedoTexture,
+      floorGeometry,
+      macroTexture,
+      materialTexture,
+      wallGeometry,
+    ],
   );
 
-  if (!floorGeometry || !wallGeometry) return null;
+  if (!floorGeometry || !capGeometry || !wallGeometry) return null;
   return (
     <group name="Carved Shattered Plains terrain">
       <mesh geometry={floorGeometry} receiveShadow>
         <meshStandardMaterial
-          map={materialTexture}
           bumpMap={materialTexture}
-          bumpScale={0.026}
+          bumpScale={0.018}
+          map={macroTexture}
           vertexColors
+          emissive="#111816"
+          emissiveIntensity={0.08}
           roughness={0.97}
           metalness={0.01}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
+        />
+      </mesh>
+      <mesh geometry={capGeometry} receiveShadow castShadow>
+        <meshStandardMaterial
+          bumpMap={materialTexture}
+          bumpScale={0.018}
+          map={cremAlbedoTexture}
+          color="#b1a68f"
+          emissive="#8c8069"
+          emissiveMap={cremAlbedoTexture}
+          emissiveIntensity={0.16}
+          roughness={0.96}
+          metalness={0.008}
+          side={THREE.DoubleSide}
           polygonOffset
           polygonOffsetFactor={-1}
           polygonOffsetUnits={-1}
@@ -508,10 +606,14 @@ function ShatteredPlainsTerrainPatch() {
       </mesh>
       <mesh geometry={wallGeometry} receiveShadow castShadow>
         <meshStandardMaterial
-          map={materialTexture}
+          map={cremAlbedoTexture}
           bumpMap={materialTexture}
-          bumpScale={0.034}
-          color="#635d52"
+          bumpScale={0.024}
+          color="#9e9583"
+          vertexColors
+          emissive="#786e5c"
+          emissiveMap={cremAlbedoTexture}
+          emissiveIntensity={0.09}
           roughness={0.98}
           metalness={0.008}
           side={THREE.DoubleSide}
@@ -565,6 +667,7 @@ function GeographicCoastlines() {
 
 function CartographicLines() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
+  if (!showCartographicLinework(detailLevel)) return null;
   const showRoads = detailLevel !== "continent";
 
   return (

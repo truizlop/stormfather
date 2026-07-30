@@ -73,9 +73,14 @@ const authoredTerrainDatums: Partial<
     // and harbor transition, leaving a narrow reveal beneath real foundations.
     authoredSupportY: 0.58,
     terrainRevealY: 0.1,
-    hidesNode: hidesAuthoredTerrainCradle(
-      "Vedenar_TerrainCradle_Cliff",
-    ),
+    hidesNode: (nodeName) =>
+      hidesAuthoredTerrainCradle("Vedenar_TerrainCradle_Cliff")(
+        nodeName,
+      ) ||
+      /^Vedenar_Terrace_\d{2}_(Harbor|Lower|Civic|Temple|Palace)$/.test(
+        nodeName,
+      ) ||
+      nodeName === "Vedenar_NorthernAgriculturalShelf",
   },
 };
 
