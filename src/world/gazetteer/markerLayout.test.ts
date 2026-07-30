@@ -14,7 +14,6 @@ describe("gazetteer regional marker layout", () => {
     expect(
       isGazetteerPlaceVisibleInLocalLens(
         "ayabiza",
-        "city",
         null,
         "shinovar",
       ),
@@ -22,7 +21,6 @@ describe("gazetteer regional marker layout", () => {
     expect(
       isGazetteerPlaceVisibleInLocalLens(
         "shinovar",
-        "street",
         "shinovar",
         "shinovar",
       ),
@@ -30,7 +28,6 @@ describe("gazetteer regional marker layout", () => {
     expect(
       isGazetteerPlaceVisibleInLocalLens(
         "kholinar-palace",
-        "street",
         "kholinar-palace",
         "kholinar",
       ),
@@ -38,11 +35,10 @@ describe("gazetteer regional marker layout", () => {
     expect(
       isGazetteerPlaceVisibleInLocalLens(
         "ayabiza",
-        "region",
         null,
         "shinovar",
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("fans co-located regional records without mutating source coordinates", () => {

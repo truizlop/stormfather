@@ -171,7 +171,6 @@ function ModeledCityCluster({
       showSilhouette={citySilhouetteShouldRender(
         location.id,
         activeOwnerId,
-        detailLevel,
       )}
       {...lodPolicy}
       near={near}

@@ -122,7 +122,6 @@ describe("authored destination arrival framing", () => {
       );
       const focusDistance = Math.hypot(
         location.camera.target[0] - candidate.center[0],
-        location.camera.target[1] - candidate.center[1],
         location.camera.target[2] - candidate.center[2],
       );
 

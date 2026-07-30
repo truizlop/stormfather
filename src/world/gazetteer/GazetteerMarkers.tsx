@@ -1188,7 +1188,6 @@ export function GazetteerMarkers({
             isGazetteerPlaceVisibleAtLod(place, detailLevel) &&
             isGazetteerPlaceVisibleInLocalLens(
               place.id,
-              detailLevel,
               selectedGazetteerId,
               localAuthoredLocationId,
             ) &&

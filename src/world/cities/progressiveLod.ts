@@ -33,12 +33,17 @@ export interface CityLodRenderPolicy {
 export interface CityProximityCandidate {
   locationId: string;
   center: readonly [number, number, number];
+  /**
+   * Compact map-space radius around the city proxy. This is deliberately
+   * independent from the immersive authored city's much larger local scene.
+   */
   nearDistance: number;
   lensDistance: number;
 }
 
 export const CITY_LOD_HIDDEN_WEIGHT = 0.001;
-export const CITY_PROXIMITY_HANDOFF_HYSTERESIS = 0.8;
+export const CITY_PROXIMITY_HANDOFF_HYSTERESIS = 0.25;
+export const CITY_PROXIMITY_PROXY_PADDING = 0.25;
 
 export interface CityProximityOwnerOptions {
   currentOwnerId?: string | null;
@@ -91,12 +96,14 @@ export function cityNearDetailShouldMount(
 export function cityProximityCandidate(
   locationId: string,
 ): CityProximityCandidate {
-  const silhouette = createCitySilhouette(locationId, "far");
+  const silhouette = createCitySilhouette(locationId, "mid");
   const config = cityLodConfig(silhouette.profile);
   return {
     locationId,
     center: silhouette.center,
-    nearDistance: config.nearDistance,
+    nearDistance:
+      citySilhouettePlanRadius(silhouette) +
+      CITY_PROXIMITY_PROXY_PADDING,
     // The viewed point determines local ownership. A separate, wider lens
     // envelope permits majestic exterior cameras (notably Urithiru) without
     // letting an offscreen selected city remain active after the focus pans.
@@ -141,7 +148,6 @@ export function nearestCityProximityOwner(
     );
     const focusDistance = Math.hypot(
       focusPosition[0] - candidate.center[0],
-      focusPosition[1] - candidate.center[1],
       focusPosition[2] - candidate.center[2],
     );
     const centerFromFocusX = candidate.center[0] - focusPosition[0];
@@ -217,7 +223,6 @@ export function nearestCityFocusOwner(
   for (const candidate of candidates) {
     const distance = Math.hypot(
       focusPosition[0] - candidate.center[0],
-      focusPosition[1] - candidate.center[1],
       focusPosition[2] - candidate.center[2],
     );
     if (
@@ -236,12 +241,10 @@ export function nearestCityFocusOwner(
 }
 
 export function localCityPresenceId(
-  detailLevel: DetailLevel,
+  _detailLevel: DetailLevel,
   proximityLocationId: string | null,
 ) {
-  return detailLevel === "city" || detailLevel === "street"
-    ? proximityLocationId
-    : null;
+  return proximityLocationId;
 }
 
 /**
@@ -264,14 +267,8 @@ export function localCityRenderDetail(
 export function citySilhouetteShouldRender(
   locationId: string,
   activeOwnerId: string | null,
-  detailLevel: DetailLevel,
 ) {
-  return (
-    detailLevel === "continent" ||
-    detailLevel === "region" ||
-    activeOwnerId === null ||
-    locationId === activeOwnerId
-  );
+  return activeOwnerId === null || locationId === activeOwnerId;
 }
 
 export function resolvedCityProximityOwner(
@@ -318,16 +315,12 @@ export function cityClusterLodPolicy(
     selectedLocalLocationId,
     activeOwnerId,
   );
-  const explicitForceIsActive =
-    activeOwnerId !== null &&
-    activeOwnerId === selectedLocalLocationId;
   return {
     allowNear: locationId === activeOwnerId,
     forceNear,
-    // A camera-driven owner change keeps the outgoing authored scene long
-    // enough to finish its alpha fade. Once an explicit list/search target is
-    // actually in view, it replaces the outgoing scene immediately.
-    retainOutgoingNear: !explicitForceIsActive,
+    // Never retain an outgoing authored scene: the inexpensive proxy handles
+    // the visual handoff while exactly one heavy city subtree stays mounted.
+    retainOutgoingNear: false,
   };
 }
 
@@ -414,6 +407,23 @@ export interface CitySilhouette {
   profile: CityProfile;
   seeds: readonly CitySilhouetteSeed[];
   estimatedDrawCalls: 3;
+}
+
+export function citySilhouettePlanRadius(
+  silhouette: Pick<CitySilhouette, "center" | "seeds">,
+) {
+  return Math.max(
+    ...silhouette.seeds.map((seed) => {
+      const foundationRadius =
+        Math.hypot(seed.foundationWidth, seed.foundationDepth) / 2;
+      return (
+        Math.hypot(
+          seed.x - silhouette.center[0],
+          seed.z - silhouette.center[2],
+        ) + foundationRadius
+      );
+    }),
+  );
 }
 
 interface RawSilhouetteSeed {

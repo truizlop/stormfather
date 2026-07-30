@@ -29,7 +29,7 @@ describe("modeled city cluster LOD integration", () => {
     expect(policy).toEqual({
       allowNear: true,
       forceNear: false,
-      retainOutgoingNear: true,
+      retainOutgoingNear: false,
     });
     expect(
       updateCityNearLifecycle(
@@ -65,7 +65,7 @@ describe("modeled city cluster LOD integration", () => {
     expect(state.weights.near).toBe(0);
   });
 
-  it("retains a manually outgoing near scene until its rendered alpha is hidden", () => {
+  it("unmounts a manually outgoing near scene before mounting its successor", () => {
     const outgoingState = createCityLodState(10, integrationConfig);
     const incomingState = createCityLodState(30, integrationConfig);
     const outgoingPolicy = cityClusterLodPolicy(
@@ -82,44 +82,29 @@ describe("modeled city cluster LOD integration", () => {
     expect(outgoingPolicy).toEqual({
       allowNear: false,
       forceNear: false,
-      retainOutgoingNear: true,
+      retainOutgoingNear: false,
     });
     expect(incomingPolicy).toEqual({
       allowNear: true,
       forceNear: false,
-      retainOutgoingNear: true,
+      retainOutgoingNear: false,
     });
 
-    let outgoingMounted = true;
-    let incomingMounted = false;
-    let frames = 0;
-    while (outgoingMounted && frames < 300) {
-      outgoingMounted = updateCityNearLifecycle(
-        outgoingState,
-        10,
-        1 / 60,
-        integrationConfig,
-        outgoingPolicy,
-      );
-      incomingMounted = updateCityNearLifecycle(
-        incomingState,
-        10,
-        1 / 60,
-        integrationConfig,
-        incomingPolicy,
-      );
-      if (
-        outgoingState.weights.near > CITY_LOD_HIDDEN_WEIGHT
-      ) {
-        expect(outgoingMounted).toBe(true);
-      }
-      frames += 1;
-    }
-
-    expect(frames).toBeLessThan(300);
-    expect(outgoingState.weights.near).toBeLessThanOrEqual(
-      CITY_LOD_HIDDEN_WEIGHT,
+    const outgoingMounted = updateCityNearLifecycle(
+      outgoingState,
+      10,
+      1 / 60,
+      integrationConfig,
+      outgoingPolicy,
     );
+    const incomingMounted = updateCityNearLifecycle(
+      incomingState,
+      10,
+      1 / 60,
+      integrationConfig,
+      incomingPolicy,
+    );
+
     expect(outgoingMounted).toBe(false);
     expect(incomingMounted).toBe(true);
   });

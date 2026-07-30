@@ -8,6 +8,9 @@ import { drapePolyline } from "./terrainDraping";
 export function CountryFrontiers() {
   const visible = useAtlasStore((state) => state.frontiersVisible);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const selectedId = useAtlasStore((state) => state.selectedId);
   const drapedFrontiers = useMemo(
     () =>
@@ -18,7 +21,14 @@ export function CountryFrontiers() {
     [],
   );
 
-  if (!visible || detailLevel === "city" || detailLevel === "street") return null;
+  if (
+    !visible ||
+    proximityLocationId !== null ||
+    detailLevel === "city" ||
+    detailLevel === "street"
+  ) {
+    return null;
+  }
 
   const isContinent = detailLevel === "continent";
   const opacityScale = isContinent ? 1 : 0.64;

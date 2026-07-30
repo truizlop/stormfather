@@ -8,6 +8,9 @@ import { localSurfaceY } from "./terrain/localSurface";
 
 export function SettlementLights() {
   const points = useRef<THREE.Points>(null);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const positions = useMemo(() => {
     const values: number[] = [];
     locations
@@ -53,7 +56,7 @@ export function SettlementLights() {
     (points.current.material as THREE.PointsMaterial).opacity = opacity;
   });
 
-  return (
+  return proximityLocationId === null ? (
     <points ref={points}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
@@ -68,5 +71,5 @@ export function SettlementLights() {
         blending={THREE.AdditiveBlending}
       />
     </points>
-  );
+  ) : null;
 }

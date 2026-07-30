@@ -625,9 +625,18 @@ function ShatteredPlainsTerrainPatch() {
 
 function CoastSkirts() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const geometry = useMemo(() => createCoastSkirtGeometry(), []);
   useEffect(() => () => geometry.dispose(), [geometry]);
-  if (detailLevel === "city" || detailLevel === "street") return null;
+  if (
+    proximityLocationId !== null ||
+    detailLevel === "city" ||
+    detailLevel === "street"
+  ) {
+    return null;
+  }
   return (
     <mesh geometry={geometry} receiveShadow castShadow>
       <meshStandardMaterial
@@ -642,7 +651,10 @@ function CoastSkirts() {
 
 function GeographicCoastlines() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
-  if (detailLevel === "street") return null;
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
+  if (proximityLocationId !== null || detailLevel === "street") return null;
   const lineWidth = detailLevel === "continent" ? 0.62 : 0.92;
   return (
     <group name="Canonical coastlines">
@@ -667,7 +679,15 @@ function GeographicCoastlines() {
 
 function CartographicLines() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
-  if (!showCartographicLinework(detailLevel)) return null;
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
+  if (
+    proximityLocationId !== null ||
+    !showCartographicLinework(detailLevel)
+  ) {
+    return null;
+  }
   const showRoads = detailLevel !== "continent";
 
   return (
@@ -719,6 +739,9 @@ function CartographicLines() {
 
 function RiverNetwork() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const nightMode = useAtlasStore((state) => state.nightMode);
   const viewportWidth = useThree((state) => state.size.width);
   const mobile = viewportWidth < 720;
@@ -764,7 +787,13 @@ function RiverNetwork() {
     [bankGeometry, surfaceGeometry],
   );
 
-  if (detailLevel === "city" || detailLevel === "street") return null;
+  if (
+    proximityLocationId !== null ||
+    detailLevel === "city" ||
+    detailLevel === "street"
+  ) {
+    return null;
+  }
   return (
     <group name="Canonical river network">
       <mesh

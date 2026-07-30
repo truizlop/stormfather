@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   CITY_PROXIMITY_HANDOFF_HYSTERESIS,
+  CITY_PROXIMITY_PROXY_PADDING,
   cityInspectionOwnerAtFocus,
   cityLodConfig,
   cityNearDetailShouldMount,
   cityProximityCandidate,
   citySilhouetteShouldRender,
+  citySilhouettePlanRadius,
   createCityLodState,
   createCitySilhouette,
   effectiveCityLodDistance,
@@ -28,16 +30,16 @@ const testConfig = {
 describe("progressive city LOD", () => {
   it("suppresses unrelated map proxies inside an authored local city lens", () => {
     expect(
-      citySilhouetteShouldRender("kharbranth", "vedenar", "city"),
+      citySilhouetteShouldRender("kharbranth", "vedenar"),
     ).toBe(false);
     expect(
-      citySilhouetteShouldRender("vedenar", "vedenar", "street"),
+      citySilhouetteShouldRender("vedenar", "vedenar"),
     ).toBe(true);
     expect(
-      citySilhouetteShouldRender("kharbranth", "vedenar", "region"),
-    ).toBe(true);
+      citySilhouetteShouldRender("kharbranth", "vedenar"),
+    ).toBe(false);
     expect(
-      citySilhouetteShouldRender("kharbranth", null, "city"),
+      citySilhouetteShouldRender("kharbranth", null),
     ).toBe(true);
   });
 
@@ -87,7 +89,7 @@ describe("progressive city LOD", () => {
     expect(cityNearDetailShouldMount(leavingNear, false)).toBe(false);
   });
 
-  it("elects only Azir inside its dense overlapping authored neighborhood", () => {
+  it("gives Azir a compact map lens instead of an overlapping authored envelope", () => {
     const candidates = [
       "azir",
       "urithiru",
@@ -112,21 +114,15 @@ describe("progressive city LOD", () => {
         ) <= candidate.nearDistance,
     );
 
-    expect(
-      overlapping.map((candidate) => candidate.locationId),
-    ).toEqual([
+    expect(overlapping.map((candidate) => candidate.locationId)).toEqual([
       "azir",
-      "urithiru",
-      "purelake",
-      "shinovar",
-      "kharbranth",
     ]);
     expect(
       nearestCityProximityOwner(azir.center, candidates),
     ).toBe("azir");
   });
 
-  it("uses the viewed target to disambiguate overlapping Kharbranth and Thaylen envelopes", () => {
+  it("keeps Kharbranth and Thaylen ownership lenses disjoint", () => {
     const candidates = ["kharbranth", "thaylen-city"].map(
       cityProximityCandidate,
     );
@@ -138,8 +134,9 @@ describe("progressive city LOD", () => {
       kharbranth.center[2] - thaylen.center[2],
     );
 
-    expect(centerDistance).toBeLessThan(kharbranth.nearDistance);
-    expect(centerDistance).toBeLessThan(thaylen.nearDistance);
+    expect(centerDistance).toBeGreaterThan(
+      kharbranth.nearDistance + thaylen.nearDistance,
+    );
     expect(
       nearestCityProximityOwner(kharbranth.center, candidates, {
         focusPosition: kharbranth.center,
@@ -165,7 +162,7 @@ describe("progressive city LOD", () => {
     ).toBe("thaylen-city");
   });
 
-  it("hands the overlapping Kharbranth lens to the independently viewed Vedenar", () => {
+  it("keeps Kharbranth and Vedenar ownership lenses disjoint", () => {
     const candidates = ["kharbranth", "vedenar"].map(
       cityProximityCandidate,
     );
@@ -177,8 +174,9 @@ describe("progressive city LOD", () => {
       kharbranth.center[2] - vedenar.center[2],
     );
 
-    expect(centerDistance).toBeLessThan(kharbranth.nearDistance);
-    expect(centerDistance).toBeLessThan(vedenar.nearDistance);
+    expect(centerDistance).toBeGreaterThan(
+      kharbranth.nearDistance + vedenar.nearDistance,
+    );
     expect(
       nearestCityProximityOwner(vedenar.center, candidates, {
         currentOwnerId: "kharbranth",
@@ -193,7 +191,7 @@ describe("progressive city LOD", () => {
     ).toBe("kharbranth");
   });
 
-  it("keeps a manual, north-facing lower-road view owned by Kharbranth", () => {
+  it("does not let Kharbranth's oversized local footprint claim Thaylen's map lens", () => {
     const candidates = ["kharbranth", "thaylen-city"].map(
       cityProximityCandidate,
     );
@@ -204,13 +202,13 @@ describe("progressive city LOD", () => {
       nearestCityProximityOwner(camera, candidates, {
         focusPosition: lowerRoadFocus,
       }),
-    ).toBe("kharbranth");
+    ).toBe("thaylen-city");
     expect(
       nearestCityProximityOwner(camera, candidates, {
         currentOwnerId: "thaylen-city",
         focusPosition: lowerRoadFocus,
       }),
-    ).toBe("kharbranth");
+    ).toBe("thaylen-city");
   });
 
   it("can disable outgoing retention for an explicit destination handoff", () => {
@@ -293,8 +291,8 @@ describe("progressive city LOD", () => {
     expect(localCityPresenceId("street", owner)).toBe(
       "thaylen-city",
     );
-    expect(localCityPresenceId("region", owner)).toBeNull();
-    expect(localCityPresenceId("continent", owner)).toBeNull();
+    expect(localCityPresenceId("region", owner)).toBe("thaylen-city");
+    expect(localCityPresenceId("continent", owner)).toBe("thaylen-city");
   });
 
   it("promotes a camera-owned regional city to authored City detail", () => {
@@ -380,7 +378,7 @@ describe("progressive city LOD", () => {
     ).toBeNull();
   });
 
-  it("holds proximity ownership through boundary jitter before a decisive handoff", () => {
+  it("leaves a clear regional gap between neighboring city ownership lenses", () => {
     const candidates = ["kharbranth", "thaylen-city"].map(
       cityProximityCandidate,
     );
@@ -391,44 +389,23 @@ describe("progressive city LOD", () => {
       to[1] - from[1],
       to[2] - from[2],
     );
-    const direction = [
-      (to[0] - from[0]) / span,
-      (to[1] - from[1]) / span,
-      (to[2] - from[2]) / span,
-    ] as const;
     const midpoint = [
       (from[0] + to[0]) / 2,
       (from[1] + to[1]) / 2,
       (from[2] + to[2]) / 2,
     ] as const;
-    let owner: string | null = "kharbranth";
 
-    for (const jitter of [-0.12, 0.1, -0.08, 0.14, -0.04]) {
-      owner = nearestCityProximityOwner(
-        [
-          midpoint[0] + direction[0] * jitter,
-          midpoint[1] + direction[1] * jitter,
-          midpoint[2] + direction[2] * jitter,
-        ],
-        candidates,
-        { currentOwnerId: owner },
-      );
-      expect(owner).toBe("kharbranth");
-    }
-
-    const decisiveStep =
-      CITY_PROXIMITY_HANDOFF_HYSTERESIS / 2 + 0.1;
+    expect(span).toBeGreaterThan(
+      candidates[0].nearDistance +
+        candidates[1].nearDistance +
+        CITY_PROXIMITY_HANDOFF_HYSTERESIS * 2,
+    );
     expect(
       nearestCityProximityOwner(
-        [
-          midpoint[0] + direction[0] * decisiveStep,
-          midpoint[1] + direction[1] * decisiveStep,
-          midpoint[2] + direction[2] * decisiveStep,
-        ],
+        midpoint,
         candidates,
-        { currentOwnerId: owner },
       ),
-    ).toBe("thaylen-city");
+    ).toBeNull();
   });
 
   it("holds the active tier inside hysteresis bands", () => {
@@ -477,10 +454,16 @@ describe("progressive city LOD", () => {
 
   it("derives useful thresholds from the existing city radius", () => {
     const far = createCitySilhouette("kharbranth", "far");
+    const mid = createCitySilhouette("kharbranth", "mid");
     const config = cityLodConfig(far.profile);
+    const candidate = cityProximityCandidate("kharbranth");
     expect(config.nearDistance).toBe(far.profile.radius * 5);
     expect(config.farDistance).toBe(far.profile.radius * 10);
     expect(config.hysteresis).toBeGreaterThan(0);
+    expect(candidate.nearDistance).toBeCloseTo(
+      citySilhouettePlanRadius(mid) + CITY_PROXIMITY_PROXY_PADDING,
+    );
+    expect(candidate.nearDistance).toBeLessThan(config.nearDistance / 4);
   });
 
   it("uses denser mid silhouettes while keeping each tier to three draw calls", () => {

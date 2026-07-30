@@ -63,6 +63,9 @@ function MovingTraffic({
 
 export function WorldTraffic() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const caravans = useMemo<TrafficSeed[]>(
     () =>
       Array.from({ length: 18 }, (_, index) => ({
@@ -84,7 +87,7 @@ export function WorldTraffic() {
     [],
   );
 
-  if (detailLevel === "continent") return null;
+  if (detailLevel === "continent" || proximityLocationId !== null) return null;
   return (
     <>
       <MovingTraffic seeds={caravans} color="#d2a25d" />

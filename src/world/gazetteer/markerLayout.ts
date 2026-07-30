@@ -49,13 +49,11 @@ export function isGazetteerPlaceVisibleAtLod(
  */
 export function isGazetteerPlaceVisibleInLocalLens(
   placeId: string,
-  detailLevel: DetailLevel,
   selectedGazetteerId: string | null,
   localAuthoredLocationId: string | undefined,
 ) {
   if (
-    !localAuthoredLocationId ||
-    (detailLevel !== "city" && detailLevel !== "street")
+    !localAuthoredLocationId
   ) {
     return true;
   }
