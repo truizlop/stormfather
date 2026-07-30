@@ -29,7 +29,7 @@ import {
   modeledLocationForGazetteer,
 } from "./locations";
 import { landmarkSurfaceY } from "./terrain/localSurface";
-import type { DetailLevel, WorldLocation } from "./types";
+import type { WorldLocation } from "./types";
 
 const modeledLocations = locations.filter((location) => location.modelRoot);
 const proximityCandidates = modeledLocations.map((location) =>
@@ -110,15 +110,12 @@ function NearCityLoadingFallback({
 }
 
 function NearCityContent({
-  detailLevel,
   location,
 }: {
-  detailLevel: DetailLevel;
   location: WorldLocation;
 }) {
   return (
     <Suspense
-      key={`${location.id}-${detailLevel}`}
       fallback={<NearCityLoadingFallback location={location} />}
     >
       <CityDetail locationId={location.id} />
@@ -132,12 +129,10 @@ function ModeledCityCluster({
   location,
   activeOwnerId,
   selectedLocalLocationId,
-  detailLevel,
 }: {
   location: WorldLocation;
   activeOwnerId: string | null;
   selectedLocalLocationId?: string;
-  detailLevel: DetailLevel;
 }) {
   const lodPolicy = cityClusterLodPolicy(
     location.id,
@@ -145,8 +140,8 @@ function ModeledCityCluster({
     selectedLocalLocationId,
   );
   const near = useMemo(
-    () => <NearCityContent detailLevel={detailLevel} location={location} />,
-    [detailLevel, location],
+    () => <NearCityContent location={location} />,
+    [location],
   );
 
   return (
@@ -314,7 +309,6 @@ export function CityClusters() {
           location={location}
           activeOwnerId={activeOwnerId}
           selectedLocalLocationId={selectedLocalLocationId}
-          detailLevel={detailLevel}
         />
       ))}
     </group>
