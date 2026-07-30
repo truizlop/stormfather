@@ -12,7 +12,6 @@ frames_directory="$project_root/artifacts/cinematic/frames"
 output_directory="$project_root/artifacts/cinematic"
 output="$output_directory/roshar-cities-cinematic.mp4"
 expected_frames=4317
-fps=24
 
 if [[ ! -f "$soundtrack" ]]; then
   echo "soundtrack not found: $soundtrack" >&2
@@ -38,12 +37,22 @@ PY
 
 mkdir -p "$output_directory"
 duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$soundtrack")
+output_framerate=$(python3 - "$expected_frames" "$duration" <<'PY'
+import sys
+from fractions import Fraction
+
+frames = int(sys.argv[1])
+duration_microseconds = round(float(sys.argv[2]) * 1_000_000)
+rate = Fraction(frames * 1_000_000, duration_microseconds).limit_denominator(1_000_000)
+print(f"{rate.numerator}/{rate.denominator}")
+PY
+)
 
 ffmpeg \
   -hide_banner \
   -loglevel warning \
   -y \
-  -framerate "$fps" \
+  -framerate "$output_framerate" \
   -start_number 1 \
   -i "$frames_directory/frame_%04d.png" \
   -i "$soundtrack" \
