@@ -7,7 +7,8 @@ export type CreatureSpecies =
   | "chull"
   | "axehound"
   | "skyeel"
-  | "cremling";
+  | "cremling"
+  | "sheep";
 
 export type SprenType =
   | "windspren"
@@ -83,6 +84,12 @@ export const CREATURE_MODEL_BOUNDS = {
     width: 0.766,
     standingHeight: 0.283,
   },
+  sheep: {
+    // Wool, muzzle, ears, tail, and planted hooves in CreatureModels.tsx.
+    length: 1.74,
+    width: 0.86,
+    standingHeight: 1.04,
+  },
 } as const satisfies Record<CreatureSpecies, CreatureModelBounds>;
 
 /**
@@ -96,6 +103,7 @@ export const CREATURE_MODEL_FOOTPRINT_RADIUS = {
   axehound: 0.914,
   cremling: 0.433,
   skyeel: 0,
+  sheep: 1.05,
 } as const satisfies Record<CreatureSpecies, number>;
 
 /**
@@ -135,6 +143,23 @@ export const CREATURE_DIMENSION_CONTRACT = {
     standingHeightLocal: {
       minimum: metersToLocal(0.45),
       maximum: metersToLocal(0.95),
+    },
+  },
+  sheep: {
+    lengthMeters: { minimum: 1.2, maximum: 1.6 },
+    lengthLocal: {
+      minimum: metersToLocal(1.2),
+      maximum: metersToLocal(1.6),
+    },
+    widthMeters: { minimum: 0.6, maximum: 0.82 },
+    widthLocal: {
+      minimum: metersToLocal(0.6),
+      maximum: metersToLocal(0.82),
+    },
+    standingHeightMeters: { minimum: 0.78, maximum: 1 },
+    standingHeightLocal: {
+      minimum: metersToLocal(0.78),
+      maximum: metersToLocal(1),
     },
   },
 } as const;
@@ -203,7 +228,7 @@ const habitatProfiles: Record<string, HabitatProfile> = {
     spren: ["windspren", "lifespren", "gloryspren", "rainspren"],
   },
   shinovar: {
-    creatures: ["chull", "axehound", "cremling", "skyeel"],
+    creatures: ["sheep", "chull", "axehound", "cremling", "skyeel"],
     spren: ["lifespren", "windspren", "gloryspren"],
   },
   "jah-keved": {
@@ -241,6 +266,34 @@ const detailBudgets: Record<
   city: { creatures: 9, spren: 12 },
   street: { creatures: 16, spren: 20 },
 };
+
+export const SHINOVAR_PASTORAL_BUDGETS = {
+  continent: { sheep: 0, shepherds: 0 },
+  region: { sheep: 0, shepherds: 0 },
+  city: { sheep: 5, shepherds: 1 },
+  street: { sheep: 9, shepherds: 2 },
+} as const satisfies Record<
+  DetailLevel,
+  { sheep: number; shepherds: number }
+>;
+
+/**
+ * Shinovar is the one habitat where familiar grazing animals are part of the
+ * cultural silhouette. Keep the herd legible without exceeding the existing
+ * ecology budget on small screens.
+ */
+export function shinovarPastoralBudget(
+  detailLevel: DetailLevel,
+  compactViewport: boolean,
+) {
+  const base = SHINOVAR_PASTORAL_BUDGETS[detailLevel];
+  if (base.sheep === 0) return base;
+  if (!compactViewport) return base;
+  return {
+    sheep: Math.floor(base.sheep * 0.62),
+    shepherds: Math.max(1, Math.floor(base.shepherds * 0.62)),
+  };
+}
 
 /**
  * A continuous, terrain-facing patrol south of Stormseat. The previous
@@ -445,6 +498,8 @@ function speciesScale(species: CreatureSpecies) {
       return 0.06;
     case "cremling":
       return 0.045;
+    case "sheep":
+      return 0.07;
   }
 }
 
@@ -466,6 +521,8 @@ function speciesScaleVariation(
     case "chull":
     case "cremling":
       return 0.86 + randomUnit * 0.28;
+    case "sheep":
+      return 0.92 + randomUnit * 0.16;
   }
 }
 
@@ -526,10 +583,24 @@ export function createCreatureSeeds(
   const commonCreatures = supportedCreatures.filter(
     (species) => species !== "chasmfiend",
   );
+  const pastoralBudget =
+    locationId === "shinovar"
+      ? shinovarPastoralBudget(detailLevel, compactViewport)
+      : null;
+  const nonPastoralCreatures = supportedCreatures.filter(
+    (species) => species !== "sheep",
+  );
   let heroScheduled = false;
   return Array.from({ length: budget }, (_, index): CreatureSeed => {
-    let species =
-      supportedCreatures[index % supportedCreatures.length] ?? "cremling";
+    let species: CreatureSpecies =
+      pastoralBudget && index < pastoralBudget.sheep
+        ? "sheep"
+        : nonPastoralCreatures[
+            (index - (pastoralBudget?.sheep ?? 0)) %
+              nonPastoralCreatures.length
+          ] ??
+          supportedCreatures[index % supportedCreatures.length] ??
+          "cremling";
     if (species === "chasmfiend") {
       if (heroScheduled && commonCreatures.length > 0) {
         species = commonCreatures[index % commonCreatures.length];
@@ -553,7 +624,11 @@ export function createCreatureSeeds(
       speed:
         0.22 +
         deterministicUnit(`${key}:speed`) *
-          (species === "axehound" ? 0.5 : 0.28),
+          (species === "axehound"
+            ? 0.5
+            : species === "sheep"
+              ? 0.18
+              : 0.28),
       scale:
         speciesScale(species) *
         speciesScaleVariation(
@@ -620,6 +695,8 @@ export function creatureStormSpeedMultiplier(
       return 1 + storm * 3.1;
     case "skyeel":
       return 1 + storm * 2.2;
+    case "sheep":
+      return 1 + storm * 2.55;
     case "chull":
     case "cremling":
       return 1 + storm * 0.7;
@@ -747,6 +824,65 @@ export function writeRoutedCreatureMotion(
     target.gaitPhase =
       motionClockSeconds * seed.speed * 8 + seed.phase;
   }
+  return target;
+}
+
+/**
+ * Sheep graze along their terrain-cleared pasture route in calm weather, then
+ * converge on its final (west/leeward) point as the Highstorm arrives. The
+ * blend remains continuous, so a changing storm strength cannot teleport the
+ * herd or reverse its heading in one frame.
+ */
+export function writePastoralCreatureMotion(
+  target: CreatureMotion,
+  seed: CreatureSeed,
+  route: EcologyNavigationRoute,
+  motionClockSeconds: number,
+  stormStrength: number,
+) {
+  writeRoutedCreatureMotion(
+    target,
+    seed,
+    route,
+    motionClockSeconds,
+    stormStrength,
+  );
+  const shelter = route.points[route.points.length - 1];
+  if (!shelter) return target;
+
+  const storm = Math.max(0, Math.min(1, stormStrength));
+  const retreat =
+    smoothstep01((storm - 0.12) / 0.78) * 0.84;
+  const deltaX = shelter.x - target.x;
+  const deltaZ = shelter.z - target.z;
+  const shelterHeading = Math.atan2(deltaX, deltaZ);
+  target.x += deltaX * retreat;
+  target.z += deltaZ * retreat;
+  target.heading = lerpAngle(
+    target.heading,
+    shelterHeading,
+    smoothstep01(retreat * 1.08),
+  );
+
+  const distanceToShelter = Math.hypot(
+    shelter.x - target.x,
+    shelter.z - target.z,
+  );
+  if (storm >= 0.9) {
+    // Preserve a short, phase-derived spread along the final pasture lane
+    // rather than collapsing every animal into the same point.
+    target.pace = 0;
+  } else if (retreat > 0.01 && distanceToShelter > 0.012) {
+    target.pace = Math.max(
+      target.pace,
+      seed.speed * (1 + storm * 2.55),
+    );
+    target.gaitPhase =
+      motionClockSeconds * seed.speed * (8 + storm * 4) + seed.phase;
+  } else if (distanceToShelter <= 0.012) {
+    target.pace = 0;
+  }
+  target.crouch = Math.max(0.7, 1 - storm * 0.28);
   return target;
 }
 

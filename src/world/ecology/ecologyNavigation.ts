@@ -445,3 +445,61 @@ export function fallbackCreatureRoutes(
   }
   return routes;
 }
+
+/**
+ * Builds Shinovar pasture lanes from the same authored surface, obstacle, and
+ * resident-corridor checks used by every other ground creature. Route order is
+ * normalized so the final point is west/leeward: it becomes the herd's
+ * deterministic Highstorm shelter target.
+ */
+export function createShinovarPastureRoutes(
+  navigation: NavigationField,
+  widestSheep: CreatureSeed,
+  residentRoutes: readonly NavigationRoute[] = [],
+) {
+  if (
+    navigation.locationId !== "shinovar" ||
+    widestSheep.species !== "sheep"
+  ) {
+    return [];
+  }
+  return fallbackCreatureRoutes(
+    navigation,
+    widestSheep,
+    residentRoutes,
+  ).map((route, index): NavigationRoute => {
+    const first = route.points[0];
+    const last = route.points[route.points.length - 1];
+    const westwardPoints =
+      first && last && first.x < last.x
+        ? [...route.points].reverse()
+        : [...route.points];
+    return {
+      ...route,
+      id: `shinovar-sheep-pasture-${index + 1}`,
+      points: westwardPoints,
+    };
+  });
+}
+
+/**
+ * Sheep intentionally share a small number of lanes as visible herds. Other
+ * fauna continue to use assignUniqueCreatureRoutes so cross-species patrols
+ * never pile onto the same route.
+ */
+export function assignShinovarHerdRoutes(
+  sheepSeeds: readonly CreatureSeed[],
+  pastureRoutes: readonly NavigationRoute[],
+  maximumHerds: number,
+) {
+  const assignments = new Map<string, NavigationRoute>();
+  const routes = pastureRoutes.slice(
+    0,
+    Math.max(0, Math.floor(maximumHerds)),
+  );
+  if (routes.length === 0) return assignments;
+  sheepSeeds.forEach((seed, index) => {
+    assignments.set(seed.id, routes[index % routes.length]);
+  });
+  return assignments;
+}

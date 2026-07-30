@@ -32,9 +32,11 @@ import {
   createCreatureSeeds,
   createSprenSeeds,
   resolveEcologyLocationId,
+  shinovarPastoralBudget,
   sprenBehaviorAt,
   writeCreatureMotion,
   writeChasmfiendFootContact,
+  writePastoralCreatureMotion,
   writeRoutedCreatureMotion,
   type CreatureMotion,
   type CreatureSeed,
@@ -44,11 +46,14 @@ import {
 import { SprenModel } from "./SprenModel";
 import {
   assignUniqueCreatureRoutes,
+  assignShinovarHerdRoutes,
+  createShinovarPastureRoutes,
   ecologyLandmarkCollisionRoot,
   ecologyLayoutViewportWidth,
   fallbackCreatureRoutes,
   isEcologyWalkableSupportObstacle,
 } from "./ecologyNavigation";
+import { ShinovarPastoralLife } from "./ShinovarPastoralLife";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 const EMPTY_CREATURE_ROUTES = new Map<string, NavigationRoute>();
@@ -127,13 +132,21 @@ function CreatureActor({
     lastSimulationTime.current = simulationTime;
     previousStorm.current = storm;
     const pose = route
-      ? writeRoutedCreatureMotion(
-          motion.current,
-          seed,
-          route,
-          motionClock.current,
-          storm,
-        )
+      ? seed.species === "sheep"
+        ? writePastoralCreatureMotion(
+            motion.current,
+            seed,
+            route,
+            motionClock.current,
+            storm,
+          )
+        : writeRoutedCreatureMotion(
+            motion.current,
+            seed,
+            route,
+            motionClock.current,
+            storm,
+          )
       : writeCreatureMotion(
           motion.current,
           seed,
@@ -286,7 +299,9 @@ function CreatureActor({
         storm * 0.35
       : chasmfiend
         ? 0
-        : 0.015;
+        : seed.species === "sheep"
+          ? -0.0015
+          : 0.015;
     const gait = pose.pace > 0.001 ? Math.sin(pose.gaitPhase) : 0;
     group.current.position.set(
       x,
@@ -517,7 +532,11 @@ function RoutedCityEcology({
   const routeByCreatureId = useMemo(() => {
     const routedSpecies = new Map<CreatureSpecies, CreatureSeed[]>();
     for (const seed of creatureSeeds) {
-      if (seed.species === "chasmfiend" || seed.species === "skyeel") {
+      if (
+        seed.species === "chasmfiend" ||
+        seed.species === "skyeel" ||
+        seed.species === "sheep"
+      ) {
         continue;
       }
       const speciesSeeds = routedSpecies.get(seed.species) ?? [];
@@ -542,29 +561,77 @@ function RoutedCityEcology({
       );
       routesBySpecies.set(widestSeed.species, validRoutes);
     }
-    return assignUniqueCreatureRoutes(
+    const assignments = assignUniqueCreatureRoutes(
       creatureSeeds
         .filter(
           (seed) =>
             seed.species !== "chasmfiend" &&
-            seed.species !== "skyeel",
+            seed.species !== "skyeel" &&
+            seed.species !== "sheep",
         )
         .map((seed) => ({
           seed,
           routes: routesBySpecies.get(seed.species) ?? [],
         })),
     );
-  }, [creatureSeeds, navigation]);
+    if (location.id !== "shinovar") return assignments;
+
+    const sheepSeeds = creatureSeeds.filter(
+      (seed) => seed.species === "sheep",
+    );
+    if (sheepSeeds.length === 0) return assignments;
+    const widestSheep = sheepSeeds.reduce((widest, seed) =>
+      creatureCollisionClearance(seed) >
+      creatureCollisionClearance(widest)
+        ? seed
+        : widest,
+    );
+    const pastureRoutes = createShinovarPastureRoutes(
+      navigation,
+      widestSheep,
+      [...navigation.routes, ...assignments.values()],
+    );
+    const herdCount = shinovarPastoralBudget(
+      detailLevel,
+      compactViewport,
+    ).shepherds;
+    const herdAssignments = assignShinovarHerdRoutes(
+      sheepSeeds,
+      pastureRoutes,
+      herdCount,
+    );
+    for (const [seedId, route] of herdAssignments) {
+      assignments.set(seedId, route);
+    }
+    return assignments;
+  }, [
+    compactViewport,
+    creatureSeeds,
+    detailLevel,
+    location.id,
+    navigation,
+  ]);
 
   return (
-    <EcologyActors
-      center={center}
-      compactViewport={compactViewport}
-      creatureSeeds={creatureSeeds}
-      location={location}
-      routeByCreatureId={routeByCreatureId}
-      sprenSeeds={sprenSeeds}
-    />
+    <group name={`Routed ecology of ${location.name}`}>
+      <EcologyActors
+        center={center}
+        compactViewport={compactViewport}
+        creatureSeeds={creatureSeeds}
+        location={location}
+        routeByCreatureId={routeByCreatureId}
+        sprenSeeds={sprenSeeds}
+      />
+      {location.id === "shinovar" && (
+        <ShinovarPastoralLife
+          center={center}
+          compactViewport={compactViewport}
+          creatureSeeds={creatureSeeds}
+          detailLevel={detailLevel}
+          routeByCreatureId={routeByCreatureId}
+        />
+      )}
+    </group>
   );
 }
 

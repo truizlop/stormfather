@@ -671,6 +671,146 @@ function Skyeel() {
   );
 }
 
+function Sheep({
+  rigRef,
+}: {
+  rigRef?: Ref<CreatureRigHandle>;
+}) {
+  const legRefs = useRef<Array<THREE.Group | null>>([]);
+  const head = useRef<THREE.Group>(null);
+  const tail = useRef<THREE.Group>(null);
+
+  useImperativeHandle(rigRef, () => ({
+    update(gaitPhase, stormStrength) {
+      const storm = Math.max(0, Math.min(1, stormStrength));
+      legRefs.current.forEach((leg, index) => {
+        if (!leg) return;
+        const sidePhase = index % 2 === 0 ? 0 : Math.PI;
+        const rowPhase = index < 2 ? 0 : Math.PI;
+        leg.rotation.x =
+          Math.sin(gaitPhase + sidePhase + rowPhase) *
+          (0.28 - storm * 0.08);
+      });
+      if (head.current) {
+        const grazingNod =
+          Math.max(0, Math.sin(gaitPhase * 0.23)) * 0.16;
+        head.current.rotation.x =
+          grazingNod + storm * 0.25;
+        head.current.position.y = 0.7 - storm * 0.055;
+      }
+      if (tail.current) {
+        tail.current.rotation.x =
+          Math.sin(gaitPhase * 0.7) * 0.16 * (1 - storm * 0.7);
+      }
+    },
+  }));
+
+  return (
+    <group name="Shinovar sheep procedural model">
+      <mesh
+        position={[0, 0.61, 0.06]}
+        scale={[0.43, 0.34, 0.62]}
+        castShadow
+        receiveShadow
+      >
+        <sphereGeometry args={[1, 12, 9]} />
+        <meshStandardMaterial color="#d8d2bd" roughness={0.96} />
+      </mesh>
+      {[
+        [-0.27, 0.75, -0.02],
+        [0.27, 0.72, 0.02],
+        [-0.18, 0.82, 0.31],
+        [0.2, 0.81, -0.26],
+        [0, 0.9, 0.06],
+      ].map(([x, y, z], index) => (
+        <mesh
+          key={`fleece-${index}`}
+          position={[x, y, z]}
+          scale={[0.2, 0.15, 0.22]}
+          castShadow
+        >
+          <dodecahedronGeometry args={[1, 1]} />
+          <meshStandardMaterial
+            color={index % 2 === 0 ? "#eee8d5" : "#c9c3ae"}
+            roughness={1}
+          />
+        </mesh>
+      ))}
+      <group ref={head} position={[0, 0.7, -0.68]}>
+        <mesh scale={[0.24, 0.262, 0.262]} castShadow>
+          <sphereGeometry args={[1, 10, 8]} />
+          <meshStandardMaterial color="#4c4339" roughness={0.92} />
+        </mesh>
+        <mesh
+          position={[0, -0.045, -0.205]}
+          scale={[0.16, 0.12, 0.16]}
+          castShadow
+        >
+          <sphereGeometry args={[1, 9, 7]} />
+          <meshStandardMaterial color="#74685b" roughness={0.9} />
+        </mesh>
+        {([-1, 1] as const).map((side) => (
+          <group key={`sheep-face-${side}`}>
+            <mesh
+              position={[side * 0.24, 0.2, 0.01]}
+              rotation={[0.16, 0, side * 0.38]}
+              scale={[0.096, 0.042, 0.132]}
+              castShadow
+            >
+              <sphereGeometry args={[1, 8, 5]} />
+              <meshStandardMaterial color="#5c5043" roughness={0.95} />
+            </mesh>
+            <mesh
+              position={[side * 0.13, 0.045, -0.245]}
+              scale={0.024}
+            >
+              <sphereGeometry args={[1, 7, 5]} />
+              <meshStandardMaterial
+                color="#171719"
+                roughness={0.25}
+                metalness={0.08}
+              />
+            </mesh>
+          </group>
+        ))}
+      </group>
+      {[
+        [-0.27, -0.34],
+        [0.27, -0.34],
+        [-0.27, 0.38],
+        [0.27, 0.38],
+      ].map(([x, z], index) => (
+        <group
+          key={`sheep-leg-${index}`}
+          ref={(node) => {
+            legRefs.current[index] = node;
+          }}
+          position={[x, 0.45, z]}
+        >
+          <mesh position={[0, -0.19, 0]} castShadow>
+            <cylinderGeometry args={[0.048, 0.056, 0.38, 7]} />
+            <meshStandardMaterial color="#574b40" roughness={0.92} />
+          </mesh>
+          <mesh
+            position={[0, -0.405, -0.018]}
+            scale={[0.07, 0.035, 0.095]}
+            castShadow
+          >
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial color="#292621" roughness={0.86} />
+          </mesh>
+        </group>
+      ))}
+      <group ref={tail} position={[0, 0.69, 0.7]}>
+        <mesh scale={[0.13, 0.13, 0.09]} castShadow>
+          <dodecahedronGeometry args={[1, 1]} />
+          <meshStandardMaterial color="#ded8c4" roughness={1} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 function Cremling() {
   return (
     <group name="Cremling procedural model">
@@ -717,5 +857,7 @@ export function CreatureModel({
       return <Skyeel />;
     case "cremling":
       return <Cremling />;
+    case "sheep":
+      return <Sheep rigRef={rigRef} />;
   }
 }
