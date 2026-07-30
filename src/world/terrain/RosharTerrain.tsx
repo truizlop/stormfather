@@ -11,6 +11,7 @@ import {
   mainlandOutline,
   type GeographyPoint,
 } from "../cartography/geography";
+import { isCompactViewport } from "../compactViewport";
 import { locations } from "../locations";
 import {
   createRiverBankGeometry,
@@ -386,7 +387,9 @@ function createCoastSkirtGeometry() {
 }
 
 function TerrainSurface() {
-  const viewportWidth = useThree((state) => state.size.width);
+  const mobile = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const selectedId = useAtlasStore((state) => state.selectedId);
   const proximityLocationId = useAtlasStore(
     (state) => state.proximityLocationId,
@@ -396,7 +399,6 @@ function TerrainSurface() {
     `${import.meta.env.BASE_URL}textures/crem-stone-albedo.jpg`,
     `${import.meta.env.BASE_URL}textures/roshar-crem-macro.jpg`,
   ]);
-  const mobile = viewportWidth < 720;
   const focusedLocationId = proximityLocationId
     ? detailedLocationSurface(proximityLocationId)?.id
     : detailLevel === "city" || detailLevel === "street"
@@ -470,7 +472,9 @@ function TerrainSurface() {
 }
 
 function ShatteredPlainsTerrainPatch() {
-  const viewportWidth = useThree((state) => state.size.width);
+  const mobile = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const selectedId = useAtlasStore((state) => state.selectedId);
   const proximityLocationId = useAtlasStore(
     (state) => state.proximityLocationId,
@@ -480,7 +484,6 @@ function ShatteredPlainsTerrainPatch() {
     `${import.meta.env.BASE_URL}textures/cities/shattered-plains-crem-fracture-atlas.jpg`,
     `${import.meta.env.BASE_URL}textures/roshar-crem-macro.jpg`,
   ]);
-  const mobile = viewportWidth < 720;
   const visible =
     proximityLocationId === "shattered-plains" ||
     ((detailLevel === "city" || detailLevel === "street") &&
@@ -743,8 +746,9 @@ function RiverNetwork() {
     (state) => state.proximityLocationId,
   );
   const nightMode = useAtlasStore((state) => state.nightMode);
-  const viewportWidth = useThree((state) => state.size.width);
-  const mobile = viewportWidth < 720;
+  const mobile = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const surfaceGeometry = useMemo(
     () => createRiverSurfaceGeometry(mobile ? 0.38 : 0.22),
     [mobile],

@@ -3,6 +3,7 @@ import { useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import { isCompactViewport } from "../compactViewport";
 import { LANDMARK_RUNTIME_KIT_URL } from "../assets/landmarkAssets";
 import { locationById } from "../locations";
 import type { DetailLevel } from "../types";
@@ -563,6 +564,12 @@ export function CityDetail({
   const storeDetailLevel = useAtlasStore((state) => state.detailLevel);
   const detailLevel = detailLevelOverride ?? storeDetailLevel;
   const width = useThree((state) => state.size.width);
+  const compactViewport = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
+  const layoutViewportWidth = compactViewport
+    ? Math.min(width, 719)
+    : width;
   const location = locationById.get(activeLocationId);
 
   const profile = useMemo(
@@ -588,10 +595,10 @@ export function CityDetail({
             location.id,
             center,
             detailLevel,
-            width,
+            layoutViewportWidth,
           )
         : { buildings: [], modules: [] },
-    [center, detailLevel, location, profile, width],
+    [center, detailLevel, layoutViewportWidth, location, profile],
   );
   const supportedModules = useMemo(() => {
     if (location?.id !== "shattered-plains") return layout.modules;

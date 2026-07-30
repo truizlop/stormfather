@@ -2,6 +2,7 @@ import { useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { isCompactViewport } from "../compactViewport";
 import { metersToLocal } from "../scale";
 import { terrainHeightAt } from "../terrain/terrainHeight";
 import type { GazetteerPlace } from "./types";
@@ -511,7 +512,9 @@ export function SemanticSettlementDetail({
   detailLevel: "city" | "street";
   profile: SemanticSettlementProfile;
 }) {
-  const compactViewport = useThree((state) => state.size.width < 720);
+  const compactViewport = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const [masonrySource, masonryBumpSource, woodBumpSource, pavingSource] =
     useTexture([
       // The dark crem-stone scan is excellent ground cover but multiplies

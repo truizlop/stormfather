@@ -7,6 +7,7 @@ import {
 } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import { isCompactViewport } from "../compactViewport";
 import { locationById } from "../locations";
 import { LOCAL_UNITS_PER_METER } from "../scale";
 import { localSurfaceY } from "../terrain/localSurface";
@@ -866,7 +867,9 @@ export function WindrunnerPatrols() {
   const selectedId = useAtlasStore((state) => state.selectedId);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const nightMode = useAtlasStore((state) => state.nightMode);
-  const compactViewport = useThree((state) => state.size.width < 760);
+  const compactViewport = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const location = locationById.get("urithiru")!;
   const seeds = useMemo(
     () => createWindrunnerSeeds(detailLevel, compactViewport),

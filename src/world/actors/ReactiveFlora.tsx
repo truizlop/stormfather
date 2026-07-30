@@ -2,6 +2,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import { isCompactViewport } from "../compactViewport";
 import { locationById } from "../locations";
 import { localSurfaceY } from "../terrain/localSurface";
 import { stormProximity, stormXAtTime } from "../weather/storm";
@@ -294,7 +295,9 @@ function ShinGrassField({
 export function ReactiveFlora() {
   const selectedId = useAtlasStore((state) => state.selectedId);
   const detailLevel = useAtlasStore((state) => state.detailLevel);
-  const compactViewport = useThree((state) => state.size.width < 760);
+  const compactViewport = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const location = locationById.get(selectedId);
   const seeds = useMemo(
     () =>

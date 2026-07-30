@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { landmarkAssetUrl } from "../assets/landmarkAssets";
+import { isCompactViewport } from "../compactViewport";
 import {
   createNavigationField,
   landmarkNavigationObstacles,
@@ -648,9 +649,13 @@ export function RosharEcology() {
   );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const viewportWidth = useThree((state) => state.size.width);
-  const compactViewport = viewportWidth < 760;
+  const compactViewport = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const layoutViewportWidth =
-    ecologyLayoutViewportWidth(viewportWidth);
+    ecologyLayoutViewportWidth(
+      compactViewport ? Math.min(viewportWidth, 719) : viewportWidth,
+    );
   const ecologyLocationId = resolveEcologyLocationId(
     detailLevel,
     proximityLocationId,

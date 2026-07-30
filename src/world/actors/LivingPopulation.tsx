@@ -14,6 +14,7 @@ import {
   landmarkAssetUrl,
   LANDMARK_RUNTIME_KIT_URL,
 } from "../assets/landmarkAssets";
+import { isCompactViewport } from "../compactViewport";
 import { locationById } from "../locations";
 import { metersToLocal } from "../scale";
 import { localSurfaceY } from "../terrain/localSurface";
@@ -1264,10 +1265,12 @@ function DetailedResidents({
 }
 
 function ActiveLivingPopulation({
+  compactViewport,
   location,
   detailLevel,
   viewportWidth,
 }: {
+  compactViewport: boolean;
   location: WorldLocation;
   detailLevel: DetailLevel;
   viewportWidth: number;
@@ -1302,6 +1305,9 @@ function ActiveLivingPopulation({
     () => cityProfile(fallbackLocation.id, fallbackLocation.culture),
     [fallbackLocation],
   );
+  const layoutViewportWidth = compactViewport
+    ? Math.min(viewportWidth, 719)
+    : viewportWidth;
   const layout = useMemo(
     () =>
       closeDetail
@@ -1310,7 +1316,7 @@ function ActiveLivingPopulation({
             fallbackLocation.id,
             center,
             detailLevel,
-            viewportWidth,
+            layoutViewportWidth,
           )
         : { buildings: [], modules: [] },
     [
@@ -1318,8 +1324,8 @@ function ActiveLivingPopulation({
       closeDetail,
       detailLevel,
       fallbackLocation.id,
+      layoutViewportWidth,
       profile,
-      viewportWidth,
     ],
   );
   const landmarkObstacles = useMemo(() => {
@@ -1377,14 +1383,14 @@ function ActiveLivingPopulation({
   );
   const desktopCount = detailLevel === "street" ? 118 : 72;
   const populationCount = Math.round(
-    desktopCount * (viewportWidth < 720 ? 0.62 : 1),
+    desktopCount * (compactViewport ? 0.62 : 1),
   );
   const detailedCount =
     detailLevel === "street"
-      ? viewportWidth < 720
+      ? compactViewport
         ? 5
         : 10
-      : viewportWidth < 720
+      : compactViewport
         ? 3
         : 6;
   const articulatedCount = Math.max(0, populationCount - detailedCount);
@@ -1447,6 +1453,9 @@ export function LivingPopulation() {
   );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const viewportWidth = useThree((state) => state.size.width);
+  const compactViewport = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const activeLocationId = localCityPresenceId(
     detailLevel,
     proximityLocationId,
@@ -1461,6 +1470,7 @@ export function LivingPopulation() {
 
   return (
     <ActiveLivingPopulation
+      compactViewport={compactViewport}
       key={`${location.id}-${detailLevel === "street" ? "street" : "city"}`}
       location={location}
       detailLevel={detailLevel}

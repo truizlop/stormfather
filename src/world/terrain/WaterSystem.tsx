@@ -13,6 +13,7 @@ import {
   polygonBounds,
   type GeographyPoint,
 } from "../cartography/geography";
+import { isCompactViewport } from "../compactViewport";
 import {
   preStormDrainage,
   stormProximity,
@@ -318,17 +319,19 @@ const lakeFragmentShader = /* glsl */ `
 
 function OceanSurface() {
   const material = useRef<THREE.ShaderMaterial>(null);
-  const width = useThree((state) => state.size.width);
+  const compactViewport = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const nightMode = useAtlasStore((state) => state.nightMode);
-  const segments = width < 720 ? [112, 68] : [256, 160];
+  const segments = compactViewport ? [112, 68] : [256, 160];
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
       uStormX: { value: 54 },
-      uQuality: { value: width < 720 ? 0.58 : 1 },
+      uQuality: { value: compactViewport ? 0.58 : 1 },
       uNight: { value: nightMode ? 1 : 0 },
     }),
-    [nightMode, width],
+    [compactViewport, nightMode],
   );
 
   useFrame(({ clock }) => {

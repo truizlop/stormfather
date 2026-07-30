@@ -3,6 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
+import { isCompactViewport } from "../compactViewport";
 import {
   createStormCloudLobes,
   stormWallOpacity,
@@ -179,8 +180,9 @@ function StormParticleLayer({
 }
 
 function StormParticleWall() {
-  const width = useThree((state) => state.size.width);
-  const mobile = width < 720;
+  const mobile = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
 
   return (
     <group>
@@ -535,8 +537,9 @@ function StormCloudLobes({
 }
 
 function StormCloudVolume() {
-  const width = useThree((state) => state.size.width);
-  const mobile = width < 720;
+  const mobile = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
 
   return (
     <group name="Opaque highstorm cloud volume">
