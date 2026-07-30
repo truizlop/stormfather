@@ -1,5 +1,6 @@
 import { locationById } from "../locations";
 import { landmarkSurfaceY } from "../terrain/localSurface";
+import type { DetailLevel } from "../types";
 import { footprintContactAt } from "./districtLayout";
 import { cityProfile, type CityProfile } from "./profiles";
 
@@ -23,11 +24,328 @@ export interface CityLodState {
   weights: CityLodWeights;
 }
 
+export interface CityLodRenderPolicy {
+  allowNear: boolean;
+  forceNear: boolean;
+  retainOutgoingNear: boolean;
+}
+
+export interface CityProximityCandidate {
+  locationId: string;
+  center: readonly [number, number, number];
+  nearDistance: number;
+  lensDistance: number;
+}
+
+export const CITY_LOD_HIDDEN_WEIGHT = 0.001;
+export const CITY_PROXIMITY_HANDOFF_HYSTERESIS = 0.8;
+
+export interface CityProximityOwnerOptions {
+  currentOwnerId?: string | null;
+  handoffHysteresis?: number;
+  /**
+   * MapControls' target (the point actually being viewed). Camera distance
+   * still gates near-detail eligibility; this focus point disambiguates dense,
+   * overlapping cities such as Kharbranth and Thaylen City.
+   */
+  focusPosition?: readonly [number, number, number];
+}
+
 export function effectiveCityLodDistance(
   cameraDistance: number,
   forceNear: boolean,
+  allowNear = true,
+  ownedNearActivationDistance?: number,
+  blockedNearFloorDistance?: number,
 ) {
-  return forceNear ? 0 : cameraDistance;
+  if (forceNear) return 0;
+  if (!allowNear) {
+    return blockedNearFloorDistance === undefined
+      ? Number.POSITIVE_INFINITY
+      : Math.max(cameraDistance, blockedNearFloorDistance);
+  }
+  return ownedNearActivationDistance === undefined
+    ? cameraDistance
+    : Math.min(cameraDistance, ownedNearActivationDistance);
+}
+
+/**
+ * Keep expensive authored content out of the React tree until its near tier is
+ * requested. Once mounted, retain it long enough for the outgoing crossfade to
+ * finish before releasing its cloned meshes and materials.
+ */
+export function cityNearDetailShouldMount(
+  state: CityLodState,
+  forceNear: boolean,
+  allowNear = true,
+  retainOutgoingNear = true,
+) {
+  if (forceNear) return true;
+  if (!allowNear && !retainOutgoingNear) return false;
+  return (
+    (allowNear && state.target === "near") ||
+    state.weights.near > CITY_LOD_HIDDEN_WEIGHT
+  );
+}
+
+export function cityProximityCandidate(
+  locationId: string,
+): CityProximityCandidate {
+  const silhouette = createCitySilhouette(locationId, "far");
+  const config = cityLodConfig(silhouette.profile);
+  return {
+    locationId,
+    center: silhouette.center,
+    nearDistance: config.nearDistance,
+    // The viewed point determines local ownership. A separate, wider lens
+    // envelope permits majestic exterior cameras (notably Urithiru) without
+    // letting an offscreen selected city remain active after the focus pans.
+    lensDistance: config.farDistance,
+  };
+}
+
+/**
+ * Overlapping near-distance spheres are common at continental scale. Elect one
+ * viewed owner so manual navigation cannot clone several authored scenes at
+ * once. List/search selection is intentionally not an input: it can force near
+ * detail only after this camera-derived owner confirms the city is in view.
+ */
+export function nearestCityProximityOwner(
+  cameraPosition: readonly [number, number, number],
+  candidates: readonly CityProximityCandidate[],
+  options: CityProximityOwnerOptions = {},
+) {
+  const {
+    currentOwnerId,
+    handoffHysteresis = CITY_PROXIMITY_HANDOFF_HYSTERESIS,
+    focusPosition = cameraPosition,
+  } = options;
+
+  let nearestCandidate: CityProximityCandidate | undefined;
+  let nearestScore = Number.POSITIVE_INFINITY;
+  let currentCandidate: CityProximityCandidate | undefined;
+  let currentFocusDistance = Number.POSITIVE_INFINITY;
+  let currentScore = Number.POSITIVE_INFINITY;
+  const viewX = focusPosition[0] - cameraPosition[0];
+  const viewY = focusPosition[1] - cameraPosition[1];
+  const viewZ = focusPosition[2] - cameraPosition[2];
+  const viewLength = Math.hypot(viewX, viewY, viewZ);
+  const forwardX = viewLength > 0.0001 ? viewX / viewLength : 0;
+  const forwardY = viewLength > 0.0001 ? viewY / viewLength : 0;
+  const forwardZ = viewLength > 0.0001 ? viewZ / viewLength : 0;
+  for (const candidate of candidates) {
+    const cameraDistance = Math.hypot(
+      cameraPosition[0] - candidate.center[0],
+      cameraPosition[1] - candidate.center[1],
+      cameraPosition[2] - candidate.center[2],
+    );
+    const focusDistance = Math.hypot(
+      focusPosition[0] - candidate.center[0],
+      focusPosition[1] - candidate.center[1],
+      focusPosition[2] - candidate.center[2],
+    );
+    const centerFromFocusX = candidate.center[0] - focusPosition[0];
+    const centerFromFocusY = candidate.center[1] - focusPosition[1];
+    const centerFromFocusZ = candidate.center[2] - focusPosition[2];
+    const forwardDepth =
+      centerFromFocusX * forwardX +
+      centerFromFocusY * forwardY +
+      centerFromFocusZ * forwardZ;
+    // A focus on Kharbranth's harbor-side lower road is geographically
+    // nearer Thaylen's map anchor, but the city being inspected is several
+    // units farther along the sightline while Thaylen is behind the camera.
+    // Reward visible mass beyond the focus plane and penalize candidates
+    // behind it; center-targeted views keep their natural zero score.
+    const ownershipScore =
+      focusDistance -
+      Math.max(0, Math.min(focusDistance, forwardDepth)) * 0.78 +
+      Math.max(0, -forwardDepth) * 1.6;
+    if (candidate.locationId === currentOwnerId) {
+      currentCandidate = candidate;
+      currentFocusDistance = focusDistance;
+      currentScore = ownershipScore;
+    }
+    // Both the lens and the viewed point must be local. This keeps a nearby
+    // city from mounting behind the camera and makes proximity clear as soon
+    // as the user pans back to a regional view.
+    if (
+      cameraDistance > candidate.lensDistance ||
+      focusDistance > candidate.nearDistance
+    ) {
+      continue;
+    }
+    if (
+      !nearestCandidate ||
+      ownershipScore < nearestScore ||
+      (ownershipScore === nearestScore &&
+        candidate.locationId < nearestCandidate.locationId)
+    ) {
+      nearestCandidate = candidate;
+      nearestScore = ownershipScore;
+    }
+  }
+
+  if (
+    currentCandidate &&
+    Math.hypot(
+      cameraPosition[0] - currentCandidate.center[0],
+      cameraPosition[1] - currentCandidate.center[1],
+      cameraPosition[2] - currentCandidate.center[2],
+    ) <= currentCandidate.lensDistance + handoffHysteresis &&
+    currentFocusDistance <=
+      currentCandidate.nearDistance + handoffHysteresis
+  ) {
+    if (
+      nearestCandidate &&
+      nearestCandidate.locationId !== currentCandidate.locationId &&
+      nearestScore + handoffHysteresis < currentScore
+    ) {
+      return nearestCandidate.locationId;
+    }
+    return currentCandidate.locationId;
+  }
+
+  return nearestCandidate?.locationId ?? null;
+}
+
+export function nearestCityFocusOwner(
+  focusPosition: readonly [number, number, number],
+  candidates: readonly CityProximityCandidate[],
+) {
+  let nearest: CityProximityCandidate | undefined;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const distance = Math.hypot(
+      focusPosition[0] - candidate.center[0],
+      focusPosition[1] - candidate.center[1],
+      focusPosition[2] - candidate.center[2],
+    );
+    if (
+      distance > candidate.nearDistance ||
+      (nearest &&
+        (distance > nearestDistance ||
+          (distance === nearestDistance &&
+            candidate.locationId > nearest.locationId)))
+    ) {
+      continue;
+    }
+    nearest = candidate;
+    nearestDistance = distance;
+  }
+  return nearest?.locationId ?? null;
+}
+
+export function localCityPresenceId(
+  detailLevel: DetailLevel,
+  proximityLocationId: string | null,
+) {
+  return detailLevel === "city" || detailLevel === "street"
+    ? proximityLocationId
+    : null;
+}
+
+export function resolvedCityProximityOwner(
+  cameraOwnerId: string | null,
+  inspectionOwnerId: string | null,
+) {
+  return inspectionOwnerId ?? cameraOwnerId;
+}
+
+export function cityInspectionOwnerAtFocus(
+  inspectionOwnerId: string | null,
+  inspectionFocus: readonly [number, number, number] | null,
+  viewedFocus: readonly [number, number, number],
+  releaseDistance = 0.45,
+) {
+  if (!inspectionOwnerId || !inspectionFocus) return inspectionOwnerId;
+  return Math.hypot(
+    viewedFocus[0] - inspectionFocus[0],
+    viewedFocus[1] - inspectionFocus[1],
+    viewedFocus[2] - inspectionFocus[2],
+  ) <= releaseDistance
+    ? inspectionOwnerId
+    : null;
+}
+
+export function selectedCityShouldForceNear(
+  locationId: string,
+  selectedLocalLocationId: string | undefined,
+  proximityOwnerId: string | null,
+) {
+  return (
+    locationId === selectedLocalLocationId &&
+    locationId === proximityOwnerId
+  );
+}
+
+export function cityClusterLodPolicy(
+  locationId: string,
+  activeOwnerId: string | null,
+  selectedLocalLocationId: string | undefined,
+): CityLodRenderPolicy {
+  const forceNear = selectedCityShouldForceNear(
+    locationId,
+    selectedLocalLocationId,
+    activeOwnerId,
+  );
+  const explicitForceIsActive =
+    activeOwnerId !== null &&
+    activeOwnerId === selectedLocalLocationId;
+  return {
+    allowNear: locationId === activeOwnerId,
+    forceNear,
+    // A camera-driven owner change keeps the outgoing authored scene long
+    // enough to finish its alpha fade. Once an explicit list/search target is
+    // actually in view, it replaces the outgoing scene immediately.
+    retainOutgoingNear: !explicitForceIsActive,
+  };
+}
+
+export function updateCityNearLifecycle(
+  state: CityLodState,
+  cameraDistance: number,
+  deltaSeconds: number,
+  config: CityLodConfig,
+  policy: CityLodRenderPolicy,
+) {
+  updateCityLodState(
+    state,
+    effectiveCityLodDistance(
+      cameraDistance,
+      policy.forceNear,
+      policy.allowNear,
+      // Proximity ownership already confirms that both camera and viewed
+      // point are inside this city's two-part lens. Enter the authored tier
+      // from that signal even when a majestic exterior camera is wider than
+      // the raw center-distance cutoff.
+      policy.allowNear
+        ? config.nearDistance - config.hysteresis - 0.001
+        : undefined,
+      // Non-owners still need their real far→mid silhouette transition.
+      // Clamp only beyond the near exit boundary instead of sending the
+      // entire LOD state to Infinity, which used to jump directly far→near.
+      policy.allowNear
+        ? undefined
+        : config.nearDistance + config.hysteresis + 0.001,
+    ),
+    deltaSeconds,
+    config,
+  );
+  return cityNearDetailShouldMount(
+    state,
+    policy.forceNear,
+    policy.allowNear,
+    policy.retainOutgoingNear,
+  );
+}
+
+export function nearWorldSpaceOffset(
+  center: readonly [number, number, number],
+  enabled: boolean,
+) {
+  return enabled
+    ? ([-center[0], -center[1], -center[2]] as const)
+    : undefined;
 }
 
 export type CitySilhouetteStyle =

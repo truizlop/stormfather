@@ -1,12 +1,30 @@
 import { Html } from "@react-three/drei";
-import { easterEggs, locations } from "./locations";
+import {
+  easterEggs,
+  locationDisplayName,
+  locations,
+} from "./locations";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { localSurfaceY } from "./terrain/localSurface";
+import { gazetteerById } from "./gazetteer";
+import { localCityPresenceId } from "./cities/progressiveLod";
 
 export function WorldLabels() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const selectedId = useAtlasStore((state) => state.selectedId);
+  const selectedGazetteerId = useAtlasStore(
+    (state) => state.selectedGazetteerId,
+  );
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const showToast = useAtlasStore((state) => state.showToast);
+  const selectedGazetteer = selectedGazetteerId
+    ? gazetteerById.get(selectedGazetteerId)
+    : undefined;
+  const activeLocationId =
+    localCityPresenceId(detailLevel, proximityLocationId) ??
+    selectedId;
 
   return (
     <>
@@ -17,7 +35,8 @@ export function WorldLabels() {
             location.kind !== "nation" &&
             (detailLevel === "continent" ||
               detailLevel === "region" ||
-              (location.id === selectedId && detailLevel !== "street")),
+              (location.id === activeLocationId &&
+                detailLevel !== "street")),
         )
         .map((location) => (
           <Html
@@ -28,7 +47,7 @@ export function WorldLabels() {
                 location.id,
                 location.coordinates.x,
                 location.coordinates.z,
-              ) + (location.id === selectedId ? 2.25 : 0.9),
+              ) + (location.id === activeLocationId ? 2.25 : 0.9),
               location.coordinates.z,
             ]}
             center
@@ -38,10 +57,15 @@ export function WorldLabels() {
           >
             <div
               className={`world-label ${
-                location.id === selectedId ? "is-selected" : ""
+                location.id === activeLocationId ? "is-selected" : ""
               }`}
             >
-              {location.name}
+              {locationDisplayName(
+                location,
+                location.id === activeLocationId
+                  ? selectedGazetteer
+                  : undefined,
+              )}
             </div>
           </Html>
         ))}
@@ -52,7 +76,7 @@ export function WorldLabels() {
             position={[
               egg.coordinates.x,
               localSurfaceY(
-                selectedId,
+                activeLocationId,
                 egg.coordinates.x,
                 egg.coordinates.z,
               ) +

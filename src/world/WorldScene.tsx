@@ -1,5 +1,6 @@
 import { Stars } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
+import { Suspense } from "react";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { CameraRig } from "./CameraRig";
 import { CityClusters } from "./CityClusters";
@@ -29,8 +30,14 @@ export function WorldScene() {
   const selectedGazetteerId = useAtlasStore(
     (state) => state.selectedGazetteerId,
   );
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const viewportWidth = useThree((state) => state.size.width);
   const selectedLocation = locationById.get(selectedId);
+  const proximityLocation = proximityLocationId
+    ? locationById.get(proximityLocationId)
+    : undefined;
   const selectedGazetteer = selectedGazetteerId
     ? gazetteerById.get(selectedGazetteerId)
     : undefined;
@@ -39,13 +46,18 @@ export function WorldScene() {
     : null;
   const focusWorld =
     detailLevel === "city" || detailLevel === "street"
-      ? selectedGazetteerWorld ??
-        (selectedLocation
+      ? proximityLocation
           ? ([
-              selectedLocation.coordinates.x,
-              selectedLocation.coordinates.z,
+              proximityLocation.coordinates.x,
+              proximityLocation.coordinates.z,
             ] as const)
-          : undefined)
+          : selectedGazetteerWorld ??
+            (selectedLocation
+              ? ([
+                  selectedLocation.coordinates.x,
+                  selectedLocation.coordinates.z,
+                ] as const)
+              : undefined)
       : undefined;
 
   return (
@@ -102,10 +114,19 @@ export function WorldScene() {
       <SettlementLights />
       <WorldTraffic />
       <ReactiveFlora />
-      <CityActivities />
-      <LivingPopulation />
+      {/* These camera-owned layers share the large authored landmark kit.
+          Keep their cold-load suspension local so terrain, city proxies, and
+          CityClusters' non-null fallback remain visible during an approach. */}
+      <Suspense fallback={null}>
+        <CityActivities />
+      </Suspense>
+      <Suspense fallback={null}>
+        <LivingPopulation />
+      </Suspense>
       <WindrunnerPatrols />
-      <RosharEcology />
+      <Suspense fallback={null}>
+        <RosharEcology />
+      </Suspense>
       <Highstorm />
       <WorldLabels />
       <SimulationClock />

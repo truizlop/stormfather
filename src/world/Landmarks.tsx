@@ -1,5 +1,5 @@
 import { useGLTF, useTexture } from "@react-three/drei";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { locations } from "./locations";
 import { useAtlasStore } from "../store/useAtlasStore";
@@ -41,6 +41,10 @@ function kharbranthMaterialTint(materialName: string) {
   return kharbranthMaterialTints.find(([token]) =>
     normalized.includes(token),
   )?.[1];
+}
+
+function disposeOwnedMaterials(materials: Iterable<THREE.Material>) {
+  for (const material of materials) material.dispose();
 }
 
 function LandmarkInstance({
@@ -95,10 +99,20 @@ function LandmarkInstance({
       plasterSource,
       stormwoodMicroSource,
     ]);
-  const clone = useMemo(() => {
+  useEffect(
+    () => () => {
+      plaster.dispose();
+      kharbranthFacade.dispose();
+      masonryMicro.dispose();
+      stormwoodMicro.dispose();
+    },
+    [kharbranthFacade, masonryMicro, plaster, stormwoodMicro],
+  );
+  const ownedClone = useMemo(() => {
     const source = scene.getObjectByName(rootName);
     if (!source) return null;
     const copy = source.clone(true);
+    const materials = new Set<THREE.Material>();
     copy.position.set(0, 0, 0);
     copy.rotation.set(0, 0, 0);
     for (const child of copy.children) {
@@ -127,6 +141,8 @@ function LandmarkInstance({
         object.name === "Urithiru_MountainCut_CeremonialApron" ||
         object.name.startsWith("Urithiru_MountainCut_RetainingWing_") ||
         object.name === "Urithiru_LowerRetainingButtressBatch" ||
+        object.name === "Kharbranth_Cliff_Wall_East" ||
+        object.name === "Kharbranth_Cliff_Wall_West" ||
         object.name.startsWith("Kharbranth_Mountain_")
       ) {
         object.visible = false;
@@ -139,6 +155,7 @@ function LandmarkInstance({
           : [mesh.material];
         const texturedMaterials = sourceMaterials.map((sourceMaterial) => {
           const material = sourceMaterial.clone() as THREE.MeshStandardMaterial;
+          materials.add(material);
           const lowerName = `${object.name} ${material.name}`.toLowerCase();
           if (rootName === "Landmark_Kharbranth") {
             const tint = kharbranthMaterialTint(material.name);
@@ -257,7 +274,7 @@ function LandmarkInstance({
           : texturedMaterials[0];
       }
     });
-    return copy;
+    return { materials, object: copy };
   }, [
     kharbranthFacade,
     harborWaterShift,
@@ -268,6 +285,13 @@ function LandmarkInstance({
     scene,
     stormwoodMicro,
   ]);
+  const clone = ownedClone?.object ?? null;
+  useEffect(
+    () => () => {
+      if (ownedClone) disposeOwnedMaterials(ownedClone.materials);
+    },
+    [ownedClone],
+  );
 
   if (!clone) return null;
 
@@ -278,11 +302,20 @@ function LandmarkInstance({
   );
 }
 
-export function Landmarks() {
+export function Landmarks({
+  locationId,
+}: {
+  locationId?: string;
+} = {}) {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
-  const selectedId = useAtlasStore((state) => state.selectedId);
+  const activeLocationId = useAtlasStore(
+    (state) => locationId ?? state.selectedId,
+  );
   if (detailLevel === "continent" || detailLevel === "region") return null;
-  if (detailLevel === "street" && selectedId === "shattered-plains") {
+  if (
+    detailLevel === "street" &&
+    activeLocationId === "shattered-plains"
+  ) {
     return null;
   }
 
@@ -291,7 +324,7 @@ export function Landmarks() {
       {locations
         .filter(
           (location) =>
-            location.modelRoot && location.id === selectedId,
+            location.modelRoot && location.id === activeLocationId,
         )
         .map((location) => {
           const elevation = landmarkSurfaceY(

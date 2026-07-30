@@ -25,7 +25,9 @@ function zoomTo(level: DetailLevel) {
     street: 0.38,
   };
   window.dispatchEvent(
-    new CustomEvent("atlas:zoom", { detail: { factor: factor[level] } }),
+    new CustomEvent("atlas:zoom", {
+      detail: { factor: factor[level], level },
+    }),
   );
 }
 

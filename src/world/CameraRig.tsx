@@ -1,17 +1,43 @@
 import { MapControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
 import type { MapControls as MapControlsImpl } from "three-stdlib";
 import { useAtlasStore } from "../store/useAtlasStore";
-import { gazetteerArrivalOffset } from "./cameraArrival";
-import { kharbranthRoadOffset } from "./cities/landmarkMetrics";
+import {
+  atlasCameraFov,
+  drainQueuedZoomRequests,
+  enqueueZoomRequest,
+  fittedModeledArrivalDetailOwner,
+  fittedModeledArrivalPose,
+  gazetteerArrivalOffset,
+  isMobileWorldOverview,
+  type ModeledArrivalPose,
+  type QueuedZoomRequest,
+} from "./cameraArrival";
+import {
+  collisionSafeZoomPose,
+  usesKharbranthStreetInspectionPose,
+} from "./cameraSafety";
+import {
+  cityProximityCandidate,
+  nearestCityFocusOwner,
+  nearestCityProximityOwner,
+} from "./cities/progressiveLod";
 import { detailFromDistance } from "./coordinates";
 import { gazetteerById, gazetteerMarkerWorld } from "./gazetteer";
-import { locationById } from "./locations";
-import { localSurfaceY } from "./terrain/localSurface";
+import {
+  locationById,
+  locations,
+  modeledLocationForGazetteer,
+} from "./locations";
 import { terrainHeightAt } from "./terrain/terrainHeight";
+import type { DetailLevel } from "./types";
 import { stormXAtTime } from "./weather/storm";
+
+const modeledCameraCandidates = locations
+  .filter((location) => location.modelRoot)
+  .map((location) => cityProximityCandidate(location.id));
 
 function updatePerspectiveFov(camera: THREE.Camera, fov: number) {
   if (!(camera instanceof THREE.PerspectiveCamera)) return;
@@ -22,12 +48,20 @@ function updatePerspectiveFov(camera: THREE.Camera, fov: number) {
 export function CameraRig() {
   const camera = useThree((state) => state.camera);
   const viewportWidth = useThree((state) => state.size.width);
+  const viewportHeight = useThree((state) => state.size.height);
   const controls = useRef<MapControlsImpl>(null);
   const transition = useRef({
     progress: 1,
     startPosition: new THREE.Vector3(),
     startTarget: new THREE.Vector3(),
   });
+  const queuedZoomRequests = useRef<QueuedZoomRequest[]>([]);
+  const fittedMobileArrival = useRef(false);
+  const fittedArrivalPoseCache = useRef<{
+    key: string;
+    pose: ModeledArrivalPose | null;
+  } | null>(null);
+  const nativeGestureStartDistance = useRef<number | null>(null);
   const selectedId = useAtlasStore((state) => state.selectedId);
   const selectedGazetteerId = useAtlasStore(
     (state) => state.selectedGazetteerId,
@@ -35,55 +69,112 @@ export function CameraRig() {
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const travelEpoch = useAtlasStore((state) => state.travelEpoch);
   const stormMode = useAtlasStore((state) => state.stormMode);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
+  const mobileWorldOverview = isMobileWorldOverview(
+    viewportWidth,
+    selectedId,
+    selectedGazetteerId,
+    detailLevel,
+    proximityLocationId,
+  );
+  const cameraFov = atlasCameraFov(
+    viewportWidth,
+    mobileWorldOverview,
+  );
 
   useEffect(() => {
-    updatePerspectiveFov(
-      camera,
-      viewportWidth < 720 && selectedId === "roshar" ? 72 : 42,
-    );
-  }, [camera, selectedId, viewportWidth]);
+    updatePerspectiveFov(camera, cameraFov);
+  }, [camera, cameraFov]);
 
   useEffect(() => {
+    // A later destination supersedes every zoom request made during the
+    // previous trip. In particular, a queued Street click must never apply
+    // after the user immediately chooses Urithiru, Home, or Highstorm.
+    queuedZoomRequests.current = [];
     if (!controls.current || stormMode) return;
+    window.dispatchEvent(new Event("atlas:end-inspection"));
+    fittedMobileArrival.current = false;
     transition.current.startPosition.copy(camera.position);
     transition.current.startTarget.copy(controls.current.target);
     transition.current.progress = 0;
   }, [camera, stormMode, travelEpoch]);
 
-  useEffect(() => {
-    const handleZoom = (event: Event) => {
+  const applyZoomRequest = useCallback(
+    ({ factor, level }: QueuedZoomRequest) => {
       const control = controls.current;
       if (!control) return;
-      const factor = (event as CustomEvent<{ factor: number }>).detail.factor;
-      // Direct zoom input takes ownership from any still-running travel tween.
-      transition.current.progress = 1;
-      const selected = useAtlasStore.getState().selectedId;
-      const selectedLocation = locationById.get(selected);
-      if (
-        selectedLocation?.id === "kharbranth" &&
-        factor <= 0.5
-      ) {
-        control.minDistance = 0.25;
-        const lowerRoadZ =
-          selectedLocation.coordinates.z + kharbranthRoadOffset(0);
-        const streetY = localSurfaceY(
-          selectedLocation.id,
-          selectedLocation.coordinates.x,
-          lowerRoadZ,
+      fittedMobileArrival.current = false;
+      const store = useAtlasStore.getState();
+      const cameraPoint = [
+        camera.position.x,
+        camera.position.y,
+        camera.position.z,
+      ] as const;
+      const focusPoint = [
+        control.target.x,
+        control.target.y,
+        control.target.z,
+      ] as const;
+      // The viewed scene owns zoom. An exact search remains inspector state,
+      // but once the user pans elsewhere it must not pull the camera back to
+      // the stale place or apply that city's collision envelope.
+      const viewedLocationId =
+        nearestCityProximityOwner(
+          cameraPoint,
+          modeledCameraCandidates,
+          {
+            currentOwnerId: store.proximityLocationId,
+            focusPosition: focusPoint,
+          },
+        ) ??
+        nearestCityFocusOwner(focusPoint, modeledCameraCandidates);
+      const localLocation = locationById.get(
+        viewedLocationId ??
+          store.proximityLocationId ??
+          store.selectedId,
+      );
+      if (localLocation?.modelRoot) {
+        const safeRequest = {
+          location: localLocation,
+          position: [camera.position.x, camera.position.y, camera.position.z],
+          target: [control.target.x, control.target.y, control.target.z],
+          factor,
+          requestedLevel: level,
+        } as const;
+        const streetInspection =
+          usesKharbranthStreetInspectionPose(safeRequest);
+        const pose = collisionSafeZoomPose(safeRequest);
+        const poseDistance = Math.hypot(
+          pose.position[0] - pose.target[0],
+          pose.position[1] - pose.target[1],
+          pose.position[2] - pose.target[2],
         );
-        camera.position.set(
-          selectedLocation.coordinates.x - 0.55,
-          streetY + 0.46,
-          lowerRoadZ + 1.95,
-        );
-        control.target.set(
-          selectedLocation.coordinates.x,
-          streetY + 0.09,
-          lowerRoadZ + 1.1,
-        );
+        control.minDistance =
+          localLocation.id === "kharbranth" && poseDistance < 5.8
+            ? 0.25
+            : 5.8;
+        camera.position.set(...pose.position);
+        control.target.set(...pose.target);
         control.update();
+        window.dispatchEvent(
+          streetInspection
+            ? new CustomEvent("atlas:inspect-residents", {
+                detail: {
+                  locationId: localLocation.id,
+                  focus: pose.target,
+                },
+              })
+            : new Event(
+                level === "city"
+                  ? "atlas:inspect-city"
+                  : "atlas:end-inspection",
+              ),
+        );
         return;
       }
+      window.dispatchEvent(new Event("atlas:end-inspection"));
       const offset = camera.position.clone().sub(control.target);
       const distance = THREE.MathUtils.clamp(
         offset.length() * factor,
@@ -93,12 +184,32 @@ export function CameraRig() {
       offset.setLength(distance);
       camera.position.copy(control.target).add(offset);
       control.update();
+    },
+    [camera],
+  );
+
+  useEffect(() => {
+    const handleZoom = (event: Event) => {
+      const request = (
+        event as CustomEvent<{
+          factor: number;
+          level?: DetailLevel;
+        }>
+      ).detail;
+      if (transition.current.progress < 1) {
+        queuedZoomRequests.current = enqueueZoomRequest(
+          queuedZoomRequests.current,
+          request,
+        );
+        return;
+      }
+      applyZoomRequest(request);
     };
     window.addEventListener("atlas:zoom", handleZoom);
     return () => {
       window.removeEventListener("atlas:zoom", handleZoom);
     };
-  }, [camera]);
+  }, [applyZoomRequest]);
 
   useFrame((_, delta) => {
     const control = controls.current;
@@ -123,6 +234,11 @@ export function CameraRig() {
     const gazetteerPlace = selectedGazetteerId
       ? gazetteerById.get(selectedGazetteerId)
       : undefined;
+    const modeledGazetteerLocation = gazetteerPlace
+      ? modeledLocationForGazetteer(gazetteerPlace)
+      : undefined;
+    const modeledArrivalLocation =
+      modeledGazetteerLocation ?? (location?.modelRoot ? location : undefined);
     const gazetteerWorld = gazetteerPlace
       ? gazetteerMarkerWorld(gazetteerPlace)
       : null;
@@ -139,24 +255,59 @@ export function CameraRig() {
         : 0;
       let destination = new THREE.Vector3(...location!.camera.position);
       let target = new THREE.Vector3(...location!.camera.target);
+      let usesFittedMobileArrival = false;
       if (gazetteerWorld && gazetteerPlace) {
-        const isStreetPlace = gazetteerPlace.minimumLod === "street";
-        const offset = gazetteerArrivalOffset(
-          gazetteerPlace,
-          viewportWidth < 720,
-        );
-        destination = new THREE.Vector3(
-          gazetteerWorld[0] + offset[0],
-          targetY + offset[1],
-          gazetteerWorld[1] + offset[2],
-        );
-        target = new THREE.Vector3(
-          gazetteerWorld[0],
-          targetY + (isStreetPlace ? 1.1 : 0.3),
-          gazetteerWorld[1],
-        );
+        if (modeledGazetteerLocation) {
+          destination = new THREE.Vector3(
+            ...modeledGazetteerLocation.camera.position,
+          );
+          target = new THREE.Vector3(
+            ...modeledGazetteerLocation.camera.target,
+          );
+        } else {
+          const isStreetPlace = gazetteerPlace.minimumLod === "street";
+          const offset = gazetteerArrivalOffset(
+            gazetteerPlace,
+            viewportWidth < 720,
+          );
+          destination = new THREE.Vector3(
+            gazetteerWorld[0] + offset[0],
+            targetY + offset[1],
+            gazetteerWorld[1] + offset[2],
+          );
+          target = new THREE.Vector3(
+            gazetteerWorld[0],
+            targetY + (isStreetPlace ? 1.1 : 0.3),
+            gazetteerWorld[1],
+          );
+        }
       }
-      if (viewportWidth < 720 && location?.id === "roshar") {
+      if (viewportWidth < 720 && modeledArrivalLocation) {
+        const cacheKey = [
+          modeledArrivalLocation.id,
+          viewportWidth,
+          viewportHeight,
+          cameraFov,
+        ].join(":");
+        if (fittedArrivalPoseCache.current?.key !== cacheKey) {
+          fittedArrivalPoseCache.current = {
+            key: cacheKey,
+            pose: fittedModeledArrivalPose(
+              modeledArrivalLocation,
+              viewportWidth,
+              viewportHeight,
+              cameraFov,
+            ),
+          };
+        }
+        const fittedPose = fittedArrivalPoseCache.current.pose;
+        if (fittedPose) {
+          destination.set(...fittedPose.position);
+          target.set(...fittedPose.target);
+          usesFittedMobileArrival = true;
+        }
+      }
+      if (mobileWorldOverview) {
         destination.set(target.x, target.y + 174, target.z + 48);
       }
       camera.position.lerpVectors(
@@ -170,10 +321,35 @@ export function CameraRig() {
         eased,
       );
       control.update();
+      if (transition.current.progress === 1) {
+        fittedMobileArrival.current = usesFittedMobileArrival;
+      }
+      const queued = drainQueuedZoomRequests(
+        transition.current.progress,
+        queuedZoomRequests.current,
+      );
+      queuedZoomRequests.current = queued.pending;
+      for (const request of queued.ready) applyZoomRequest(request);
     }
 
     const distance = camera.position.distanceTo(control.target);
-    const detail = detailFromDistance(distance);
+    const distanceDetail = detailFromDistance(distance);
+    const fittedDetailOwner =
+      viewportWidth < 720 &&
+      fittedMobileArrival.current &&
+      modeledArrivalLocation &&
+      distanceDetail !== "city" &&
+      distanceDetail !== "street"
+        ? fittedModeledArrivalDetailOwner(
+            modeledArrivalLocation,
+            {
+              position: [camera.position.x, camera.position.y, camera.position.z],
+              target: [control.target.x, control.target.y, control.target.z],
+            },
+            modeledCameraCandidates,
+          )
+        : null;
+    const detail = fittedDetailOwner ? "city" : distanceDetail;
     if (store.detailLevel !== detail) store.setDetailLevel(detail);
   });
 
@@ -181,10 +357,39 @@ export function CameraRig() {
     <MapControls
       ref={controls}
       makeDefault
+      onStart={() => {
+        const control = controls.current;
+        nativeGestureStartDistance.current = control
+          ? camera.position.distanceTo(control.target)
+          : null;
+      }}
+      onEnd={() => {
+        const control = controls.current;
+        const startDistance = nativeGestureStartDistance.current;
+        nativeGestureStartDistance.current = null;
+        if (
+          !control ||
+          !fittedMobileArrival.current ||
+          startDistance === null
+        ) {
+          return;
+        }
+        const endDistance = camera.position.distanceTo(control.target);
+        // Rotating and panning a portrait arrival must keep its authored city
+        // alive. Only a real dolly/pinch releases the fitted semantic tier so
+        // an intentional zoom-out can return naturally to region/continent.
+        const dollyDelta = Math.abs(endDistance - startDistance);
+        if (dollyDelta > Math.max(0.02, startDistance * 0.005)) {
+          fittedMobileArrival.current = false;
+        }
+      }}
       enableDamping
       dampingFactor={0.075}
       minDistance={
-        selectedId === "kharbranth" && detailLevel === "street" ? 0.25 : 5.8
+        (proximityLocationId ?? selectedId) === "kharbranth" &&
+        detailLevel === "street"
+          ? 0.25
+          : 5.8
       }
       maxDistance={viewportWidth < 720 ? 230 : 165}
       minPolarAngle={0.22}

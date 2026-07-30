@@ -5,6 +5,12 @@ import { gazetteerById } from "../world/gazetteer/catalog";
 interface AtlasState {
   selectedId: string;
   selectedGazetteerId: string | null;
+  /**
+   * The authored city currently under the camera's local-detail focus. Unlike
+   * selectedId this is observational state: publishing it must never start a
+   * camera trip or replace an exact gazetteer selection.
+   */
+  proximityLocationId: string | null;
   travelEpoch: number;
   simulationTime: number;
   isPlaying: boolean;
@@ -19,6 +25,7 @@ interface AtlasState {
   selectLocation: (id: string) => void;
   focusGazetteerPlace: (id: string) => void;
   recenterSelection: () => void;
+  setProximityLocation: (id: string | null) => void;
   setSimulationTime: (time: number) => void;
   togglePlaying: () => void;
   setPlaying: (playing: boolean) => void;
@@ -36,6 +43,7 @@ interface AtlasState {
 export const useAtlasStore = create<AtlasState>((set) => ({
   selectedId: "roshar",
   selectedGazetteerId: null,
+  proximityLocationId: null,
   travelEpoch: 0,
   simulationTime: 12,
   isPlaying: true,
@@ -51,6 +59,7 @@ export const useAtlasStore = create<AtlasState>((set) => ({
     set((state) => ({
       selectedId: id,
       selectedGazetteerId: null,
+      proximityLocationId: null,
       travelEpoch: state.travelEpoch + 1,
       stormMode: id === "highstorm",
       menuOpen: false,
@@ -66,6 +75,7 @@ export const useAtlasStore = create<AtlasState>((set) => ({
         // is not force-rendered and simulated off-screen behind this search.
         selectedId: place?.parentLocationId ?? "roshar",
         selectedGazetteerId: id,
+        proximityLocationId: null,
         travelEpoch: state.travelEpoch + 1,
         stormMode: false,
         menuOpen: false,
@@ -85,6 +95,12 @@ export const useAtlasStore = create<AtlasState>((set) => ({
       searchOpen: false,
       locationPanelOpen: true,
     })),
+  setProximityLocation: (proximityLocationId) =>
+    set((state) =>
+      state.proximityLocationId === proximityLocationId
+        ? state
+        : { proximityLocationId },
+    ),
   setSimulationTime: (simulationTime) => set({ simulationTime }),
   togglePlaying: () => set((state) => ({ isPlaying: !state.isPlaying })),
   setPlaying: (isPlaying) => set({ isPlaying }),
@@ -94,6 +110,7 @@ export const useAtlasStore = create<AtlasState>((set) => ({
       stormMode,
       selectedId: stormMode ? "highstorm" : "shattered-plains",
       selectedGazetteerId: null,
+      proximityLocationId: null,
       travelEpoch: state.travelEpoch + 1,
     })),
   toggleNightMode: () => set((state) => ({ nightMode: !state.nightMode })),

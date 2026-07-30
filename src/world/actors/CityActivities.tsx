@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
+import { localCityPresenceId } from "../cities/progressiveLod";
 import { LOCAL_UNITS_PER_METER } from "../scale";
 import { localSurfaceY } from "../terrain/localSurface";
 import { settlementWaterY } from "../terrain/locationSurface";
@@ -240,14 +241,19 @@ function ChullCaravan({
 }
 
 export function CityActivities() {
-  const selectedId = useAtlasStore((state) => state.selectedId);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
-  const location = locationById.get(selectedId);
+  const activeLocationId = localCityPresenceId(
+    detailLevel,
+    proximityLocationId,
+  );
+  const location = activeLocationId
+    ? locationById.get(activeLocationId)
+    : undefined;
 
-  if (
-    !location ||
-    (detailLevel !== "city" && detailLevel !== "street")
-  ) {
+  if (!location || !activeLocationId) {
     return null;
   }
 
@@ -264,13 +270,19 @@ export function CityActivities() {
   ]);
   return (
     <group name={`${location.name} daily activities`}>
-      {selectedId === "shattered-plains" && <BridgeRun />}
-      {selectedId === "purelake" && <FishingActivity center={center} />}
-      {(selectedId === "kharbranth" || selectedId === "thaylen-city") && (
-        <HarborCargo center={center} locationId={selectedId} />
+      {activeLocationId === "shattered-plains" && <BridgeRun />}
+      {activeLocationId === "purelake" && (
+        <FishingActivity center={center} />
       )}
-      {caravanLocations.has(selectedId) && (
-        <ChullCaravan center={center} locationId={selectedId} />
+      {(activeLocationId === "kharbranth" ||
+        activeLocationId === "thaylen-city") && (
+        <HarborCargo center={center} locationId={activeLocationId} />
+      )}
+      {caravanLocations.has(activeLocationId) && (
+        <ChullCaravan
+          center={center}
+          locationId={activeLocationId}
+        />
       )}
     </group>
   );

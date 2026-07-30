@@ -17,6 +17,7 @@ import { detailedLocationSurface } from "../terrain/locationSurface";
 import type { Culture, DetailLevel, WorldLocation } from "../types";
 import { stormProximity, stormXAtTime } from "../weather/storm";
 import { createDistrictLayout } from "../cities/districtLayout";
+import { localCityPresenceId } from "../cities/progressiveLod";
 import {
   kharbranthRoadOffset,
   landmarkLocalScale,
@@ -125,6 +126,7 @@ function ArticulatedResidents({
     copy.needsUpdate = true;
     return copy;
   }, [clothSource]);
+  useEffect(() => () => clothTexture.dispose(), [clothTexture]);
   const dress = cultureDressProfiles[culture];
   const occupations = useMemo(
     () => occupationsFor(locationId, culture),
@@ -627,6 +629,7 @@ function refineKharbranthActorMesh(
     : [mesh.material];
   const materials = sourceMaterials.map((sourceMaterial) => {
     const material = sourceMaterial.clone() as THREE.MeshStandardMaterial;
+    material.userData.kharbranthResidentOwned = true;
     const materialName = material.name.toLowerCase();
     const meshName = mesh.name.toLowerCase();
     if (materialName.includes("skin_azish")) {
@@ -665,7 +668,7 @@ function useKharbranthClothSurface() {
   const clothSource = useTexture(
     `${import.meta.env.BASE_URL}textures/rosharan-cloth-realistic.jpg`,
   );
-  return useMemo(() => {
+  const texture = useMemo(() => {
     const texture = clothSource.clone();
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(5.5, 5.5);
@@ -674,13 +677,20 @@ function useKharbranthClothSurface() {
     texture.needsUpdate = true;
     return texture;
   }, [clothSource]);
+  useEffect(
+    () => () => {
+      if (texture !== clothSource) texture.dispose();
+    },
+    [clothSource, texture],
+  );
+  return texture;
 }
 
 function useKharbranthSkinSurface() {
   const skinSource = useTexture(
     `${import.meta.env.BASE_URL}textures/rosharan-skin-microdetail.png`,
   );
-  return useMemo(() => {
+  const texture = useMemo(() => {
     const texture = skinSource.clone();
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(8, 8);
@@ -689,6 +699,26 @@ function useKharbranthSkinSurface() {
     texture.needsUpdate = true;
     return texture;
   }, [skinSource]);
+  useEffect(
+    () => () => {
+      if (texture !== skinSource) texture.dispose();
+    },
+    [skinSource, texture],
+  );
+  return texture;
+}
+
+function disposeKharbranthActorMaterials(actor: THREE.Object3D | null) {
+  actor?.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    for (const material of materials) {
+      if (material.userData.kharbranthResidentOwned) material.dispose();
+    }
+  });
 }
 
 function KharbranthStreetCastMember({
@@ -718,8 +748,13 @@ function KharbranthStreetCastMember({
     });
     return copy;
   }, [clothSurface, rootName, scene, skinSurface]);
+  useEffect(
+    () => () => disposeKharbranthActorMaterials(actor),
+    [actor],
+  );
   const lowerRoadZ = center[1] + kharbranthRoadOffset(0);
   const baseY = localSurfaceY("kharbranth", center[0], lowerRoadZ);
+  const standingY = baseY + 0.04;
   const xOffset = [-0.22, 0, 0.22][index];
   const zOffset = [1.1, 1.105, 1.1][index];
 
@@ -727,7 +762,7 @@ function KharbranthStreetCastMember({
     if (!group.current) return;
     const elapsed = useAtlasStore.getState().simulationTime;
     const pace = Math.sin(elapsed * (1.4 + index * 0.07) + index * 1.31);
-    group.current.position.y = baseY + Math.abs(pace) * 0.0025;
+    group.current.position.y = standingY + Math.abs(pace) * 0.0025;
     group.current.rotation.z = pace * 0.012;
   });
 
@@ -735,7 +770,7 @@ function KharbranthStreetCastMember({
   return (
     <group
       ref={group}
-      position={[center[0] + xOffset, baseY, lowerRoadZ + zOffset]}
+      position={[center[0] + xOffset, standingY, lowerRoadZ + zOffset]}
       rotation-y={-0.08 + index * 0.055}
       scale={detailedActorLocalScale("alethi", index, 11)}
       name={`Kharbranth street role ${index + 1}`}
@@ -750,49 +785,233 @@ function KharbranthStreetCast({
 }: {
   center: readonly [number, number];
 }) {
+  const [plasterSource, stoneSource] = useTexture([
+    `${import.meta.env.BASE_URL}textures/kharbranth-plaster-realistic.jpg`,
+    `${import.meta.env.BASE_URL}textures/kharbranth-stone-realistic.jpg`,
+  ]);
+  const [plaster, stone] = useMemo(
+    () =>
+      [plasterSource, stoneSource].map((source, index) => {
+        const texture = source.clone();
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(index === 0 ? 2.2 : 3.4, index === 0 ? 1.5 : 2.2);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 8;
+        texture.needsUpdate = true;
+        return texture;
+      }) as [THREE.Texture, THREE.Texture],
+    [plasterSource, stoneSource],
+  );
+  useEffect(
+    () => () => {
+      plaster.dispose();
+      stone.dispose();
+    },
+    [plaster, stone],
+  );
   const lowerRoadZ = center[1] + kharbranthRoadOffset(0);
   const baseY = localSurfaceY("kharbranth", center[0], lowerRoadZ);
   return (
     <group name="Kharbranth close inspection cast">
       <mesh
-        name="Kharbranth portrait cyclorama"
-        position={[center[0], baseY + 0.155, lowerRoadZ + 1.015]}
+        name="Kharbranth lower-market retaining wall"
+        position={[center[0], baseY + 0.155, lowerRoadZ + 0.96]}
         receiveShadow
-        renderOrder={-1}
+        castShadow
       >
-        <boxGeometry args={[0.92, 0.38, 0.025]} />
+        <boxGeometry args={[1.38, 0.34, 0.18]} />
         <meshStandardMaterial
-          color="#202629"
-          roughness={0.86}
+          map={plaster}
+          color="#918576"
+          roughness={0.94}
           metalness={0}
         />
       </mesh>
+      <mesh
+        name="Kharbranth market wall footing"
+        position={[center[0], baseY + 0.005, lowerRoadZ + 1.02]}
+        receiveShadow
+        castShadow
+      >
+        <boxGeometry args={[1.48, 0.1, 0.28]} />
+        <meshStandardMaterial
+          map={stone}
+          color="#686966"
+          roughness={0.97}
+          metalness={0.01}
+        />
+      </mesh>
+      {[-0.62, 0.62].map((xOffset) => (
+        <mesh
+          key={`market-buttress-${xOffset}`}
+          name="Kharbranth market wall storm buttress"
+          position={[
+            center[0] + xOffset,
+            baseY + 0.17,
+            lowerRoadZ + 1.08,
+          ]}
+          receiveShadow
+          castShadow
+        >
+          <boxGeometry args={[0.12, 0.36, 0.22]} />
+          <meshStandardMaterial
+            map={stone}
+            color="#6e706d"
+            roughness={0.96}
+            metalness={0.01}
+          />
+        </mesh>
+      ))}
+      <mesh
+        name="Kharbranth market wall cornice"
+        position={[center[0], baseY + 0.32, lowerRoadZ + 1.08]}
+        receiveShadow
+        castShadow
+      >
+        <boxGeometry args={[1.48, 0.065, 0.24]} />
+        <meshStandardMaterial
+          map={stone}
+          color="#74736d"
+          roughness={0.94}
+          metalness={0.015}
+        />
+      </mesh>
+      {[-0.4, 0.4].map((xOffset) => (
+        <mesh
+          key={`market-shutter-${xOffset}`}
+          name="Kharbranth stormwood market shutter"
+          position={[
+            center[0] + xOffset,
+            baseY + 0.19,
+            lowerRoadZ + 1.058,
+          ]}
+          receiveShadow
+          castShadow
+        >
+          <boxGeometry args={[0.2, 0.16, 0.035]} />
+          <meshStandardMaterial
+            color="#4f3728"
+            roughness={0.88}
+            metalness={0.015}
+          />
+        </mesh>
+      ))}
       <pointLight
-        position={[center[0] - 0.34, baseY + 0.38, lowerRoadZ + 1.42]}
+        position={[center[0] - 0.34, baseY + 0.29, lowerRoadZ + 1.38]}
         color="#ffd4aa"
         intensity={0.78}
         distance={1.8}
         decay={2}
       />
       <pointLight
-        position={[center[0] + 0.34, baseY + 0.3, lowerRoadZ + 1.22]}
+        position={[center[0] + 0.34, baseY + 0.25, lowerRoadZ + 1.22]}
         color="#8fc8d0"
         intensity={0.42}
         distance={1.6}
         decay={2}
       />
       <mesh
-        name="Kharbranth lower quay inspection promenade"
-        position={[center[0], baseY - 0.018, lowerRoadZ + 1.17]}
+        name="Kharbranth lower quay market foundation"
+        position={[center[0], baseY - 0.09, lowerRoadZ + 1.28]}
         receiveShadow
+        castShadow
       >
-        <boxGeometry args={[0.92, 0.035, 0.32]} />
+        <boxGeometry args={[1.42, 0.2, 0.62]} />
         <meshStandardMaterial
-          color="#373c3c"
-          roughness={0.93}
-          metalness={0.015}
+          map={stone}
+          color="#626765"
+          roughness={0.97}
+          metalness={0.01}
         />
       </mesh>
+      <mesh
+        name="Kharbranth lower quay inspection promenade"
+        position={[center[0], baseY + 0.018, lowerRoadZ + 1.28]}
+        receiveShadow
+      >
+        <boxGeometry args={[1.36, 0.035, 0.58]} />
+        <meshStandardMaterial
+          map={stone}
+          color="#777a75"
+          roughness={0.95}
+          metalness={0.01}
+        />
+      </mesh>
+      <mesh
+        name="Kharbranth market awning"
+        position={[center[0], baseY + 0.38, lowerRoadZ + 1.13]}
+        rotation-x={-0.08}
+        receiveShadow
+        castShadow
+      >
+        <boxGeometry args={[1.04, 0.015, 0.18]} />
+        <meshStandardMaterial
+          color="#7d4b42"
+          roughness={0.9}
+          metalness={0}
+        />
+      </mesh>
+      {[-0.56, 0.56].map((xOffset) => (
+        <mesh
+          key={`awning-post-${xOffset}`}
+          name="Kharbranth market awning post"
+          position={[
+            center[0] + xOffset,
+            baseY + 0.19,
+            lowerRoadZ + 1.2,
+          ]}
+          castShadow
+        >
+          <cylinderGeometry args={[0.014, 0.019, 0.38, 8]} />
+          <meshStandardMaterial
+            color="#4c3528"
+            roughness={0.87}
+            metalness={0.02}
+          />
+        </mesh>
+      ))}
+      <mesh
+        name="Kharbranth quay parapet"
+        position={[center[0], baseY + 0.022, lowerRoadZ + 1.57]}
+        receiveShadow
+        castShadow
+      >
+        <boxGeometry args={[1.42, 0.055, 0.08]} />
+        <meshStandardMaterial
+          map={stone}
+          color="#666b69"
+          roughness={0.96}
+          metalness={0.01}
+        />
+      </mesh>
+      {[-0.48, 0.48].map((xOffset, index) => (
+        <group
+          key={`market-cargo-${xOffset}`}
+          position={[
+            center[0] + xOffset,
+            baseY + 0.075,
+            lowerRoadZ + 1.25 + index * 0.06,
+          ]}
+          rotation-y={index === 0 ? 0.16 : -0.13}
+        >
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[0.15, 0.075, 0.14]} />
+            <meshStandardMaterial
+              color={index === 0 ? "#59412f" : "#7a6244"}
+              roughness={0.9}
+              metalness={0.01}
+            />
+          </mesh>
+          <mesh position={[0, 0.048, 0]} castShadow>
+            <torusGeometry args={[0.038, 0.008, 8, 16]} />
+            <meshStandardMaterial
+              color="#a17a43"
+              roughness={0.68}
+              metalness={0.48}
+            />
+          </mesh>
+        </group>
+      ))}
       {kharbranthDetailedActorRoots.slice(0, 3).map((rootName, index) => (
         <KharbranthStreetCastMember
           key={rootName}
@@ -820,21 +1039,24 @@ function detailedActorRootName(
 
 function DetailedResident({
   center,
+  clothSurface,
   culture,
   index,
   locationId,
   navigation,
+  skinSurface,
 }: {
   center: readonly [number, number];
+  clothSurface?: THREE.Texture;
   culture: Culture;
   index: number;
   locationId: string;
   navigation: NavigationField;
+  skinSurface?: THREE.Texture;
 }) {
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF(MODEL_URL);
-  const clothSurface = useKharbranthClothSurface();
-  const skinSurface = useKharbranthSkinSurface();
+  const kharbranthResident = locationId === "kharbranth";
   const resident = useMemo(() => {
     const source = scene.getObjectByName(
       detailedActorRootName(culture, locationId, index),
@@ -846,7 +1068,7 @@ function DetailedResident({
     copy.traverse((object) => {
       const mesh = object as THREE.Mesh;
       if (mesh.isMesh) {
-        if (locationId === "kharbranth") {
+        if (kharbranthResident && clothSurface && skinSurface) {
           refineKharbranthActorMesh(mesh, clothSurface, skinSurface);
         } else {
           mesh.castShadow = true;
@@ -855,7 +1077,23 @@ function DetailedResident({
       }
     });
     return copy;
-  }, [clothSurface, culture, index, locationId, scene, skinSurface]);
+  }, [
+    clothSurface,
+    culture,
+    index,
+    kharbranthResident,
+    locationId,
+    scene,
+    skinSurface,
+  ]);
+  useEffect(
+    () => () => {
+      if (kharbranthResident) {
+        disposeKharbranthActorMaterials(resident);
+      }
+    },
+    [kharbranthResident, resident],
+  );
 
   useFrame(() => {
     if (!group.current) return;
@@ -901,6 +1139,23 @@ function DetailedResident({
   );
 }
 
+function KharbranthDetailedResident(
+  props: Omit<
+    Parameters<typeof DetailedResident>[0],
+    "clothSurface" | "skinSurface"
+  >,
+) {
+  const clothSurface = useKharbranthClothSurface();
+  const skinSurface = useKharbranthSkinSurface();
+  return (
+    <DetailedResident
+      {...props}
+      clothSurface={clothSurface}
+      skinSurface={skinSurface}
+    />
+  );
+}
+
 function DetailedResidents({
   center,
   culture,
@@ -916,16 +1171,20 @@ function DetailedResidents({
 }) {
   return (
     <group name={`${culture} close-detail residents`}>
-      {Array.from({ length: count }, (_, index) => (
-        <DetailedResident
-          key={index}
-          center={center}
-          culture={culture}
-          index={index}
-          locationId={locationId}
-          navigation={navigation}
-        />
-      ))}
+      {Array.from({ length: count }, (_, index) => {
+        const props = {
+          center,
+          culture,
+          index,
+          locationId,
+          navigation,
+        };
+        return locationId === "kharbranth" ? (
+          <KharbranthDetailedResident key={index} {...props} />
+        ) : (
+          <DetailedResident key={index} {...props} />
+        );
+      })}
     </group>
   );
 }
@@ -940,7 +1199,9 @@ function ActiveLivingPopulation({
   viewportWidth: number;
 }) {
   const { scene } = useGLTF(MODEL_URL);
-  const [portraitInspection, setPortraitInspection] = useState(false);
+  const [portraitInspection, setPortraitInspection] = useState(
+    () => location.id === "kharbranth" && detailLevel === "street",
+  );
   useEffect(() => {
     const startPortrait = () => setPortraitInspection(true);
     const endPortrait = () => setPortraitInspection(false);
@@ -1090,21 +1351,26 @@ function ActiveLivingPopulation({
 }
 
 export function LivingPopulation() {
-  const selectedId = useAtlasStore((state) => state.selectedId);
+  const proximityLocationId = useAtlasStore(
+    (state) => state.proximityLocationId,
+  );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const viewportWidth = useThree((state) => state.size.width);
-  const location = locationById.get(selectedId);
+  const activeLocationId = localCityPresenceId(
+    detailLevel,
+    proximityLocationId,
+  );
+  const location = activeLocationId
+    ? locationById.get(activeLocationId)
+    : undefined;
 
-  if (
-    !location ||
-    location.id === "roshar" ||
-    (detailLevel !== "city" && detailLevel !== "street")
-  ) {
+  if (!location) {
     return null;
   }
 
   return (
     <ActiveLivingPopulation
+      key={`${location.id}-${detailLevel === "street" ? "street" : "city"}`}
       location={location}
       detailLevel={detailLevel}
       viewportWidth={viewportWidth}

@@ -6,6 +6,7 @@ describe("atlas selection recentering", () => {
     useAtlasStore.setState({
       selectedId: "roshar",
       selectedGazetteerId: null,
+      proximityLocationId: null,
       travelEpoch: 0,
       stormMode: false,
       menuOpen: false,
@@ -48,6 +49,31 @@ describe("atlas selection recentering", () => {
       selectedId: "azir",
       selectedGazetteerId: "azimir",
       travelEpoch: 2,
+    });
+  });
+
+  it("publishes camera proximity without triggering travel or changing an exact selection", () => {
+    useAtlasStore.getState().focusGazetteerPlace("azimir");
+    const before = useAtlasStore.getState();
+
+    before.setProximityLocation("azir");
+
+    expect(useAtlasStore.getState()).toMatchObject({
+      selectedId: "azir",
+      selectedGazetteerId: "azimir",
+      proximityLocationId: "azir",
+      travelEpoch: before.travelEpoch,
+    });
+  });
+
+  it("clears observed proximity when a new trip begins", () => {
+    useAtlasStore.setState({ proximityLocationId: "kharbranth" });
+
+    useAtlasStore.getState().selectLocation("thaylen-city");
+
+    expect(useAtlasStore.getState()).toMatchObject({
+      selectedId: "thaylen-city",
+      proximityLocationId: null,
     });
   });
 });

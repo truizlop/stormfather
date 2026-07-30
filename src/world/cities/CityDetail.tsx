@@ -1,7 +1,6 @@
 import { useGLTF, useTexture } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { useLayoutEffect, useMemo } from "react";
-import { useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useAtlasStore } from "../../store/useAtlasStore";
 import { locationById } from "../locations";
@@ -38,6 +37,23 @@ function configureTexture(
   return copy;
 }
 
+function useConfiguredTextureClone(
+  texture: THREE.Texture,
+  repeat: number,
+  colorSpace: THREE.ColorSpace = THREE.SRGBColorSpace,
+) {
+  const clone = useMemo(
+    () => configureTexture(texture, repeat, colorSpace),
+    [colorSpace, repeat, texture],
+  );
+  useEffect(() => () => clone.dispose(), [clone]);
+  return clone;
+}
+
+function disposeOwnedMaterials(materials: Iterable<THREE.Material>) {
+  for (const material of materials) material.dispose();
+}
+
 function RoofGeometry({ style }: { style: CityProfile["roof"] }) {
   if (style === "dome") return <sphereGeometry args={[1, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2]} />;
   if (style === "flat" || style === "ruin") return <boxGeometry args={[1, 1, 1]} />;
@@ -64,13 +80,15 @@ function InstancedArchitecture({
     `${import.meta.env.BASE_URL}textures/rosharan-masonry-microheight-v2.jpg`,
     `${import.meta.env.BASE_URL}textures/rosharan-stormwood-microheight-v2.jpg`,
   ]);
-  const masonry = useMemo(
-    () => configureTexture(masonrySource, 5.6, THREE.NoColorSpace),
-    [masonrySource],
+  const masonry = useConfiguredTextureClone(
+    masonrySource,
+    5.6,
+    THREE.NoColorSpace,
   );
-  const stormwood = useMemo(
-    () => configureTexture(stormwoodSource, 4.8, THREE.NoColorSpace),
-    [stormwoodSource],
+  const stormwood = useConfiguredTextureClone(
+    stormwoodSource,
+    4.8,
+    THREE.NoColorSpace,
   );
 
   useLayoutEffect(() => {
@@ -340,10 +358,7 @@ function DistrictGround({
   const pavingSource = useTexture(
     `${import.meta.env.BASE_URL}textures/shattered-paving-albedo.jpg`,
   );
-  const paving = useMemo(
-    () => configureTexture(pavingSource, 4.4),
-    [pavingSource],
-  );
+  const paving = useConfiguredTextureClone(pavingSource, 4.4);
   const y = localSurfaceY(locationId, center[0], center[1]) - 0.012;
 
   if (locationId === "shattered-plains") {
@@ -484,10 +499,11 @@ function ModuleInstance({
   stormwoodMicro: THREE.Texture;
 }) {
   const { scene } = useGLTF(MODEL_URL);
-  const clone = useMemo(() => {
+  const ownedClone = useMemo(() => {
     const source = scene.getObjectByName(name);
     if (!source) return null;
     const copy = source.clone(true);
+    const ownedMaterials = new Set<THREE.Material>();
     copy.position.set(0, 0, 0);
     copy.rotation.set(0, 0, 0);
     copy.traverse((object) => {
@@ -501,6 +517,7 @@ function ModuleInstance({
         const materials = sourceMaterials.map((sourceMaterial) => {
           const material =
             sourceMaterial.clone() as THREE.MeshStandardMaterial;
+          ownedMaterials.add(material);
           const lowerName =
             `${object.name} ${material.name}`.toLowerCase();
           const excludesMicroSurface =
@@ -535,8 +552,15 @@ function ModuleInstance({
           : materials[0];
       }
     });
-    return copy;
+    return { materials: ownedMaterials, object: copy };
   }, [masonryMicro, name, scene, stormwoodMicro]);
+  const clone = ownedClone?.object ?? null;
+  useEffect(
+    () => () => {
+      if (ownedClone) disposeOwnedMaterials(ownedClone.materials);
+    },
+    [ownedClone],
+  );
   if (!clone) return null;
   return (
     <group position={position} rotation-y={rotation}>
@@ -570,13 +594,15 @@ function DistrictModules({
     `${import.meta.env.BASE_URL}textures/rosharan-masonry-microheight-v2.jpg`,
     `${import.meta.env.BASE_URL}textures/rosharan-stormwood-microheight-v2.jpg`,
   ]);
-  const masonryMicro = useMemo(
-    () => configureTexture(masonrySource, 5.6, THREE.NoColorSpace),
-    [masonrySource],
+  const masonryMicro = useConfiguredTextureClone(
+    masonrySource,
+    5.6,
+    THREE.NoColorSpace,
   );
-  const stormwoodMicro = useMemo(
-    () => configureTexture(stormwoodSource, 4.8, THREE.NoColorSpace),
-    [stormwoodSource],
+  const stormwoodMicro = useConfiguredTextureClone(
+    stormwoodSource,
+    4.8,
+    THREE.NoColorSpace,
   );
 
   return (
@@ -599,11 +625,17 @@ function DistrictModules({
   );
 }
 
-export function CityDetail() {
-  const selectedId = useAtlasStore((state) => state.selectedId);
+export function CityDetail({
+  locationId,
+}: {
+  locationId?: string;
+} = {}) {
+  const activeLocationId = useAtlasStore(
+    (state) => locationId ?? state.selectedId,
+  );
   const detailLevel = useAtlasStore((state) => state.detailLevel);
   const width = useThree((state) => state.size.width);
-  const location = locationById.get(selectedId);
+  const location = locationById.get(activeLocationId);
 
   const profile = useMemo(
     () =>

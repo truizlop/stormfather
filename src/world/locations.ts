@@ -1,4 +1,5 @@
 import type { EasterEgg, WorldLocation } from "./types";
+import type { GazetteerPlace } from "./gazetteer/types";
 import {
   destinationAnchors,
   detailedLocationAnchors,
@@ -61,7 +62,7 @@ const locationData = [
     kind: "nation",
     coordinates: coordinateFor("azir"),
     camera: {
-      position: [-7.95, 22, 29.74],
+      position: [-10.96, 16.08, 23.98],
       target: [-19.07, 1, 8.86],
     },
     arrivalDetail: "city",
@@ -110,7 +111,10 @@ const locationData = [
     // The east-elevation hero view is wide enough to keep the whole mountain
     // city in frame; the selected-city semantic override keeps the authored
     // ten-stratum model active instead of substituting its proxy silhouette.
-    camera: { position: [8.5, 19.5, 9.5], target: [-7.3, 8.5, 6.4] },
+    camera: {
+      position: [8.5, 19.5, 9.5],
+      target: [-7.3, 8.5, 6.4],
+    },
     arrivalDetail: "city",
     regionColor: "#575a59",
     accentColor: "#7ee7ed",
@@ -132,7 +136,10 @@ const locationData = [
     subtitle: "The sheltered western valleys",
     kind: "nation",
     coordinates: coordinateFor("shinovar"),
-    camera: { position: [-29, 18, 17], target: [-39, 1, -2.5] },
+    camera: {
+      position: [-30.85, 14.86, 13.39],
+      target: [-39, 1, -2.5],
+    },
     arrivalDetail: "city",
     regionColor: "#3f6c32",
     accentColor: "#9ecb69",
@@ -186,7 +193,7 @@ const locationData = [
     kind: "island",
     coordinates: coordinateFor("aimia"),
     camera: {
-      position: [-43.72, 19, 20.96],
+      position: [-44.46, 17.83, 19.85],
       target: [-53.44, 3.6, 6.4],
     },
     arrivalDetail: "city",
@@ -206,7 +213,14 @@ const locationData = [
     subtitle: "The City of Bells",
     kind: "city",
     coordinates: coordinateFor("kharbranth"),
-    camera: { position: [0, 13.5, 31.5], target: [10.2, 2.8, 18.4] },
+    // Look up the Ralinsa through the central harbor cleft from beyond the
+    // working docks. The distance fits the full ±8.25-source-unit stormcut
+    // cliffs at desktop city LOD while the higher center keeps the quay,
+    // switchbacks, and civic crown in one exterior composition.
+    camera: {
+      position: [10.2, 20.95, 40.8],
+      target: [10.2, 5, 18.4],
+    },
     arrivalDetail: "street",
     regionColor: "#426268",
     accentColor: "#dcb66d",
@@ -270,6 +284,26 @@ export const secondaryLocations = locations.slice(10);
 export const locationById = new Map<string, WorldLocation>(
   locations.map((location) => [location.id, location]),
 );
+
+export function modeledLocationForGazetteer(
+  place: Pick<GazetteerPlace, "id" | "parentLocationId">,
+) {
+  const location = locationById.get(place.parentLocationId ?? place.id);
+  return location?.modelRoot ? location : undefined;
+}
+
+export function locationDisplayName(
+  location: WorldLocation,
+  selectedGazetteer?: Pick<
+    GazetteerPlace,
+    "id" | "parentLocationId" | "canonicalName"
+  >,
+) {
+  return selectedGazetteer &&
+    modeledLocationForGazetteer(selectedGazetteer)?.id === location.id
+    ? selectedGazetteer.canonicalName
+    : location.name;
+}
 
 export const easterEggs: readonly EasterEgg[] = [
   {

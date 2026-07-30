@@ -1,24 +1,33 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import {
   type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import * as THREE from "three";
 import {
+  CITY_LOD_HIDDEN_WEIGHT,
   cityLodConfig,
+  cityNearDetailShouldMount,
   createCityLodState,
   createCitySilhouette,
-  effectiveCityLodDistance,
+  nearWorldSpaceOffset,
   type CityLodState,
   type CityLodTier,
   type CitySilhouette,
-  updateCityLodState,
+  updateCityNearLifecycle,
 } from "./progressiveLod";
+import {
+  applyNearOpacity,
+  registerNearFadeMaterials,
+  type NearFadeMaterial,
+} from "./nearFadeMaterials";
 import type { CityProfile } from "./profiles";
-
-const HIDDEN_WEIGHT = 0.001;
 
 function RoofGeometry({ style }: { style: CityProfile["roof"] }) {
   if (style === "dome") {
@@ -45,7 +54,7 @@ function applyLayerOpacity(
   materials: readonly (THREE.Material | null)[],
   weight: number,
 ) {
-  if (group) group.visible = weight > HIDDEN_WEIGHT;
+  if (group) group.visible = weight > CITY_LOD_HIDDEN_WEIGHT;
   for (const material of materials) {
     if (!material) continue;
     const wasTransparent = material.transparent;
@@ -221,99 +230,55 @@ function SilhouetteLayer({
   );
 }
 
-interface FadeMaterial {
-  material: THREE.Material;
-  baseOpacity: number;
-  transparent: boolean;
-  depthWrite: boolean;
-}
+const NearContentReadyContext = createContext<(() => void) | null>(null);
 
-function applyNearOpacity(
-  group: THREE.Group | null,
-  entries: readonly FadeMaterial[],
-  weight: number,
-) {
-  if (group) group.visible = weight > HIDDEN_WEIGHT;
-  for (const entry of entries) {
-    const wasTransparent = entry.material.transparent;
-    entry.material.opacity = entry.baseOpacity * weight;
-    entry.material.transparent =
-      entry.transparent || weight < 0.999;
-    entry.material.depthWrite =
-      entry.depthWrite && weight >= 0.985;
-    if (entry.material.transparent !== wasTransparent) {
-      entry.material.needsUpdate = true;
-    }
-  }
+/**
+ * Place this inside a Suspense boundary that supplies near-city content.
+ * It only mounts after the authored subtree replaces the fallback, which
+ * lets the fading layer re-register those newly mounted materials.
+ */
+export function NearContentReadySignal() {
+  const onReady = useContext(NearContentReadyContext);
+
+  useLayoutEffect(() => {
+    onReady?.();
+  }, [onReady]);
+
+  return null;
 }
 
 function FadingNearLayer({
   children,
+  contentGeneration,
   lodState,
+  onContentReady,
   position,
 }: {
   children: ReactNode;
+  contentGeneration: number;
   lodState: CityLodState;
+  onContentReady: () => void;
   position?: readonly [number, number, number];
 }) {
   const group = useRef<THREE.Group>(null);
-  const fadeMaterials = useRef<FadeMaterial[]>([]);
+  const fadeMaterials = useRef<NearFadeMaterial[]>([]);
 
   useLayoutEffect(() => {
     const root = group.current;
     if (!root) return;
-    const ownedMaterials: THREE.Material[] = [];
-    const entries: FadeMaterial[] = [];
-
-    root.traverse((object) => {
-      const mesh = object as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      const sources = Array.isArray(mesh.material)
-        ? mesh.material
-        : [mesh.material];
-      const clones = sources.map((source) => {
-        // Suspense resolving or a detail-level change can remount this pass
-        // while the previous clone is halfway through a fade. Carry the true
-        // authored values forward instead of treating that transient opacity
-        // as the new maximum.
-        const baseOpacity =
-          (source.userData.progressiveLodBaseOpacity as
-            | number
-            | undefined) ?? source.opacity;
-        const baseTransparent =
-          (source.userData.progressiveLodBaseTransparent as
-            | boolean
-            | undefined) ?? source.transparent;
-        const baseDepthWrite =
-          (source.userData.progressiveLodBaseDepthWrite as
-            | boolean
-            | undefined) ?? source.depthWrite;
-        const material = source.clone();
-        material.userData.progressiveLodBaseOpacity = baseOpacity;
-        material.userData.progressiveLodBaseTransparent =
-          baseTransparent;
-        material.userData.progressiveLodBaseDepthWrite = baseDepthWrite;
-        ownedMaterials.push(material);
-        entries.push({
-          material,
-          baseOpacity,
-          transparent: baseTransparent,
-          depthWrite: baseDepthWrite,
-        });
-        material.alphaHash = false;
-        material.needsUpdate = true;
-        return material;
-      });
-      mesh.material = Array.isArray(mesh.material) ? clones : clones[0];
-    });
-    fadeMaterials.current = entries;
-    applyNearOpacity(root, entries, lodState.weights.near);
+    const registration = registerNearFadeMaterials(root);
+    fadeMaterials.current = registration.entries;
+    applyNearOpacity(
+      root,
+      registration.entries,
+      lodState.weights.near,
+    );
 
     return () => {
       fadeMaterials.current = [];
-      for (const material of ownedMaterials) material.dispose();
+      registration.dispose();
     };
-  }, [children, lodState]);
+  }, [children, contentGeneration, lodState]);
 
   useFrame(() => {
     applyNearOpacity(
@@ -329,7 +294,9 @@ function FadingNearLayer({
       name="near-city-detail"
       position={position as [number, number, number] | undefined}
     >
-      {children}
+      <NearContentReadyContext.Provider value={onContentReady}>
+        {children}
+      </NearContentReadyContext.Provider>
     </group>
   );
 }
@@ -353,6 +320,17 @@ export interface ProgressiveCityLodProps {
    * camera mode has reached city detail instead of falling back to a proxy.
    */
   forceNear?: boolean;
+  /**
+   * Only the nearest manual-proximity candidate owns the expensive authored
+   * tier. This prevents overlapping LOD spheres from mounting several cities.
+   */
+  allowNear?: boolean;
+  /**
+   * Manual ownership changes retain the outgoing layer until its alpha reaches
+   * zero. Explicit travel disables this so the selected city owns the single
+   * fully active near scene immediately.
+   */
+  retainOutgoingNear?: boolean;
 }
 
 /**
@@ -364,6 +342,8 @@ export function ProgressiveCityLod({
   near,
   nearWorldSpace = false,
   forceNear = false,
+  allowNear = true,
+  retainOutgoingNear = true,
 }: ProgressiveCityLodProps) {
   const camera = useThree((state) => state.camera);
   const far = useMemo(
@@ -381,10 +361,7 @@ export function ProgressiveCityLod({
   );
   const cameraPosition = useRef(new THREE.Vector3());
   const nearOffset = useMemo(
-    () =>
-      nearWorldSpace
-        ? ([-far.center[0], -far.center[1], -far.center[2]] as const)
-        : undefined,
+    () => nearWorldSpaceOffset(far.center, nearWorldSpace),
     [far.center, nearWorldSpace],
   );
   const lodState = useMemo(
@@ -395,18 +372,40 @@ export function ProgressiveCityLod({
       ),
     [camera, center, config],
   );
+  const [nearMounted, setNearMounted] = useState(() =>
+    cityNearDetailShouldMount(
+      lodState,
+      forceNear,
+      allowNear,
+      retainOutgoingNear,
+    ),
+  );
+  const [nearContentGeneration, setNearContentGeneration] = useState(0);
+  const nearMountedRef = useRef(nearMounted);
+  const onNearContentReady = useCallback(() => {
+    setNearContentGeneration((generation) => generation + 1);
+  }, []);
+  const renderNear =
+    forceNear ||
+    (nearMounted && (allowNear || retainOutgoingNear));
 
   useFrame(({ camera: activeCamera }, delta) => {
     activeCamera.getWorldPosition(cameraPosition.current);
-    updateCityLodState(
+    const shouldMount = updateCityNearLifecycle(
       lodState,
-      effectiveCityLodDistance(
-        cameraPosition.current.distanceTo(center),
-        forceNear,
-      ),
+      cameraPosition.current.distanceTo(center),
       delta,
       config,
+      {
+        allowNear,
+        forceNear,
+        retainOutgoingNear,
+      },
     );
+    if (nearMountedRef.current !== shouldMount) {
+      nearMountedRef.current = shouldMount;
+      setNearMounted(shouldMount);
+    }
   });
 
   return (
@@ -424,12 +423,16 @@ export function ProgressiveCityLod({
         lodState={lodState}
         tier="mid"
       />
-      <FadingNearLayer
-        lodState={lodState}
-        position={nearOffset}
-      >
-        {near}
-      </FadingNearLayer>
+      {renderNear && (
+        <FadingNearLayer
+          contentGeneration={nearContentGeneration}
+          lodState={lodState}
+          onContentReady={onNearContentReady}
+          position={nearOffset}
+        >
+          {near}
+        </FadingNearLayer>
+      )}
     </group>
   );
 }
