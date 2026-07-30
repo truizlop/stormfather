@@ -117,6 +117,7 @@ describe("source-backed Roshar gazetteer", () => {
       "palanaeum",
       "taravangian-hospital",
       "feverstone-keep",
+      "cabridar",
       "uvara",
       "puulis-lighthouse",
     ]);
@@ -129,6 +130,64 @@ describe("source-backed Roshar gazetteer", () => {
           !place.renderable,
       ),
     ).toBe(true);
+  });
+
+  it("adds conservative anchors only where the books establish a region", () => {
+    const amydlatn = gazetteerById.get("amydlatn");
+    const hurziko = gazetteerById.get("hurziko");
+    const cabridar = gazetteerById.get("cabridar");
+
+    expect(amydlatn).toMatchObject({
+      canonicalName: "Amydlatn",
+      kind: "city",
+      certainty: "regional",
+      renderable: true,
+    });
+    expect(hurziko).toMatchObject({
+      canonicalName: "Hurziko",
+      kind: "village",
+      certainty: "regional",
+      renderable: true,
+    });
+    expect(cabridar).toMatchObject({
+      canonicalName: "Cabridar",
+      certainty: "unknown",
+      renderable: false,
+      referencePixel: null,
+      world: null,
+    });
+  });
+
+  it("keeps source-backed place types and names current", () => {
+    expect(gazetteerById.get("akak")).toMatchObject({
+      kind: "island",
+      category: "island",
+      visualization: "island",
+    });
+    expect(gazetteerById.get("new-natanan")?.category).toBe("city-state");
+    expect(gazetteerById.get("sesemalex-dar")?.nationOrRegion).toBe("Emul");
+    expect(gazetteerById.get("northgrip")?.nationOrRegion).toContain(
+      "Jah Keved",
+    );
+    expect(gazetteerById.get("klna")).toMatchObject({
+      canonicalName: "Klna City",
+      kind: "city",
+      alternateNames: ["Klna"],
+    });
+
+    for (const id of [
+      "revolar",
+      "shulin",
+      "karanak",
+      "dumadari",
+      "northgrip",
+      "elanar",
+      "valath",
+      "silnasen",
+      "fu-namir",
+    ]) {
+      expect(gazetteerById.get(id)?.kind, id).toBe("city");
+    }
   });
 });
 

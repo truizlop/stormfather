@@ -14,6 +14,13 @@ export {
   KHOLINAR_CITY_PLAN_SIZE,
   kholinarCityPlanGazetteer,
 } from "./cityPlans";
+export {
+  EASTERN_MAKABAK_MAP_ID,
+  EASTERN_MAKABAK_MAP_URL,
+  EASTERN_MAKABAK_REFERENCE_SIZE,
+  easternMakabakGazetteer,
+  easternMakabakMapPixelToReferencePixel,
+} from "./easternMakabak";
 export { GazetteerMarkers } from "./GazetteerMarkers";
 export {
   literaryPlaceExclusions,

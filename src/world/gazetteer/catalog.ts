@@ -1,5 +1,6 @@
 import type { DetailLevel } from "../types";
 import { cityPlanGazetteer } from "./cityPlans";
+import { easternMakabakGazetteer } from "./easternMakabak";
 import { literaryPlaceGazetteer } from "./literaryPlaces";
 import {
   referencePixelToGazetteerWorld,
@@ -436,7 +437,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "new-natanan",
     canonicalName: "New Natanan",
     kind: "city",
-    category: "kingdom/region",
+    category: "city-state",
     nationOrRegion: "New Natanan",
     minimumLod: "region",
     visualization: "port-city",
@@ -502,7 +503,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "revolar",
     canonicalName: "Revolar",
-    kind: "town",
+    kind: "city",
     nationOrRegion: "Alethkar",
     minimumLod: "region",
     visualization: "fortified-city",
@@ -565,10 +566,10 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "akak",
     canonicalName: "Akak",
-    kind: "town",
-    nationOrRegion: "Alethkar",
+    kind: "island",
+    nationOrRegion: "Reshi Isles (Alethkar)",
     minimumLod: "region",
-    visualization: "port-city",
+    visualization: "island",
     sourceMapPixel: [763, 164.7],
     coppermindSlug: "Akak",
   }),
@@ -585,7 +586,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "shulin",
     canonicalName: "Shulin",
-    kind: "town",
+    kind: "city",
     nationOrRegion: "Alethkar",
     minimumLod: "region",
     visualization: "fortified-city",
@@ -595,7 +596,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "karanak",
     canonicalName: "Karanak",
-    kind: "town",
+    kind: "city",
     nationOrRegion: "Alethkar",
     minimumLod: "region",
     visualization: "port-city",
@@ -605,7 +606,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "dumadari",
     canonicalName: "Dumadari",
-    kind: "town",
+    kind: "city",
     nationOrRegion: "Alethkar",
     minimumLod: "region",
     visualization: "fortified-city",
@@ -735,13 +736,14 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   }),
   located({
     id: "klna",
-    canonicalName: "Klna",
-    kind: "town",
+    canonicalName: "Klna City",
+    kind: "city",
     nationOrRegion: "Thaylenah",
     minimumLod: "region",
     visualization: "port-city",
     sourceMapPixel: [619.1, 407.4],
-    coppermindSlug: "Klna",
+    coppermindSlug: "Klna_City",
+    alternateNames: ["Klna"],
   }),
   located({
     id: "frostlands",
@@ -770,8 +772,8 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "northgrip",
     canonicalName: "Northgrip",
-    kind: "town",
-    nationOrRegion: "Herdaz",
+    kind: "city",
+    nationOrRegion: "Northeastern Jah Keved, near Herdaz",
     minimumLod: "region",
     visualization: "fortified-city",
     sourceMapPixel: [637.2, 176.8],
@@ -780,7 +782,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "elanar",
     canonicalName: "Elanar",
-    kind: "town",
+    kind: "city",
     nationOrRegion: "Jah Keved",
     minimumLod: "region",
     visualization: "fortified-city",
@@ -790,7 +792,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "valath",
     canonicalName: "Valath",
-    kind: "town",
+    kind: "city",
     nationOrRegion: "Jah Keved",
     minimumLod: "region",
     visualization: "fortified-city",
@@ -800,7 +802,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "silnasen",
     canonicalName: "Silnasen",
-    kind: "town",
+    kind: "city",
     nationOrRegion: "Jah Keved",
     minimumLod: "region",
     visualization: "fortified-city",
@@ -870,7 +872,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     id: "sesemalex-dar",
     canonicalName: "Sesemalex Dar",
     kind: "city",
-    nationOrRegion: "Tukar",
+    nationOrRegion: "Emul",
     minimumLod: "region",
     visualization: "fortified-city",
     sourceMapPixel: [402, 361.8],
@@ -986,7 +988,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
   located({
     id: "fu-namir",
     canonicalName: "Fu Namir",
-    kind: "town",
+    kind: "city",
     nationOrRegion: "Yulay",
     minimumLod: "region",
     visualization: "market-city",
@@ -1282,6 +1284,37 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     coppermindSlug: "River_Vandonas",
     sources: [coppermindSource("River_Vandonas", "River Vandonas")],
   }),
+  located({
+    id: "amydlatn",
+    canonicalName: "Amydlatn",
+    kind: "city",
+    nationOrRegion: "Eastern Frostlands, east of Thaylenah",
+    minimumLod: "region",
+    visualization: "port-city",
+    // The novels establish only the containing region and its position south
+    // of New Natanan. This is a regional display anchor, not a surveyed port.
+    referencePixel: [1580, 930],
+    certainty: "regional",
+    coppermindSlug: "Amydlatn",
+    sources: [coppermindSource("Amydlatn", "Amydlatn")],
+  }),
+  located({
+    id: "hurziko",
+    canonicalName: "Hurziko",
+    kind: "village",
+    nationOrRegion: "Herdaz; exact position unknown",
+    minimumLod: "region",
+    visualization: "village",
+    // Only Herdaz is established, so use the country's display center while
+    // retaining regional certainty rather than inventing a local direction.
+    referencePixel: destinationReferencePixels.herdaz,
+    certainty: "regional",
+    coppermindSlug: "Hurziko",
+    sources: [
+      coppermindSource("Hurziko", "Hurziko"),
+      coppermindSource("Tashgarn", "Tashgarn"),
+    ],
+  }),
   unknown({
     id: "feverstone-keep",
     canonicalName: "Feverstone Keep",
@@ -1290,6 +1323,15 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     minimumLod: "city",
     visualization: "ruined-city",
     coppermindSlug: "Feverstone_Keep",
+  }),
+  unknown({
+    id: "cabridar",
+    canonicalName: "Cabridar",
+    kind: "landmark",
+    nationOrRegion: "Roshar; exact region unknown",
+    minimumLod: "region",
+    visualization: "ruined-city",
+    coppermindSlug: "Cabridar",
   }),
   unknown({
     id: "uvara",
@@ -1309,6 +1351,7 @@ export const rosharGazetteer: readonly GazetteerPlace[] = [
     visualization: "lighthouse",
     coppermindSlug: "Puuli's_lighthouse",
   }),
+  ...easternMakabakGazetteer,
   ...shinovarGazetteer,
   ...cityPlanGazetteer,
   ...literaryPlaceGazetteer,

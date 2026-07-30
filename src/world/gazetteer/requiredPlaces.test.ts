@@ -54,7 +54,7 @@ const requiredPlaces = [
     id: "new-natanan",
     name: "New Natanan",
     kind: "city",
-    category: "kingdom/region",
+    category: "city-state",
   },
   { id: "yulay", name: "Yulay", kind: "nation", category: "kingdom/region" },
   { id: "liafor", name: "Liafor", kind: "nation", category: "kingdom/region" },
