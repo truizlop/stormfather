@@ -19,6 +19,18 @@ These images are the implementation specification for the Roshar living atlas.
 - `city-fidelity-kharbranth-residents.jpg` defines the corresponding human
   benchmark: realistic anatomy, varied Rosharan complexions, layered workwear,
   occupation props, visible textile wear, and a covered Vorin safehand.
+- `shattered-plains-narak-topology-target.png` defines the topology benchmark
+  for the Shattered Plains: level cap-rock plateaus, deeply recessed chasms,
+  bridge-only crossings, grounded warcamps, and Narak/Stormseat as a readable
+  central precinct with its adjacent Oathgate plateau.
+- `vedenar-authored-city-target.png` defines the authored Vedenar benchmark:
+  terraced wards embedded in Tarat Sea cliffs, the Valhav Oathgate garden,
+  river and field approaches, a damaged palace quarter, storm shelters, and
+  burned docks under active reconstruction.
+- `shinovar-pastoral-scale-target.png` defines the corrected Shinovar scale:
+  broad pasture, many ordinary-sized trees, low farms and Herald temples,
+  sheep flocks, shepherds, and mountains that remain vastly larger than every
+  inhabited or vegetated element.
 
 The visuals are original ImageGen concepts created for this project. They are not official art and do not reproduce an official map raster.
 
@@ -32,3 +44,6 @@ The full third-pass prompt and its reference roles are preserved in
 `fidelity-prompts.md`.
 The city-fidelity prompts, illustration research, factual cues, and copyright
 boundary are preserved in `city-fidelity-prompts.md`.
+The Shattered Plains, Vedenar, and Shinovar target prompts, research roles, and
+runtime constraints are preserved in
+`shattered-vedenar-shinovar-prompts.md`.
