@@ -54,7 +54,7 @@
       "start_frame": 1152,
       "end_frame": 1535,
       "transition": "storm-cloud-wipe",
-      "orbit_degrees": 88,
+      "orbit_degrees": 48,
       "reveal_beats": 4
     },
     {
@@ -145,7 +145,7 @@
       "start_frame": 3840,
       "end_frame": 4317,
       "transition": "oathgate-ascension",
-      "orbit_degrees": -152,
+      "orbit_degrees": 64,
       "reveal_beats": 8
     }
   ]

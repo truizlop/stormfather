@@ -7,9 +7,7 @@ __pycache__/
 coverage/
 playwright-report/
 test-results/
-artifacts/cinematic/frames/
-artifacts/cinematic/*.mp4
-artifacts/cinematic/*.wav
+artifacts/cinematic/
 blender/roshar-cinematic.blend
 
 # The living execution plan is deliberately local and is not committed.
