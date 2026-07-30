@@ -61,12 +61,14 @@ describe("gazetteer arrival framing", () => {
   });
 
   it("widens focused mobile views without treating search results as the world overview", () => {
-    expect(atlasCameraFov(1440, false)).toBe(42);
-    expect(atlasCameraFov(390, false)).toBe(54);
-    expect(atlasCameraFov(390, true)).toBe(72);
+    expect(atlasCameraFov(1440, 900, false)).toBe(42);
+    expect(atlasCameraFov(390, 844, false)).toBe(54);
+    expect(atlasCameraFov(390, 844, true)).toBe(72);
+    expect(atlasCameraFov(960, 540, false)).toBe(54);
     expect(
       isMobileWorldOverview(
         390,
+        844,
         "roshar",
         null,
         "continent",
@@ -76,6 +78,7 @@ describe("gazetteer arrival framing", () => {
     expect(
       isMobileWorldOverview(
         390,
+        844,
         "roshar",
         "hearthstone",
         "city",
@@ -85,6 +88,7 @@ describe("gazetteer arrival framing", () => {
     expect(
       isMobileWorldOverview(
         390,
+        844,
         "roshar",
         null,
         "city",
@@ -92,8 +96,25 @@ describe("gazetteer arrival framing", () => {
       ),
     ).toBe(false);
     expect(
-      isMobileWorldOverview(390, "roshar", null, "street", null),
+      isMobileWorldOverview(
+        390,
+        844,
+        "roshar",
+        null,
+        "street",
+        null,
+      ),
     ).toBe(false);
+    expect(
+      isMobileWorldOverview(
+        960,
+        540,
+        "roshar",
+        null,
+        "continent",
+        null,
+      ),
+    ).toBe(true);
   });
 });
 

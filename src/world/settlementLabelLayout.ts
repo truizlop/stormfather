@@ -1,5 +1,9 @@
 import type { GazetteerPlace } from "./gazetteer/types";
 import type { DetailLevel, WorldLocation } from "./types";
+import {
+  atlasViewportInsets,
+  isCompactViewport,
+} from "./compactViewport";
 
 const detailRank: Record<DetailLevel, number> = {
   continent: 0,
@@ -218,14 +222,12 @@ export interface SettlementLabelViewport {
 }
 
 const LABEL_GAP = 6;
-const VIEWPORT_MARGIN = 8;
-const TOP_CHROME_SAFE_AREA = 58;
-
 export function settlementLabelBudget(
   detailLevel: DetailLevel,
   viewportWidth: number,
+  viewportHeight = Number.POSITIVE_INFINITY,
 ) {
-  const compact = viewportWidth < 720;
+  const compact = isCompactViewport(viewportWidth, viewportHeight);
   switch (detailLevel) {
     case "continent":
       return compact ? 10 : 18;
@@ -291,25 +293,37 @@ export function layoutProjectedSettlementLabels(
   viewport: SettlementLabelViewport,
   detailLevel: DetailLevel,
 ): readonly PlacedSettlementLabel[] {
-  const budget = settlementLabelBudget(detailLevel, viewport.width);
+  const budget = settlementLabelBudget(
+    detailLevel,
+    viewport.width,
+    viewport.height,
+  );
   if (budget === 0 || viewport.width <= 0 || viewport.height <= 0) return [];
 
-  const centerX = viewport.width / 2;
-  const centerY = viewport.height / 2;
+  const insets = atlasViewportInsets(viewport.width, viewport.height);
+  const centerX =
+    insets.left +
+    (viewport.width - insets.left - insets.right) / 2;
+  const centerY =
+    insets.top +
+    (viewport.height - insets.top - insets.bottom) / 2;
   const candidates = projected
-    .filter(
-      (label) =>
-        label.depth >= -1 &&
-        label.depth <= 1 &&
-        label.x >= VIEWPORT_MARGIN &&
-        label.x <= viewport.width - VIEWPORT_MARGIN &&
-        label.y >= TOP_CHROME_SAFE_AREA &&
-        label.y <= viewport.height - VIEWPORT_MARGIN,
-    )
     .map((label) => ({
       ...label,
       ...estimateSettlementLabelSize(label.label, label.selected),
     }))
+    .filter((label) => {
+      const halfWidth = label.width / 2 + LABEL_GAP;
+      const halfHeight = label.height / 2 + LABEL_GAP;
+      return (
+        label.depth >= -1 &&
+        label.depth <= 1 &&
+        label.x - halfWidth >= insets.left &&
+        label.x + halfWidth <= viewport.width - insets.right &&
+        label.y - halfHeight >= insets.top &&
+        label.y + halfHeight <= viewport.height - insets.bottom
+      );
+    })
     .sort((left, right) => {
       if (left.selected !== right.selected) {
         return left.selected ? -1 : 1;

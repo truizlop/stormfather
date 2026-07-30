@@ -1,4 +1,5 @@
 import type { DetailLevel, WorldLocation } from "./types";
+import { isCompactViewport } from "./compactViewport";
 import {
   cityProximityCandidate,
   nearestCityProximityOwner,
@@ -325,21 +326,23 @@ export function gazetteerArrivalOffset(
 
 export function atlasCameraFov(
   viewportWidth: number,
+  viewportHeight: number,
   worldOverview: boolean,
 ) {
-  if (viewportWidth >= 720) return 42;
+  if (!isCompactViewport(viewportWidth, viewportHeight)) return 42;
   return worldOverview ? 72 : 54;
 }
 
 export function isMobileWorldOverview(
   viewportWidth: number,
+  viewportHeight: number,
   selectedId: string,
   selectedGazetteerId: string | null,
   detailLevel: DetailLevel,
   proximityLocationId: string | null,
 ) {
   return (
-    viewportWidth < 720 &&
+    isCompactViewport(viewportWidth, viewportHeight) &&
     selectedId === "roshar" &&
     selectedGazetteerId === null &&
     proximityLocationId === null &&

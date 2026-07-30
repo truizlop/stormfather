@@ -24,6 +24,7 @@ import {
   nearestCityFocusOwner,
   nearestCityProximityOwner,
 } from "./cities/progressiveLod";
+import { isCompactViewport } from "./compactViewport";
 import { detailFromDistance } from "./coordinates";
 import { gazetteerById, gazetteerMarkerWorld } from "./gazetteer";
 import {
@@ -49,6 +50,10 @@ export function CameraRig() {
   const camera = useThree((state) => state.camera);
   const viewportWidth = useThree((state) => state.size.width);
   const viewportHeight = useThree((state) => state.size.height);
+  const compactViewport = isCompactViewport(
+    viewportWidth,
+    viewportHeight,
+  );
   const controls = useRef<MapControlsImpl>(null);
   const transition = useRef({
     progress: 1,
@@ -74,6 +79,7 @@ export function CameraRig() {
   );
   const mobileWorldOverview = isMobileWorldOverview(
     viewportWidth,
+    viewportHeight,
     selectedId,
     selectedGazetteerId,
     detailLevel,
@@ -81,6 +87,7 @@ export function CameraRig() {
   );
   const cameraFov = atlasCameraFov(
     viewportWidth,
+    viewportHeight,
     mobileWorldOverview,
   );
 
@@ -268,7 +275,7 @@ export function CameraRig() {
           const isStreetPlace = gazetteerPlace.minimumLod === "street";
           const offset = gazetteerArrivalOffset(
             gazetteerPlace,
-            viewportWidth < 720,
+            compactViewport,
           );
           destination = new THREE.Vector3(
             gazetteerWorld[0] + offset[0],
@@ -282,7 +289,7 @@ export function CameraRig() {
           );
         }
       }
-      if (viewportWidth < 720 && modeledArrivalLocation) {
+      if (compactViewport && modeledArrivalLocation) {
         const cacheKey = [
           modeledArrivalLocation.id,
           viewportWidth,
@@ -335,7 +342,7 @@ export function CameraRig() {
     const distance = camera.position.distanceTo(control.target);
     const distanceDetail = detailFromDistance(distance);
     const fittedDetailOwner =
-      viewportWidth < 720 &&
+      compactViewport &&
       fittedMobileArrival.current &&
       modeledArrivalLocation &&
       distanceDetail !== "city" &&
@@ -392,7 +399,7 @@ export function CameraRig() {
           ? 0.25
           : 5.8
       }
-      maxDistance={viewportWidth < 720 ? 230 : 165}
+      maxDistance={compactViewport ? 230 : 165}
       minPolarAngle={0.22}
       maxPolarAngle={Math.PI * 0.47}
       screenSpacePanning={false}

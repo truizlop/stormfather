@@ -3,6 +3,7 @@ import { useProgress } from "@react-three/drei";
 import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { AtlasUI } from "./ui/AtlasUI";
+import { useCompactLayout } from "./ui/useCompactLayout";
 import { INITIAL_ATLAS_CAMERA } from "./world/initialView";
 import { WorldScene } from "./world/WorldScene";
 
@@ -42,12 +43,14 @@ function LoadingOverlay() {
 }
 
 export function App() {
+  const compactLayout = useCompactLayout();
+
   return (
     <main className="app-shell">
       <Canvas
         className="world-canvas"
         shadows="basic"
-        dpr={[1, 1.6]}
+        dpr={compactLayout ? [1, 1.25] : [1, 1.6]}
         camera={{
           position: [...INITIAL_ATLAS_CAMERA.position],
           fov: 42,
@@ -55,7 +58,7 @@ export function App() {
           far: 450,
         }}
         gl={{
-          antialias: true,
+          antialias: !compactLayout,
           powerPreference: "high-performance",
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.05,

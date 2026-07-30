@@ -151,6 +151,35 @@ describe("settlement name screen-space layout", () => {
     expect(placed.map((label) => label.id)).toEqual(["visible"]);
   });
 
+  it("keeps compact labels clear of the header, travel dock, and control rail", () => {
+    const placed = layoutProjectedSettlementLabels(
+      [
+        projected("under-header", 190, 70),
+        projected("under-dock", 190, 710),
+        projected("under-controls", 355, 300),
+        projected("visible", 190, 300),
+      ],
+      { width: 390, height: 844 },
+      "region",
+    );
+
+    expect(placed.map((label) => label.id)).toEqual(["visible"]);
+  });
+
+  it("uses compact reserves on a short landscape viewport", () => {
+    const placed = layoutProjectedSettlementLabels(
+      [
+        projected("under-dock", 400, 455),
+        projected("under-controls", 920, 250),
+        projected("visible", 400, 250),
+      ],
+      { width: 960, height: 540 },
+      "region",
+    );
+
+    expect(placed.map((label) => label.id)).toEqual(["visible"]);
+  });
+
   it("uses conservative mobile and desktop budgets without measuring DOM", () => {
     const labels = Array.from({ length: 50 }, (_, index) =>
       projected(
@@ -159,8 +188,9 @@ describe("settlement name screen-space layout", () => {
         90 + Math.floor(index / 10) * 65,
       ),
     );
-    const mobileBudget = settlementLabelBudget("region", 600);
-    const desktopBudget = settlementLabelBudget("region", 1_440);
+    const mobileBudget = settlementLabelBudget("region", 600, 800);
+    const landscapeBudget = settlementLabelBudget("region", 960, 540);
+    const desktopBudget = settlementLabelBudget("region", 1_440, 900);
     const mobile = layoutProjectedSettlementLabels(
       labels,
       { width: 600, height: 800 },
@@ -173,6 +203,7 @@ describe("settlement name screen-space layout", () => {
     );
 
     expect(mobileBudget).toBeLessThan(desktopBudget);
+    expect(landscapeBudget).toBe(mobileBudget);
     expect(mobile.length).toBeLessThanOrEqual(mobileBudget);
     expect(desktop.length).toBeLessThanOrEqual(desktopBudget);
   });

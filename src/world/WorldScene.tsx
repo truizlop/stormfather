@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { CameraRig } from "./CameraRig";
 import { CityClusters } from "./CityClusters";
+import { isCompactViewport } from "./compactViewport";
 import { SettlementLights } from "./SettlementLights";
 import { SimulationClock } from "./SimulationClock";
 import { WorldLabels } from "./WorldLabels";
@@ -33,7 +34,9 @@ export function WorldScene() {
   const proximityLocationId = useAtlasStore(
     (state) => state.proximityLocationId,
   );
-  const viewportWidth = useThree((state) => state.size.width);
+  const compactViewport = useThree((state) =>
+    isCompactViewport(state.size.width, state.size.height),
+  );
   const selectedLocation = locationById.get(selectedId);
   const proximityLocation = proximityLocationId
     ? locationById.get(proximityLocationId)
@@ -73,8 +76,8 @@ export function WorldScene() {
         attach="fog"
         args={[
           nightMode ? "#071218" : "#62717a",
-          viewportWidth < 720 ? 130 : 88,
-          viewportWidth < 720 ? 360 : 210,
+          compactViewport ? 130 : 88,
+          compactViewport ? 360 : 210,
         ]}
       />
       {nightMode && (
@@ -102,7 +105,7 @@ export function WorldScene() {
         intensity={nightMode ? 2.15 : 2.85}
         color={nightMode ? "#f1c581" : "#fff1ca"}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={compactViewport ? [1024, 1024] : [2048, 2048]}
         shadow-camera-left={-64}
         shadow-camera-right={64}
         shadow-camera-top={48}
