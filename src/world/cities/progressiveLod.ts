@@ -255,6 +255,25 @@ export function localCityRenderDetail(
   return detailLevel === "street" ? "street" : "city";
 }
 
+/**
+ * Continental proxies are valuable while navigating the atlas, but a second
+ * proxy city only a few compressed world units behind a local scene reads as
+ * floating architecture. Once one authored city owns the local lens, keep
+ * only that city's representation in the close-detail composition.
+ */
+export function citySilhouetteShouldRender(
+  locationId: string,
+  activeOwnerId: string | null,
+  detailLevel: DetailLevel,
+) {
+  return (
+    detailLevel === "continent" ||
+    detailLevel === "region" ||
+    activeOwnerId === null ||
+    locationId === activeOwnerId
+  );
+}
+
 export function resolvedCityProximityOwner(
   cameraOwnerId: string | null,
   inspectionOwnerId: string | null,

@@ -20,6 +20,7 @@ import { placeableGazetteer } from "./catalog";
 import {
   gazetteerMarkerY,
   isGazetteerPlaceVisibleAtLod,
+  isGazetteerPlaceVisibleInLocalLens,
   isWithinGazetteerFocus,
   layoutGazetteerMarkerWorlds,
 } from "./markerLayout";
@@ -1160,6 +1161,8 @@ function GazetteerMarker({
 export interface GazetteerMarkersProps {
   detailLevel: DetailLevel;
   selectedId?: string;
+  selectedGazetteerId?: string | null;
+  localAuthoredLocationId?: string;
   /**
    * Optional focus culling for city/street views. Positions are Stormfather
    * world-space `[x, z]`; omitting it preserves the complete atlas layer.
@@ -1172,6 +1175,8 @@ export interface GazetteerMarkersProps {
 export function GazetteerMarkers({
   detailLevel,
   selectedId,
+  selectedGazetteerId = null,
+  localAuthoredLocationId,
   focusWorld,
   maxDistance = detailLevel === "street" ? 4 : detailLevel === "city" ? 9 : 160,
 }: GazetteerMarkersProps) {
@@ -1181,10 +1186,22 @@ export function GazetteerMarkers({
         placeableGazetteer.filter(
           (place) =>
             isGazetteerPlaceVisibleAtLod(place, detailLevel) &&
+            isGazetteerPlaceVisibleInLocalLens(
+              place.id,
+              detailLevel,
+              selectedGazetteerId,
+              localAuthoredLocationId,
+            ) &&
             isWithinGazetteerFocus(place, focusWorld, maxDistance),
         ),
       ),
-    [detailLevel, focusWorld, maxDistance],
+    [
+      detailLevel,
+      focusWorld,
+      localAuthoredLocationId,
+      maxDistance,
+      selectedGazetteerId,
+    ],
   );
 
   return (

@@ -5,10 +5,46 @@ import { literaryPlaceGazetteer } from "./literaryPlaces";
 import {
   gazetteerMarkerWorld,
   gazetteerMarkerY,
+  isGazetteerPlaceVisibleInLocalLens,
   layoutGazetteerMarkerWorlds,
 } from "./markerLayout";
 
 describe("gazetteer regional marker layout", () => {
+  it("keeps atlas miniatures out of authored local city compositions", () => {
+    expect(
+      isGazetteerPlaceVisibleInLocalLens(
+        "ayabiza",
+        "city",
+        null,
+        "shinovar",
+      ),
+    ).toBe(false);
+    expect(
+      isGazetteerPlaceVisibleInLocalLens(
+        "shinovar",
+        "street",
+        "shinovar",
+        "shinovar",
+      ),
+    ).toBe(false);
+    expect(
+      isGazetteerPlaceVisibleInLocalLens(
+        "kholinar-palace",
+        "street",
+        "kholinar-palace",
+        "kholinar",
+      ),
+    ).toBe(true);
+    expect(
+      isGazetteerPlaceVisibleInLocalLens(
+        "ayabiza",
+        "region",
+        null,
+        "shinovar",
+      ),
+    ).toBe(true);
+  });
+
   it("fans co-located regional records without mutating source coordinates", () => {
     const bavlandNames = new Set([
       "Bornwater",

@@ -3,6 +3,7 @@ import { localToMeters } from "../scale";
 import {
   createDistrictLayout,
   footprintContactAt,
+  MAX_AUTHORED_MODULE_FOUNDATION_DROP,
   moduleMetrics,
   usesProceduralArchitecture,
 } from "./districtLayout";
@@ -61,6 +62,13 @@ describe("city architecture profiles", () => {
     );
     expect(layout.buildings).toHaveLength(0);
     expect(layout.modules.length).toBeGreaterThan(0);
+    expect(
+      layout.modules.every(
+        (module) =>
+          module.foundationDrop <=
+          MAX_AUTHORED_MODULE_FOUNDATION_DROP,
+      ),
+    ).toBe(true);
   });
 
   it("fits Vedenar's authored root without stacking a generic district", () => {
@@ -81,6 +89,31 @@ describe("city architecture profiles", () => {
     expect(usesProceduralArchitecture("vedenar")).toBe(false);
     expect(layout.buildings).toHaveLength(0);
     expect(layout.modules.length).toBeGreaterThan(0);
+    expect(
+      layout.modules.every(
+        (module) =>
+          module.foundationDrop <=
+          MAX_AUTHORED_MODULE_FOUNDATION_DROP,
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects Shinovar modules that would become mountain-height pylons", () => {
+    const profile = cityProfile("shinovar", "shin");
+    const layout = createDistrictLayout(
+      profile,
+      "shinovar",
+      [-39, -2.5],
+      "street",
+      1280,
+    );
+
+    expect(layout.modules.length).toBeGreaterThan(0);
+    expect(
+      Math.max(
+        ...layout.modules.map((module) => module.foundationDrop),
+      ),
+    ).toBeLessThanOrEqual(MAX_AUTHORED_MODULE_FOUNDATION_DROP);
   });
 
   it("keeps procedural buildings and authored modules on architectural scale", () => {

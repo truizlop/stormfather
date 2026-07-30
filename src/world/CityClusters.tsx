@@ -16,6 +16,7 @@ import {
   cityProximityCandidate,
   cityInspectionOwnerAtFocus,
   cityClusterLodPolicy,
+  citySilhouetteShouldRender,
   localCityRenderDetail,
   nearestCityProximityOwner,
   resolvedCityProximityOwner,
@@ -167,6 +168,11 @@ function ModeledCityCluster({
     <ProgressiveCityLod
       locationId={location.id}
       nearWorldSpace
+      showSilhouette={citySilhouetteShouldRender(
+        location.id,
+        activeOwnerId,
+        detailLevel,
+      )}
       {...lodPolicy}
       near={near}
     />

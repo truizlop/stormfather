@@ -331,6 +331,11 @@ export interface ProgressiveCityLodProps {
    * fully active near scene immediately.
    */
   retainOutgoingNear?: boolean;
+  /**
+   * Local city lenses suppress unrelated compressed-map proxies so distant
+   * cities cannot appear to float behind the authored scene.
+   */
+  showSilhouette?: boolean;
 }
 
 /**
@@ -344,6 +349,7 @@ export function ProgressiveCityLod({
   forceNear = false,
   allowNear = true,
   retainOutgoingNear = true,
+  showSilhouette = true,
 }: ProgressiveCityLodProps) {
   const camera = useThree((state) => state.camera);
   const far = useMemo(
@@ -413,16 +419,20 @@ export function ProgressiveCityLod({
       name={`${locationId}-progressive-city-lod`}
       position={far.center}
     >
-      <SilhouetteLayer
-        silhouette={far}
-        lodState={lodState}
-        tier="far"
-      />
-      <SilhouetteLayer
-        silhouette={mid}
-        lodState={lodState}
-        tier="mid"
-      />
+      {showSilhouette && (
+        <>
+          <SilhouetteLayer
+            silhouette={far}
+            lodState={lodState}
+            tier="far"
+          />
+          <SilhouetteLayer
+            silhouette={mid}
+            lodState={lodState}
+            tier="mid"
+          />
+        </>
+      )}
       {renderNear && (
         <FadingNearLayer
           contentGeneration={nearContentGeneration}

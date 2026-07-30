@@ -463,23 +463,47 @@ export function createShinovarPastureRoutes(
   ) {
     return [];
   }
-  return fallbackCreatureRoutes(
+  const pastureFocus = {
+    x: navigation.center[0],
+    // The authored fenced fields occupy the open southern valley. Prefer
+    // safe routes nearest that pasture so the flock is visible beside the
+    // farms rather than hidden behind the northern houses.
+    z: navigation.center[1] + 2.2,
+  };
+  const focusDistance = (route: NavigationRoute) => {
+    const midpoint = route.points.reduce(
+      (sum, point) => ({
+        x: sum.x + point.x / route.points.length,
+        z: sum.z + point.z / route.points.length,
+      }),
+      { x: 0, z: 0 },
+    );
+    return Math.hypot(
+      midpoint.x - pastureFocus.x,
+      midpoint.z - pastureFocus.z,
+    );
+  };
+  const routes = fallbackCreatureRoutes(
     navigation,
     widestSheep,
     residentRoutes,
-  ).map((route, index): NavigationRoute => {
-    const first = route.points[0];
-    const last = route.points[route.points.length - 1];
-    const westwardPoints =
-      first && last && first.x < last.x
-        ? [...route.points].reverse()
-        : [...route.points];
-    return {
-      ...route,
-      id: `shinovar-sheep-pasture-${index + 1}`,
-      points: westwardPoints,
-    };
-  });
+  )
+    .map((route) => {
+      const first = route.points[0];
+      const last = route.points[route.points.length - 1];
+      return {
+        ...route,
+        points:
+          first && last && first.x < last.x
+            ? [...route.points].reverse()
+            : [...route.points],
+      };
+    })
+    .sort((left, right) => focusDistance(left) - focusDistance(right));
+  return routes.map((route, index) => ({
+    ...route,
+    id: `shinovar-sheep-pasture-${index + 1}`,
+  }));
 }
 
 /**

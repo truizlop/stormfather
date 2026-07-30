@@ -5,6 +5,7 @@ import {
   cityLodConfig,
   cityNearDetailShouldMount,
   cityProximityCandidate,
+  citySilhouetteShouldRender,
   createCityLodState,
   createCitySilhouette,
   effectiveCityLodDistance,
@@ -25,6 +26,21 @@ const testConfig = {
 };
 
 describe("progressive city LOD", () => {
+  it("suppresses unrelated map proxies inside an authored local city lens", () => {
+    expect(
+      citySilhouetteShouldRender("kharbranth", "vedenar", "city"),
+    ).toBe(false);
+    expect(
+      citySilhouetteShouldRender("vedenar", "vedenar", "street"),
+    ).toBe(true);
+    expect(
+      citySilhouetteShouldRender("kharbranth", "vedenar", "region"),
+    ).toBe(true);
+    expect(
+      citySilhouetteShouldRender("kharbranth", null, "city"),
+    ).toBe(true);
+  });
+
   it("keeps a selected semantic city in authored near detail", () => {
     expect(effectiveCityLodDistance(25.38, true)).toBe(0);
     expect(effectiveCityLodDistance(25.38, false)).toBe(25.38);

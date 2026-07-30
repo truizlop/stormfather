@@ -58,6 +58,13 @@ export function WorldScene() {
             ] as const)
           : undefined)
       : undefined;
+  const localAuthoredLocationId =
+    proximityLocation?.modelRoot
+      ? proximityLocation.id
+      : (detailLevel === "city" || detailLevel === "street") &&
+          selectedLocation?.modelRoot
+        ? selectedLocation.id
+        : undefined;
 
   return (
     <>
@@ -107,6 +114,8 @@ export function WorldScene() {
       <GazetteerMarkers
         detailLevel={detailLevel}
         selectedId={selectedGazetteerId ?? selectedId}
+        selectedGazetteerId={selectedGazetteerId}
+        localAuthoredLocationId={localAuthoredLocationId}
         focusWorld={focusWorld}
       />
       <CityClusters />

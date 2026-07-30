@@ -47,6 +47,8 @@ export interface FootprintContact {
   foundationDrop: number;
 }
 
+export const MAX_AUTHORED_MODULE_FOUNDATION_DROP = 0.18;
+
 /**
  * Raw Blender plan dimensions and the calibrated runtime scale. Blender roots
  * are intentionally richer than the low-poly procedural kit, so each module is
@@ -460,6 +462,16 @@ export function createModuleSeeds(
           0.6
         ) + Math.PI / 2,
       );
+      if (
+        authoredLandmarkLocations.has(locationId) &&
+        contact.foundationDrop >
+          MAX_AUTHORED_MODULE_FOUNDATION_DROP
+      ) {
+        // Supplemental props may bridge small ledge irregularities, but they
+        // must never turn into multi-storey support columns on a mountain
+        // face. Try another deterministic candidate on the authored surface.
+        continue;
+      }
       modules.push({
         name,
         x: candidate.x,

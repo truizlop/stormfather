@@ -168,6 +168,28 @@ describe("Shinovar pastoral ecology", () => {
       navigation.routes,
     );
     expect(routes.length).toBeGreaterThanOrEqual(2);
+    const pastureFocus = {
+      x: navigation.center[0],
+      z: navigation.center[1] + 2.2,
+    };
+    const routeFocusDistance = (route: (typeof routes)[number]) => {
+      const midpoint = route.points.reduce(
+        (sum, point) => ({
+          x: sum.x + point.x / route.points.length,
+          z: sum.z + point.z / route.points.length,
+        }),
+        { x: 0, z: 0 },
+      );
+      return Math.hypot(
+        midpoint.x - pastureFocus.x,
+        midpoint.z - pastureFocus.z,
+      );
+    };
+    for (let index = 1; index < routes.length; index += 1) {
+      expect(routeFocusDistance(routes[index])).toBeGreaterThanOrEqual(
+        routeFocusDistance(routes[index - 1]) - 0.000001,
+      );
+    }
     for (const route of routes) {
       expect(route.id).toMatch(/^shinovar-sheep-pasture-/);
       const first = route.points[0];

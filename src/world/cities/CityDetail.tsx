@@ -349,18 +349,14 @@ function InstancedArchitecture({
 function DistrictGround({
   locationId,
   center,
-  profile,
 }: {
   locationId: string;
   center: readonly [number, number];
-  profile: CityProfile;
 }) {
   const pavingSource = useTexture(
     `${import.meta.env.BASE_URL}textures/shattered-paving-albedo.jpg`,
   );
   const paving = useConfiguredTextureClone(pavingSource, 4.4);
-  const y = localSurfaceY(locationId, center[0], center[1]) - 0.012;
-
   // The Shattered Plains ground is the authored 37-plateau landmark over the
   // carved terrain patch. A second three-cylinder approximation here used to
   // replace that topology at Street detail and made camps appear to float.
@@ -401,25 +397,10 @@ function DistrictGround({
     );
   }
 
-  if (locationId !== "shinovar") {
-    return null;
-  }
-
-  return (
-    <mesh
-      position={[center[0], y, center[1]]}
-      rotation-x={-Math.PI / 2}
-      receiveShadow
-    >
-      <circleGeometry args={[profile.radius * 0.94, 64]} />
-      <meshStandardMaterial
-        map={paving}
-        color="#6d734f"
-        roughness={0.86}
-        metalness={0.04}
-      />
-    </mesh>
-  );
+  // Shinovar's authored fields, irrigation runs, and runtime valley
+  // heightfield already provide continuous ground. A second circular paving
+  // disk created the black "placed-on-top" patch seen around the farmhouses.
+  return null;
 }
 
 function ModuleInstance({
@@ -640,7 +621,6 @@ export function CityDetail({
       <DistrictGround
         locationId={location.id}
         center={center}
-        profile={profile}
       />
       <InstancedArchitecture
         seeds={layout.buildings}

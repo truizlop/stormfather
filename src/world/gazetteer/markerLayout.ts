@@ -42,6 +42,31 @@ export function isGazetteerPlaceVisibleAtLod(
 }
 
 /**
+ * Atlas miniatures preserve place coverage at continental and regional zoom.
+ * Inside an authored local city, however, those compressed-map symbols can
+ * tower above real buildings. Hide them unless the user explicitly selected
+ * a distinct, intra-city gazetteer place for inspection.
+ */
+export function isGazetteerPlaceVisibleInLocalLens(
+  placeId: string,
+  detailLevel: DetailLevel,
+  selectedGazetteerId: string | null,
+  localAuthoredLocationId: string | undefined,
+) {
+  if (
+    !localAuthoredLocationId ||
+    (detailLevel !== "city" && detailLevel !== "street")
+  ) {
+    return true;
+  }
+  return (
+    selectedGazetteerId !== null &&
+    selectedGazetteerId !== localAuthoredLocationId &&
+    placeId === selectedGazetteerId
+  );
+}
+
+/**
  * Resolve a place to the point where its marker is actually drawn. Continental
  * sources use their world point directly; readable city-plan pixels are
  * registered into the selected authored city model.
