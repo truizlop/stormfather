@@ -8,11 +8,14 @@ import {
   detailedLocationSurface,
 } from "../terrain/locationSurface";
 import {
+  createCrowdSeparationWorkspace,
   createNavigationField,
   isNavigationPositionValid,
   landmarkNavigationObstacles,
   resolveCrowdSeparation,
+  resolveCrowdSeparationInPlace,
   sampleNavigationRoute,
+  sampleNavigationRouteInto,
   type NavigationObstacle,
   type NavigationSurfaceConstraints,
 } from "./pedestrianNavigation";
@@ -225,6 +228,44 @@ describe("pedestrian navigation", () => {
         ),
       ),
     ).toBeGreaterThan(0.01);
+  });
+
+  it("reuses caller-owned route and spatial-separation buffers for a large distributed crowd", () => {
+    const field = surfaceTestContext().create();
+    const poseBuffer = { x: 0, z: 0, heading: 0 };
+    const sampled = sampleNavigationRouteInto(
+      field.routes[0],
+      0.42,
+      poseBuffer,
+    );
+    expect(sampled).toBe(poseBuffer);
+
+    const population = 118;
+    const perRoute = Math.ceil(population / field.routes.length);
+    const positions = Array.from({ length: population }, (_, index) => {
+      const route = field.routes[index % field.routes.length];
+      const slot = Math.floor(index / field.routes.length);
+      return sampleNavigationRoute(
+        route,
+        (slot + 0.5) / perRoute,
+      );
+    });
+    const firstPosition = positions[0];
+    const workspace = createCrowdSeparationWorkspace(population);
+    const result = resolveCrowdSeparationInPlace(
+      positions,
+      field,
+      workspace,
+    );
+
+    expect(result).toBe(positions);
+    expect(result[0]).toBe(firstPosition);
+    expect(
+      result.every((position) =>
+        isNavigationPositionValid(field, position),
+      ),
+    ).toBe(true);
+    expect(workspace.candidateChecks).toBeLessThan(population * 30);
   });
 
   it("routes around a water hole that falls between grid nodes", () => {

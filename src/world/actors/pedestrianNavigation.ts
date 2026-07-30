@@ -18,6 +18,10 @@ export interface NavigationPoint {
   z: number;
 }
 
+export interface NavigationPose extends NavigationPoint {
+  heading: number;
+}
+
 export interface NavigationSurfaceConstraints {
   isWalkable?: (point: NavigationPoint) => boolean;
   heightAt?: (point: NavigationPoint) => number;
@@ -601,6 +605,19 @@ export function sampleNavigationRoute(
   route: NavigationRoute,
   progress: number,
 ) {
+  return sampleNavigationRouteInto(route, progress, {
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+}
+
+/** Samples into caller-owned storage for allocation-free animation frames. */
+export function sampleNavigationRouteInto(
+  route: NavigationRoute,
+  progress: number,
+  result: NavigationPose,
+) {
   const target = THREE.MathUtils.clamp(progress, 0, 1) * route.length;
   let traveled = 0;
   for (let index = 1; index < route.points.length; index += 1) {
@@ -616,16 +633,18 @@ export function sampleNavigationRoute(
               0,
               1,
             );
-      return {
-        x: THREE.MathUtils.lerp(start.x, end.x, segmentProgress),
-        z: THREE.MathUtils.lerp(start.z, end.z, segmentProgress),
-        heading: Math.atan2(end.x - start.x, end.z - start.z),
-      };
+      result.x = THREE.MathUtils.lerp(start.x, end.x, segmentProgress);
+      result.z = THREE.MathUtils.lerp(start.z, end.z, segmentProgress);
+      result.heading = Math.atan2(end.x - start.x, end.z - start.z);
+      return result;
     }
     traveled += segmentLength;
   }
   const final = route.points[route.points.length - 1];
-  return { x: final.x, z: final.z, heading: 0 };
+  result.x = final.x;
+  result.z = final.z;
+  result.heading = 0;
+  return result;
 }
 
 export function isNavigationPositionValid(
@@ -655,37 +674,129 @@ export function resolveCrowdSeparation(
   field: NavigationField,
   iterations = 2,
 ) {
-  const minimumDistance = PEDESTRIAN_RADIUS_LOCAL_UNITS * 2.1;
   const resolved = positions.map((position) => ({ ...position }));
+  return resolveCrowdSeparationInPlace(
+    resolved,
+    field,
+    createCrowdSeparationWorkspace(resolved.length),
+    iterations,
+  );
+}
+
+export interface CrowdSeparationWorkspace {
+  cellHeads: Map<number, number>;
+  next: Int32Array;
+  leftCandidate: NavigationPoint;
+  rightCandidate: NavigationPoint;
+  candidateChecks: number;
+}
+
+export function createCrowdSeparationWorkspace(
+  capacity: number,
+): CrowdSeparationWorkspace {
+  return {
+    cellHeads: new Map<number, number>(),
+    next: new Int32Array(Math.max(0, Math.floor(capacity))),
+    leftCandidate: { x: 0, z: 0 },
+    rightCandidate: { x: 0, z: 0 },
+    candidateChecks: 0,
+  };
+}
+
+function zigZagInteger(value: number) {
+  return value >= 0 ? value * 2 : -value * 2 - 1;
+}
+
+function crowdCellKey(cellX: number, cellZ: number) {
+  const x = zigZagInteger(cellX);
+  const z = zigZagInteger(cellZ);
+  const sum = x + z;
+  return (sum * (sum + 1)) / 2 + z;
+}
+
+/**
+ * Spatial-hash local avoidance that mutates caller-owned position storage.
+ * Work arrays and candidate points are reusable, keeping large crowd frames
+ * free of array/object allocation while avoiding an all-pairs O(n²) scan.
+ */
+export function resolveCrowdSeparationInPlace(
+  resolved: NavigationPoint[],
+  field: NavigationField,
+  workspace: CrowdSeparationWorkspace,
+  iterations = 2,
+) {
+  const minimumDistance = PEDESTRIAN_RADIUS_LOCAL_UNITS * 2.1;
+  if (workspace.next.length < resolved.length) {
+    workspace.next = new Int32Array(resolved.length);
+  }
+  workspace.candidateChecks = 0;
   for (let iteration = 0; iteration < iterations; iteration += 1) {
+    workspace.cellHeads.clear();
+    workspace.next.fill(-1, 0, resolved.length);
+    for (let index = 0; index < resolved.length; index += 1) {
+      const position = resolved[index];
+      const cellX = Math.floor(position.x / minimumDistance);
+      const cellZ = Math.floor(position.z / minimumDistance);
+      const key = crowdCellKey(cellX, cellZ);
+      workspace.next[index] = workspace.cellHeads.get(key) ?? -1;
+      workspace.cellHeads.set(key, index);
+    }
+
     for (let left = 0; left < resolved.length; left += 1) {
-      for (let right = left + 1; right < resolved.length; right += 1) {
-        let dx = resolved[right].x - resolved[left].x;
-        let dz = resolved[right].z - resolved[left].z;
-        let distance = Math.hypot(dx, dz);
-        if (distance >= minimumDistance) continue;
-        if (distance < 0.00001) {
-          const angle = (left * 2.399963 + right * 0.73) % (Math.PI * 2);
-          dx = Math.cos(angle);
-          dz = Math.sin(angle);
-          distance = 1;
-        }
-        const correction = (minimumDistance - distance) / 2;
-        const offsetX = (dx / distance) * correction;
-        const offsetZ = (dz / distance) * correction;
-        const leftCandidate = {
-          x: resolved[left].x - offsetX,
-          z: resolved[left].z - offsetZ,
-        };
-        const rightCandidate = {
-          x: resolved[right].x + offsetX,
-          z: resolved[right].z + offsetZ,
-        };
-        if (isNavigationPositionValid(field, leftCandidate)) {
-          resolved[left] = leftCandidate;
-        }
-        if (isNavigationPositionValid(field, rightCandidate)) {
-          resolved[right] = rightCandidate;
+      const leftCellX = Math.floor(resolved[left].x / minimumDistance);
+      const leftCellZ = Math.floor(resolved[left].z / minimumDistance);
+      for (let cellOffsetX = -1; cellOffsetX <= 1; cellOffsetX += 1) {
+        for (let cellOffsetZ = -1; cellOffsetZ <= 1; cellOffsetZ += 1) {
+          let right =
+            workspace.cellHeads.get(
+              crowdCellKey(
+                leftCellX + cellOffsetX,
+                leftCellZ + cellOffsetZ,
+              ),
+            ) ?? -1;
+          while (right >= 0) {
+            if (right <= left) {
+              right = workspace.next[right];
+              continue;
+            }
+            workspace.candidateChecks += 1;
+            let dx = resolved[right].x - resolved[left].x;
+            let dz = resolved[right].z - resolved[left].z;
+            let distance = Math.hypot(dx, dz);
+            if (distance >= minimumDistance) {
+              right = workspace.next[right];
+              continue;
+            }
+            let directionLength = distance;
+            if (distance < 0.00001) {
+              const angle =
+                (left * 2.399963 + right * 0.73) % (Math.PI * 2);
+              dx = Math.cos(angle);
+              dz = Math.sin(angle);
+              distance = 0;
+              directionLength = 1;
+            }
+            const correction = (minimumDistance - distance) / 2;
+            const offsetX = (dx / directionLength) * correction;
+            const offsetZ = (dz / directionLength) * correction;
+            workspace.leftCandidate.x = resolved[left].x - offsetX;
+            workspace.leftCandidate.z = resolved[left].z - offsetZ;
+            workspace.rightCandidate.x = resolved[right].x + offsetX;
+            workspace.rightCandidate.z = resolved[right].z + offsetZ;
+            if (
+              isNavigationPositionValid(field, workspace.leftCandidate)
+            ) {
+              resolved[left].x = workspace.leftCandidate.x;
+              resolved[left].z = workspace.leftCandidate.z;
+            }
+            if (
+              isNavigationPositionValid(field, workspace.rightCandidate)
+            ) {
+              resolved[right].x = workspace.rightCandidate.x;
+              resolved[right].z = workspace.rightCandidate.z;
+            }
+            right = workspace.next[right];
+          }
         }
       }
     }

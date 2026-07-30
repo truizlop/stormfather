@@ -27,26 +27,34 @@ import { cityProfile } from "../cities/profiles";
 import { detailedActorLocalScale } from "./humanScale";
 import { occupationsFor, type Occupation } from "./occupations";
 import {
+  createCrowdSeparationWorkspace,
   createNavigationField,
+  isNavigationPositionValid,
   landmarkNavigationObstacles,
-  resolveCrowdSeparation,
-  sampleNavigationRoute,
+  resolveCrowdSeparationInPlace,
+  sampleNavigationRouteInto,
   type NavigationField,
+  type NavigationPoint,
+  type NavigationPose,
 } from "./pedestrianNavigation";
+import {
+  createBalancedPopulationRouteAssignments,
+  detailedPopulationLaneOffset,
+  type PopulationRouteAssignment,
+} from "./populationRoutes";
 import {
   createResidentVariation,
   cultureDressProfiles,
   movementGaitMultiplier,
   movementSpeedMultiplier,
   residentMovementState,
+  type ResidentMovementState,
 } from "./residentVariation";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/roshar-landmarks.glb`;
 
-interface ResidentSeed {
-  routeIndex: number;
+interface ResidentSeed extends PopulationRouteAssignment {
   speedMetersPerSecond: number;
-  phase: number;
   heightUnits: number;
   shoulderScale: number;
   torsoDepthScale: number;
@@ -76,6 +84,12 @@ interface CrowdRefs {
   marbling: RefObject<THREE.InstancedMesh | null>;
 }
 
+interface ResidentMotion {
+  routePose: NavigationPose;
+  cycle: number;
+  movement: ResidentMovementState;
+}
+
 function setPart(
   mesh: THREE.InstancedMesh,
   dummy: THREE.Object3D,
@@ -92,18 +106,19 @@ function setPart(
 }
 
 function ArticulatedResidents({
+  assignments,
   center,
   culture,
-  count,
   locationId,
   navigation,
 }: {
+  assignments: readonly PopulationRouteAssignment[];
   center: readonly [number, number];
   culture: Culture;
-  count: number;
   locationId: string;
   navigation: NavigationField;
 }) {
+  const count = assignments.length;
   const torso = useRef<THREE.InstancedMesh>(null);
   const heads = useRef<THREE.InstancedMesh>(null);
   const leftArms = useRef<THREE.InstancedMesh>(null);
@@ -143,9 +158,8 @@ function ArticulatedResidents({
           occupation,
         );
         return {
-          routeIndex: (index * 5 + locationId.length) % 10,
+          ...assignments[index],
           speedMetersPerSecond: 1.05 + ((index * 17) % 31) / 50,
-          phase: (index * 0.618 + locationId.length * 0.071) % 2,
           heightUnits: metersToLocal(variation.heightMeters),
           shoulderScale: variation.shoulderScale,
           torsoDepthScale: variation.torsoDepthScale,
@@ -166,7 +180,7 @@ function ArticulatedResidents({
           accent: new THREE.Color(variation.accent),
         };
       }),
-    [count, culture, locationId, occupations],
+    [assignments, count, culture, locationId, occupations],
   );
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const refs = useMemo<CrowdRefs>(
@@ -183,6 +197,34 @@ function ArticulatedResidents({
       marbling,
     }),
     [],
+  );
+  const refList = useMemo(
+    () => [
+      torso,
+      heads,
+      leftArms,
+      rightArms,
+      leftLegs,
+      rightLegs,
+      props,
+      hats,
+      outerwear,
+      marbling,
+    ],
+    [],
+  );
+  const motionRef = useRef<ResidentMotion[]>(
+    Array.from({ length: count }, () => ({
+      routePose: { x: 0, z: 0, heading: 0 },
+      cycle: 0,
+      movement: "walking",
+    })),
+  );
+  const separatedRef = useRef<NavigationPoint[]>(
+    Array.from({ length: count }, () => ({ x: 0, z: 0 })),
+  );
+  const separationWorkspaceRef = useRef(
+    createCrowdSeparationWorkspace(count),
   );
 
   useLayoutEffect(() => {
@@ -210,7 +252,7 @@ function ArticulatedResidents({
 
   useFrame(() => {
     if (
-      Object.values(refs).some((ref) => !ref.current) ||
+      refList.some((ref) => !ref.current) ||
       navigation.routes.length === 0
     ) {
       return;
@@ -221,9 +263,12 @@ function ArticulatedResidents({
     const proximity = stormProximity(stormX, center[0]);
     const hurry = 1 + proximity * 2.8;
     const shelter = THREE.MathUtils.smoothstep(proximity, 0.34, 0.94);
-    const motion = seeds.map((seed, index) => {
+    const motion = motionRef.current;
+    const separated = separatedRef.current;
+    for (let index = 0; index < seeds.length; index += 1) {
+      const seed = seeds[index];
       const route =
-        navigation.routes[seed.routeIndex % navigation.routes.length];
+        navigation.routes[seed.routeIndex];
       const movement = residentMovementState(
         locationId,
         seed.occupation,
@@ -238,10 +283,9 @@ function ArticulatedResidents({
       const pingPong = cycle < 1 ? cycle : 2 - cycle;
       const workingInPlace =
         movement === "working" || movement === "conversing";
-      const anchor = 0.13 + (seed.routeIndex % 6) * 0.14;
       const activeProgress = workingInPlace
         ? THREE.MathUtils.clamp(
-            anchor +
+            seed.activityProgress +
               Math.sin(elapsed * 0.42 + seed.phase * 7) *
                 (movement === "working" ? 0.022 : 0.012),
             0.03,
@@ -250,18 +294,24 @@ function ArticulatedResidents({
         : pingPong;
       const routeProgress = THREE.MathUtils.lerp(
         activeProgress,
-        0.035 + (seed.routeIndex % 3) * 0.012,
+        seed.shelterProgress,
         shelter,
       );
-      const routePose = sampleNavigationRoute(route, routeProgress);
-      return { routePose, cycle, movement };
-    });
-    const separated = resolveCrowdSeparation(
-      motion.map(({ routePose }) => ({
-        x: routePose.x,
-        z: routePose.z,
-      })),
+      const residentMotion = motion[index];
+      sampleNavigationRouteInto(
+        route,
+        routeProgress,
+        residentMotion.routePose,
+      );
+      residentMotion.cycle = cycle;
+      residentMotion.movement = movement;
+      separated[index].x = residentMotion.routePose.x;
+      separated[index].z = residentMotion.routePose.z;
+    }
+    resolveCrowdSeparationInPlace(
+      separated,
       navigation,
+      separationWorkspaceRef.current,
     );
     seeds.forEach((seed, index) => {
       const { routePose, cycle, movement } = motion[index];
@@ -457,7 +507,7 @@ function ArticulatedResidents({
       );
     });
 
-    Object.values(refs).forEach((ref) => {
+    refList.forEach((ref) => {
       if (ref.current) ref.current.instanceMatrix.needsUpdate = true;
     });
   });
@@ -1038,6 +1088,7 @@ function detailedActorRootName(
 }
 
 function DetailedResident({
+  assignment,
   center,
   clothSurface,
   culture,
@@ -1046,6 +1097,7 @@ function DetailedResident({
   navigation,
   skinSurface,
 }: {
+  assignment: PopulationRouteAssignment;
   center: readonly [number, number];
   clothSurface?: THREE.Texture;
   culture: Culture;
@@ -1055,6 +1107,12 @@ function DetailedResident({
   skinSurface?: THREE.Texture;
 }) {
   const group = useRef<THREE.Group>(null);
+  const routePoseRef = useRef<NavigationPose>({
+    x: 0,
+    z: 0,
+    heading: 0,
+  });
+  const lanePoseRef = useRef<NavigationPoint>({ x: 0, z: 0 });
   const { scene } = useGLTF(MODEL_URL);
   const kharbranthResident = locationId === "kharbranth";
   const resident = useMemo(() => {
@@ -1102,28 +1160,41 @@ function DetailedResident({
       stormXAtTime(state.simulationTime),
       center[0],
     );
-    const route =
-      navigation.routes[(index * 3 + 2) % navigation.routes.length];
+    const route = navigation.routes[assignment.routeIndex];
     if (!route) return;
     const walkingSpeed = 1.08 + (index % 4) * 0.12;
     const routeSpeed = metersToLocal(walkingSpeed) / route.length;
     const hurry = 1 + proximity * 2.8;
     const cycle =
-      (state.simulationTime * routeSpeed * hurry + index * 0.173) % 2;
+      (state.simulationTime * routeSpeed * hurry + assignment.phase) % 2;
     const progress = cycle < 1 ? cycle : 2 - cycle;
     const shelter = THREE.MathUtils.smoothstep(proximity, 0.34, 0.94);
     const routeProgress = THREE.MathUtils.lerp(
       progress,
-      0.04 + (index % 3) * 0.015,
+      assignment.shelterProgress,
       shelter,
     );
-    const routePose = sampleNavigationRoute(route, routeProgress);
+    const routePose = routePoseRef.current;
+    const lanePose = lanePoseRef.current;
+    sampleNavigationRouteInto(route, routeProgress, routePose);
+    const laneOffset = detailedPopulationLaneOffset(
+      assignment.routeSlot,
+    );
+    lanePose.x = routePose.x + Math.cos(routePose.heading) * laneOffset;
+    lanePose.z = routePose.z - Math.sin(routePose.heading) * laneOffset;
+    let laneIsValid = isNavigationPositionValid(navigation, lanePose);
+    if (!laneIsValid) {
+      lanePose.x = routePose.x - Math.cos(routePose.heading) * laneOffset;
+      lanePose.z = routePose.z + Math.sin(routePose.heading) * laneOffset;
+      laneIsValid = isNavigationPositionValid(navigation, lanePose);
+    }
+    const placement = laneIsValid ? lanePose : routePose;
     const gait = Math.sin(state.simulationTime * 7.2 + index * 1.7);
     group.current.position.set(
-      routePose.x,
-      localSurfaceY(locationId, routePose.x, routePose.z) +
+      placement.x,
+      localSurfaceY(locationId, placement.x, placement.z) +
         Math.abs(gait) * 0.003,
-      routePose.z,
+      placement.z,
     );
     group.current.rotation.y =
       routePose.heading + (cycle < 1 ? 0 : Math.PI);
@@ -1157,22 +1228,23 @@ function KharbranthDetailedResident(
 }
 
 function DetailedResidents({
+  assignments,
   center,
   culture,
-  count,
   locationId,
   navigation,
 }: {
+  assignments: readonly PopulationRouteAssignment[];
   center: readonly [number, number];
   culture: Culture;
-  count: number;
   locationId: string;
   navigation: NavigationField;
 }) {
   return (
     <group name={`${culture} close-detail residents`}>
-      {Array.from({ length: count }, (_, index) => {
+      {assignments.map((assignment, index) => {
         const props = {
+          assignment,
           center,
           culture,
           index,
@@ -1304,6 +1376,36 @@ function ActiveLivingPopulation({
       profile,
     ],
   );
+  const desktopCount = detailLevel === "street" ? 118 : 72;
+  const populationCount = Math.round(
+    desktopCount * (viewportWidth < 720 ? 0.62 : 1),
+  );
+  const detailedCount =
+    detailLevel === "street"
+      ? viewportWidth < 720
+        ? 5
+        : 10
+      : viewportWidth < 720
+        ? 3
+        : 6;
+  const articulatedCount = Math.max(0, populationCount - detailedCount);
+  const populationAssignments = useMemo(
+    () =>
+      createBalancedPopulationRouteAssignments(
+        populationCount,
+        navigation.routes.length,
+        fallbackLocation.id,
+      ),
+    [fallbackLocation.id, navigation.routes.length, populationCount],
+  );
+  const articulatedAssignments = useMemo(
+    () => populationAssignments.slice(0, articulatedCount),
+    [articulatedCount, populationAssignments],
+  );
+  const detailedAssignments = useMemo(
+    () => populationAssignments.slice(articulatedCount),
+    [articulatedCount, populationAssignments],
+  );
 
   const streetCast =
     location.id === "kharbranth" &&
@@ -1314,32 +1416,22 @@ function ActiveLivingPopulation({
 
   if (navigation.routes.length === 0) return streetCast;
 
-  const desktopCount = detailLevel === "street" ? 118 : 72;
-  const count = Math.round(desktopCount * (viewportWidth < 720 ? 0.62 : 1));
-  const detailedCount =
-    detailLevel === "street"
-      ? viewportWidth < 720
-        ? 5
-        : 10
-      : viewportWidth < 720
-        ? 3
-        : 6;
   return (
     <>
       {!portraitInspection && (
         <>
           <ArticulatedResidents
-            key={`${location.id}-${count}`}
+            key={`${location.id}-${articulatedAssignments.length}`}
+            assignments={articulatedAssignments}
             center={center}
             culture={location.culture}
-            count={count}
             locationId={location.id}
             navigation={navigation}
           />
           <DetailedResidents
+            assignments={detailedAssignments}
             center={center}
             culture={location.culture}
-            count={detailedCount}
             locationId={location.id}
             navigation={navigation}
           />
