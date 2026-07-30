@@ -33,6 +33,7 @@ interface AtlasState {
   setStormMode: (enabled: boolean) => void;
   toggleNightMode: () => void;
   toggleMenu: () => void;
+  setMenuOpen: (open: boolean) => void;
   setSearchOpen: (open: boolean) => void;
   toggleLocationPanel: () => void;
   toggleFrontiers: () => void;
@@ -115,7 +116,12 @@ export const useAtlasStore = create<AtlasState>((set) => ({
     })),
   toggleNightMode: () => set((state) => ({ nightMode: !state.nightMode })),
   toggleMenu: () => set((state) => ({ menuOpen: !state.menuOpen })),
-  setSearchOpen: (searchOpen) => set({ searchOpen }),
+  setMenuOpen: (menuOpen) => set({ menuOpen }),
+  setSearchOpen: (searchOpen) =>
+    set({
+      searchOpen,
+      ...(searchOpen ? { menuOpen: false } : {}),
+    }),
   toggleLocationPanel: () =>
     set((state) => ({ locationPanelOpen: !state.locationPanelOpen })),
   toggleFrontiers: () =>

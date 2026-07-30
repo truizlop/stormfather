@@ -22,6 +22,7 @@ export const locationIcons: Record<string, typeof Map> = {
   purelake: Droplets,
   aimia: Waves,
   kharbranth: Building2,
+  vedenar: Castle,
   kholinar: Castle,
   "thaylen-city": Waves,
   highstorm: CloudLightning,

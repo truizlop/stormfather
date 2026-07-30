@@ -3,9 +3,13 @@ import { useMemo, useState } from "react";
 import { useAtlasStore } from "../store/useAtlasStore";
 import { gazetteerById, rosharGazetteer } from "../world/gazetteer";
 import { searchRosharCatalog } from "./searchCatalog";
+import { useCompactLayout } from "./useCompactLayout";
+
+const COMPACT_RESULT_LIMIT = 48;
 
 export function SearchPalette() {
   const [query, setQuery] = useState("");
+  const compactLayout = useCompactLayout();
   const searchOpen = useAtlasStore((state) => state.searchOpen);
   const setSearchOpen = useAtlasStore((state) => state.setSearchOpen);
   const selectLocation = useAtlasStore((state) => state.selectLocation);
@@ -13,6 +17,13 @@ export function SearchPalette() {
     (state) => state.focusGazetteerPlace,
   );
   const results = useMemo(() => searchRosharCatalog(query), [query]);
+  const visibleResults = useMemo(
+    () =>
+      compactLayout
+        ? results.slice(0, COMPACT_RESULT_LIMIT)
+        : results,
+    [compactLayout, results],
+  );
 
   if (!searchOpen) return null;
 
@@ -61,7 +72,7 @@ export function SearchPalette() {
           </span>
         </div>
         <div className="search-results">
-          {results.map((result) => {
+          {visibleResults.map((result) => {
             const id =
               result.type === "destination"
                 ? result.location.id
@@ -101,6 +112,12 @@ export function SearchPalette() {
           })}
           {results.length === 0 && (
             <p>No charted place matches that search.</p>
+          )}
+          {results.length > visibleResults.length && (
+            <p className="search-more-results">
+              Showing {visibleResults.length} of {results.length} matches.
+              Keep typing to narrow the atlas.
+            </p>
           )}
         </div>
       </section>

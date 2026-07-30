@@ -402,14 +402,14 @@ export function CameraRig() {
       maxDistance={compactViewport ? 230 : 165}
       minPolarAngle={0.22}
       maxPolarAngle={Math.PI * 0.47}
-      screenSpacePanning={false}
+      screenSpacePanning={compactViewport}
       mouseButtons={{
         LEFT: THREE.MOUSE.ROTATE,
         MIDDLE: THREE.MOUSE.DOLLY,
         RIGHT: THREE.MOUSE.PAN,
       }}
       touches={{
-        ONE: THREE.TOUCH.ROTATE,
+        ONE: compactViewport ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE,
         TWO: THREE.TOUCH.DOLLY_PAN,
       }}
     />

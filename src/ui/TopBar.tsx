@@ -5,6 +5,7 @@ import {
   Play,
   Search,
   Sun,
+  X,
 } from "lucide-react";
 import { useAtlasStore } from "../store/useAtlasStore";
 import type { DetailLevel } from "../world/types";
@@ -39,6 +40,7 @@ export function TopBar() {
   const toggleNightMode = useAtlasStore((state) => state.toggleNightMode);
   const toggleMenu = useAtlasStore((state) => state.toggleMenu);
   const setSearchOpen = useAtlasStore((state) => state.setSearchOpen);
+  const menuOpen = useAtlasStore((state) => state.menuOpen);
 
   return (
     <header className="top-bar">
@@ -84,10 +86,12 @@ export function TopBar() {
         <button
           className="mobile-menu-trigger"
           type="button"
-          aria-label="Open travel menu"
+          aria-label={menuOpen ? "Close travel menu" : "Open travel menu"}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-travel-sheet"
           onClick={toggleMenu}
         >
-          <Menu size={21} />
+          {menuOpen ? <X size={21} /> : <Menu size={21} />}
         </button>
       </div>
     </header>

@@ -10,23 +10,38 @@ import { StormTimeline } from "./StormTimeline";
 import { Toast } from "./Toast";
 import { TopBar } from "./TopBar";
 import { TravelRail } from "./TravelRail";
+import { useCompactLayout } from "./useCompactLayout";
 
 export function AtlasUI() {
   const stormMode = useAtlasStore((state) => state.stormMode);
   const menuOpen = useAtlasStore((state) => state.menuOpen);
+  const compactLayout = useCompactLayout();
+
   return (
-    <div className={`atlas-ui ${stormMode ? "is-storm-mode" : ""}`}>
+    <div
+      className={[
+        "atlas-ui",
+        stormMode ? "is-storm-mode" : "",
+        compactLayout ? "is-compact-layout" : "is-desktop-layout",
+        menuOpen ? "is-menu-open" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <TopBar />
-      <div className="desktop-ui">
-        <TravelRail />
-        <LocationPanel />
-        {!stormMode && <Legend />}
-        <MiniMap />
-        {stormMode && <StormTimeline />}
-      </div>
+      {compactLayout ? (
+        <MobileChrome />
+      ) : (
+        <div className="desktop-ui">
+          <TravelRail />
+          <LocationPanel />
+          {!stormMode && <Legend />}
+          <MiniMap />
+          {stormMode && <StormTimeline />}
+        </div>
+      )}
       <MapControls />
       {!stormMode && !menuOpen && <ScaleReadout />}
-      <MobileChrome />
       <SearchPalette />
       <Toast />
       <p className="unofficial-note">

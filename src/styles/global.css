@@ -63,7 +63,7 @@ input:focus-visible {
 .atlas-ui {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 40;
   pointer-events: none;
 }
 
@@ -1195,7 +1195,7 @@ input:focus-visible {
 .loading-overlay {
   position: absolute;
   inset: 0;
-  z-index: 20;
+  z-index: 100;
   display: grid;
   align-content: center;
   justify-items: center;
@@ -1318,20 +1318,38 @@ input:focus-visible {
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 900px), (max-width: 1000px) and (max-height: 560px) {
+  .world-canvas {
+    touch-action: none;
+  }
+
+  .panel {
+    background:
+      linear-gradient(145deg, rgba(8, 25, 32, 0.98), rgba(4, 14, 20, 0.97)),
+      var(--panel);
+    backdrop-filter: none;
+  }
+
   .top-bar {
-    height: 56px;
-    padding: 0 14px;
+    z-index: 40;
+    height: calc(56px + env(safe-area-inset-top));
+    padding:
+      env(safe-area-inset-top)
+      max(12px, env(safe-area-inset-right))
+      0
+      max(12px, env(safe-area-inset-left));
+    background: rgba(5, 16, 22, 0.97);
+    backdrop-filter: none;
   }
 
   .brand-lockup {
     min-width: 0;
-    gap: 10px;
+    gap: 9px;
   }
 
   .brand-lockup span {
     font-size: 20px;
-    letter-spacing: 0.25em;
+    letter-spacing: 0.24em;
   }
 
   .brand-mark {
@@ -1340,9 +1358,18 @@ input:focus-visible {
   }
 
   .lod-nav,
-  .top-actions > button:first-child,
   .top-actions .play-control {
     display: none;
+  }
+
+  .top-actions {
+    gap: 6px;
+  }
+
+  .top-actions button {
+    width: 44px;
+    height: 44px;
+    background: rgba(9, 24, 31, 0.76);
   }
 
   .mobile-menu-trigger {
@@ -1357,239 +1384,607 @@ input:focus-visible {
     display: block;
   }
 
-  .mobile-location-strip {
+  .mobile-dock {
     position: absolute;
-    top: 72px;
-    right: 14px;
-    left: 14px;
-    padding: 13px 15px;
-  }
-
-  .mobile-location-strip h2 {
-    margin: 0;
-    color: #eee1c6;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: 25px;
-    line-height: 1;
-  }
-
-  .mobile-location-strip p {
-    margin: 4px 0 7px;
-    color: rgba(225, 229, 221, 0.7);
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: 13px;
-  }
-
-  .mobile-location-strip span {
-    display: flex;
+    z-index: 12;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 6px;
-    color: var(--danger);
-    font-size: 8px;
-    letter-spacing: 0.05em;
-  }
-
-  .mobile-sheet {
-    position: absolute;
-    right: 10px;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    left: 10px;
-    display: grid;
     gap: 10px;
-    min-height: 226px;
-    padding: 16px 12px 10px;
+    height: 112px;
+    padding:
+      10px
+      max(12px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.38);
   }
 
-  .mobile-chrome.is-menu-open .mobile-sheet {
-    min-height: min(520px, calc(100vh - 138px));
-  }
-
-  .mobile-chrome.is-menu-open .mobile-travel-list {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    align-content: start;
-    overflow-y: auto;
-  }
-
-  .mobile-chrome.is-menu-open .mobile-travel-list button {
-    width: auto;
-  }
-
-  .sheet-handle {
+  .mobile-dock::before {
     position: absolute;
     top: 7px;
     left: 50%;
-    width: 46px;
-    height: 4px;
-    border-radius: 4px;
-    background: rgba(230, 230, 218, 0.36);
+    width: 38px;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(224, 222, 209, 0.28);
+    content: "";
     transform: translateX(-50%);
   }
 
-  .mobile-travel-list {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 3px 2px 1px;
-    scrollbar-width: none;
-  }
-
-  .mobile-travel-list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .mobile-travel-list button {
+  .mobile-dock-summary {
     display: grid;
-    flex: 0 0 84px;
-    height: 78px;
-    padding: 9px 4px;
-    place-items: center;
-    border: 1px solid rgba(202, 170, 107, 0.22);
-    border-radius: 3px;
-    background: rgba(9, 22, 28, 0.65);
-    color: rgba(223, 220, 207, 0.74);
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
     cursor: pointer;
+    touch-action: manipulation;
   }
 
-  .mobile-travel-list button.is-selected {
-    border-color: var(--brass);
-    color: #f1dfb7;
-    background: rgba(202, 170, 107, 0.08);
+  .mobile-dock-icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border: 1px solid rgba(202, 170, 107, 0.48);
+    border-radius: 50%;
+    background: rgba(202, 170, 107, 0.07);
+    color: var(--brass);
   }
 
-  .mobile-travel-list svg {
-    width: 21px;
-    height: 21px;
-    stroke-width: 1.25;
+  .mobile-dock-icon.is-storm-mode {
+    border-color: rgba(101, 231, 240, 0.66);
+    background: rgba(101, 231, 240, 0.08);
+    color: var(--stormlight);
+    box-shadow: 0 0 20px rgba(101, 231, 240, 0.12);
   }
 
-  .mobile-travel-list span {
-    align-self: end;
-    max-width: 78px;
+  .mobile-dock-copy {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+  }
+
+  .mobile-dock-copy strong {
     overflow: hidden;
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: 13px;
+    color: #f0e4c9;
+    font: 600 20px/1.05 "Cormorant Garamond", Georgia, serif;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  .mobile-dock-copy > span {
+    overflow: hidden;
+    color: rgba(221, 225, 216, 0.64);
+    font-size: 10px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-dock-copy small {
+    margin-top: 3px;
+    color: var(--brass);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
   .mobile-explore {
     display: grid;
-    grid-template-columns: 1fr auto 22px;
+    grid-template-columns: 1fr 18px;
     align-items: center;
+    gap: 5px;
+    min-width: 112px;
     min-height: 48px;
-    padding: 0 11px 0 15px;
+    padding: 0 10px 0 13px;
     border: 1px solid rgba(202, 170, 107, 0.58);
-    border-radius: 2px;
-    background: rgba(202, 170, 107, 0.035);
+    border-radius: 3px;
+    background: rgba(202, 170, 107, 0.04);
     color: #eee0c2;
     cursor: pointer;
+    touch-action: manipulation;
   }
 
   .mobile-explore span {
     font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: 20px;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
     text-align: left;
   }
 
-  .mobile-explore strong {
+  .mobile-sheet-backdrop {
+    position: absolute;
+    z-index: 28;
+    top: calc(56px + env(safe-area-inset-top));
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: flex-end;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(2, 10, 14, 0.12) 0%,
+        rgba(2, 10, 14, 0.34) 32%,
+        rgba(2, 10, 14, 0.66) 100%
+      );
+    pointer-events: auto;
+  }
+
+  .mobile-sheet {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    width: 100%;
+    height: min(64dvh, 560px);
+    max-height: calc(100dvh - 56px - env(safe-area-inset-top));
+    overflow: hidden;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 -24px 70px rgba(0, 0, 0, 0.58);
+    touch-action: pan-y;
+  }
+
+  .mobile-sheet::before {
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    width: 38px;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(224, 222, 209, 0.28);
+    content: "";
+    transform: translateX(-50%);
+  }
+
+  .mobile-sheet-header {
+    display: grid;
+    grid-template-columns: 38px 1fr 44px;
+    align-items: center;
+    gap: 9px;
+    min-height: 66px;
+    padding: 13px 12px 5px;
+    border-bottom: 1px solid rgba(202, 170, 107, 0.16);
+  }
+
+  .mobile-sheet-mark {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 1px solid rgba(202, 170, 107, 0.44);
+    border-radius: 50%;
     color: var(--brass);
-    font-size: 7px;
+  }
+
+  .mobile-sheet-header > span:nth-child(2) {
+    display: grid;
+  }
+
+  .mobile-sheet-header small {
+    color: rgba(202, 170, 107, 0.62);
+    font-size: 9px;
+    font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
-  .mobile-sheet footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 32px;
-    padding: 0 9px;
-    border: 1px solid rgba(202, 170, 107, 0.16);
-    border-radius: 2px;
+  .mobile-sheet-header h2 {
+    margin: 0;
+    color: #f0e4c9;
+    font: 600 25px/1 "Cormorant Garamond", Georgia, serif;
   }
 
-  .mobile-sheet footer span {
-    display: flex;
+  .mobile-sheet-header button {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid rgba(202, 170, 107, 0.22);
+    border-radius: 3px;
+    background: rgba(202, 170, 107, 0.025);
+    color: rgba(232, 224, 207, 0.78);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .mobile-travel-search {
+    display: grid;
+    grid-template-columns: 20px 1fr auto;
     align-items: center;
-    gap: 7px;
-    color: rgba(217, 220, 211, 0.6);
-    font-size: 8px;
-    letter-spacing: 0.06em;
+    gap: 9px;
+    min-height: 48px;
+    margin: 8px 12px;
+    padding: 0 12px;
+    border: 1px solid rgba(202, 170, 107, 0.24);
+    border-radius: 3px;
+    background: rgba(1, 10, 14, 0.5);
+    color: var(--brass);
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .mobile-travel-search > span {
+    overflow: hidden;
+    color: rgba(224, 218, 202, 0.62);
+    font: 500 15px/1 "Cormorant Garamond", Georgia, serif;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-travel-search kbd {
+    color: rgba(201, 211, 207, 0.36);
+    font: 600 9px/1 "Inter", sans-serif;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
-  .mobile-sheet footer button {
+  .mobile-destination-list {
     display: grid;
-    width: 30px;
-    height: 30px;
-    padding: 0;
+    align-content: start;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 8px;
+    overscroll-behavior: contain;
+    scrollbar-color: rgba(202, 170, 107, 0.32) transparent;
+    touch-action: pan-y;
+  }
+
+  .mobile-destination {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) 20px;
+    align-items: center;
+    gap: 9px;
+    min-height: 58px;
+    padding: 5px 8px;
+    border: 0;
+    border-bottom: 1px solid rgba(202, 170, 107, 0.12);
+    background: transparent;
+    color: rgba(226, 224, 213, 0.76);
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .mobile-destination > span:nth-child(2) {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .mobile-destination strong {
+    overflow: hidden;
+    color: #eee1c6;
+    font: 600 18px/1 "Cormorant Garamond", Georgia, serif;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-destination small {
+    overflow: hidden;
+    color: rgba(211, 218, 212, 0.47);
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .mobile-destination-icon {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 1px solid rgba(202, 170, 107, 0.2);
+    border-radius: 50%;
+    color: rgba(202, 170, 107, 0.66);
+  }
+
+  .mobile-destination.is-selected {
+    background: linear-gradient(
+      90deg,
+      rgba(202, 170, 107, 0.13),
+      rgba(202, 170, 107, 0.02)
+    );
+  }
+
+  .mobile-destination.is-selected .mobile-destination-icon {
+    border-color: var(--brass);
+    color: var(--brass);
+  }
+
+  .mobile-destination.is-highstorm {
+    color: var(--stormlight);
+  }
+
+  .mobile-destination.is-highstorm .mobile-destination-icon {
+    border-color: rgba(101, 231, 240, 0.54);
+    color: var(--stormlight);
+    box-shadow: 0 0 16px rgba(101, 231, 240, 0.08);
+  }
+
+  .mobile-destination.is-highstorm strong {
+    color: #a8f4f7;
+  }
+
+  .mobile-sheet-footer {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding:
+      4px
+      max(8px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+    border-top: 1px solid rgba(202, 170, 107, 0.18);
+    background: rgba(3, 13, 18, 0.74);
+  }
+
+  .mobile-sheet-footer button {
+    display: grid;
+    min-width: 0;
+    min-height: 48px;
+    padding: 4px 2px;
     place-items: center;
     border: 0;
+    border-right: 1px solid rgba(202, 170, 107, 0.12);
     background: transparent;
-    color: #ddd6c4;
+    color: rgba(224, 222, 211, 0.68);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .mobile-sheet-footer button:last-child {
+    border-right: 0;
+  }
+
+  .mobile-sheet-footer button[aria-pressed="true"] {
+    color: var(--stormlight);
+  }
+
+  .mobile-sheet-footer button span {
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
   }
 
   .map-controls {
-    top: 176px;
-    right: 13px;
+    top: calc(72px + env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
     bottom: auto;
     display: grid;
+    gap: 8px;
+  }
+
+  .atlas-ui.is-menu-open .map-controls {
+    display: none;
+  }
+
+  .zoom-stack,
+  .orientation-stack {
+    background: rgba(5, 17, 23, 0.94);
+    backdrop-filter: none;
+  }
+
+  .zoom-stack button,
+  .orientation-stack button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .zoom-stack > span {
+    width: 44px;
+    height: 34px;
+  }
+
+  .zoom-stack > span::after {
+    top: 16px;
+  }
+
+  .map-control-reset-north,
+  .map-control-home {
+    display: none !important;
   }
 
   .scale-readout {
     right: auto;
-    bottom: calc(248px + env(safe-area-inset-bottom));
-    left: 14px;
-    min-width: 132px;
-    padding: 6px 9px 5px;
+    bottom: calc(124px + env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+    min-width: 104px;
+    padding: 5px 8px 4px;
     transform: none;
+    backdrop-filter: none;
   }
 
-  .zoom-stack > span {
-    height: 38px;
-  }
-
-  .orientation-stack button:nth-child(2),
-  .orientation-stack button:nth-child(3) {
+  .scale-readout > span,
+  .scale-readout small {
     display: none;
   }
 
+  .scale-readout strong {
+    font-size: 11px;
+  }
+
   .unofficial-note {
-    top: 59px;
-    font-size: 6px;
+    display: none;
   }
 
   .discovery-toast {
-    bottom: 254px;
+    bottom: calc(124px + env(safe-area-inset-bottom));
+    width: min(360px, calc(100% - 24px));
+  }
+
+  .search-backdrop {
+    top: calc(56px + env(safe-area-inset-top));
+    padding: 10px max(10px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+    background: rgba(1, 8, 12, 0.82);
+    backdrop-filter: none;
+  }
+
+  .search-palette {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    width: 100%;
+    max-height: calc(
+      100dvh - 76px - env(safe-area-inset-top) -
+        env(safe-area-inset-bottom)
+    );
+  }
+
+  .search-palette header {
+    grid-template-columns: 22px minmax(0, 1fr) 44px;
+    min-height: 56px;
+    padding-right: 5px;
+  }
+
+  .search-palette header button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .search-results {
+    max-height: none;
+    min-height: 0;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+
+  .search-results > button {
+    min-height: 56px;
   }
 }
 
 @media (max-width: 420px) {
+  .brand-lockup {
+    gap: 7px;
+  }
+
+  .brand-lockup span {
+    font-size: 18px;
+    letter-spacing: 0.2em;
+  }
+
   .top-actions {
-    gap: 5px;
+    gap: 4px;
   }
 
   .top-actions button {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
   }
 
-  .mobile-location-strip {
-    top: 68px;
+  .mobile-dock {
+    gap: 7px;
+    padding-inline: 10px;
+  }
+
+  .mobile-dock-summary {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .mobile-dock-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .mobile-dock-copy strong {
+    font-size: 18px;
+  }
+
+  .mobile-explore {
+    min-width: 102px;
+    padding-inline: 9px 7px;
+  }
+
+  .mobile-explore span {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 1000px) and (max-height: 560px) {
+  .mobile-dock {
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: auto;
+    width: min(410px, 49vw);
+    height: 96px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+  }
+
+  .mobile-sheet-backdrop {
+    justify-content: flex-end;
+    align-items: stretch;
+    background: linear-gradient(
+      90deg,
+      rgba(2, 10, 14, 0.08),
+      rgba(2, 10, 14, 0.5)
+    );
   }
 
   .mobile-sheet {
-    min-height: 214px;
+    width: min(440px, 54vw);
+    height: 100%;
+    max-height: none;
+    border-top: 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 1px solid var(--line);
+    border-radius: 0;
   }
 
-  .mobile-travel-list button {
-    flex-basis: 76px;
-    height: 72px;
+  .mobile-sheet::before {
+    display: none;
   }
 
-  .map-controls {
-    top: 166px;
+  .mobile-sheet-header {
+    min-height: 58px;
+    padding-top: 6px;
+  }
+
+  .mobile-travel-search {
+    margin-block: 6px;
+  }
+
+  .mobile-sheet-footer {
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
+
+  .scale-readout {
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .discovery-toast {
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 12px;
+    transform: none;
   }
 }
 
