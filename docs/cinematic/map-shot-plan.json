@@ -1,0 +1,153 @@
+{
+  "title": "Storm Over Roshar · Map Cut",
+  "fps": 24,
+  "audio_duration_seconds": 179.861333,
+  "render_end_frame": 4317,
+  "output": "artifacts/cinematic/roshar-map-cinematic-v2.mp4",
+  "shots": [
+    {
+      "id": "map-awakens",
+      "label": "ROSHAR",
+      "subtitle": "THE STORM-SHAPED CONTINENT",
+      "root": null,
+      "kind": "map-intro",
+      "start_seconds": 0.0,
+      "end_seconds": 15.975329,
+      "start_frame": 1,
+      "end_frame": 383,
+      "orbit_degrees": 18
+    },
+    {
+      "id": "kholinar",
+      "label": "KHOLINAR",
+      "subtitle": "THE CITY OF WINDBLADES",
+      "root": "Landmark_Kholinar",
+      "kind": "city",
+      "start_seconds": 15.975329,
+      "end_seconds": 31.973878,
+      "start_frame": 384,
+      "end_frame": 767,
+      "orbit_degrees": 58
+    },
+    {
+      "id": "shattered-plains",
+      "label": "THE SHATTERED PLAINS",
+      "subtitle": "NARAK · THE CITY AT THE CENTER",
+      "root": "Landmark_Shattered_Plains",
+      "kind": "city",
+      "start_seconds": 31.973878,
+      "end_seconds": 47.972426,
+      "start_frame": 768,
+      "end_frame": 1151,
+      "orbit_degrees": -54
+    },
+    {
+      "id": "kharbranth",
+      "label": "KHARBRANTH",
+      "subtitle": "THE CITY OF BELLS",
+      "root": "Landmark_Kharbranth",
+      "kind": "city",
+      "start_seconds": 47.972426,
+      "end_seconds": 63.994195,
+      "start_frame": 1152,
+      "end_frame": 1535,
+      "orbit_degrees": 46
+    },
+    {
+      "id": "thaylen-city",
+      "label": "THAYLEN CITY",
+      "subtitle": "HARBOR OF MERCHANTS",
+      "root": "Landmark_ThaylenCity",
+      "kind": "city",
+      "start_seconds": 63.994195,
+      "end_seconds": 79.992744,
+      "start_frame": 1536,
+      "end_frame": 1919,
+      "orbit_degrees": -52
+    },
+    {
+      "id": "vedenar",
+      "label": "VEDENAR",
+      "subtitle": "CAPITAL OF JAH KEVED",
+      "root": "Landmark_Vedenar",
+      "kind": "city",
+      "start_seconds": 79.992744,
+      "end_seconds": 96.014512,
+      "start_frame": 1920,
+      "end_frame": 2303,
+      "orbit_degrees": 48
+    },
+    {
+      "id": "azimir",
+      "label": "AZIMIR",
+      "subtitle": "THE DIVINELY ORDERED CITY",
+      "root": "Landmark_Azimir",
+      "kind": "city",
+      "start_seconds": 96.014512,
+      "end_seconds": 111.966621,
+      "start_frame": 2304,
+      "end_frame": 2687,
+      "orbit_degrees": -46
+    },
+    {
+      "id": "shinovar",
+      "label": "SHINOVAR",
+      "subtitle": "WHERE THE STORMS BREAK",
+      "root": "Landmark_Shinovar",
+      "kind": "city",
+      "start_seconds": 111.966621,
+      "end_seconds": 127.98839,
+      "start_frame": 2688,
+      "end_frame": 3071,
+      "orbit_degrees": 44
+    },
+    {
+      "id": "purelake",
+      "label": "THE PURELAKE",
+      "subtitle": "WATERS THAT WITHDRAW",
+      "root": "Landmark_Purelake",
+      "kind": "city",
+      "start_seconds": 127.98839,
+      "end_seconds": 143.986939,
+      "start_frame": 3072,
+      "end_frame": 3455,
+      "orbit_degrees": -42
+    },
+    {
+      "id": "akinah",
+      "label": "AKINAH",
+      "subtitle": "THE VEILED CITY OF AIMIA",
+      "root": "Landmark_Akinah",
+      "kind": "city",
+      "start_seconds": 143.986939,
+      "end_seconds": 151.974603,
+      "start_frame": 3456,
+      "end_frame": 3647,
+      "orbit_degrees": 34
+    },
+    {
+      "id": "highstorm",
+      "label": "THE HIGHSTORM",
+      "subtitle": "THE STORMWALL CROSSES ROSHAR",
+      "root": null,
+      "kind": "highstorm",
+      "start_seconds": 151.974603,
+      "end_seconds": 159.985488,
+      "start_frame": 3648,
+      "end_frame": 3839,
+      "orbit_degrees": 0
+    },
+    {
+      "id": "urithiru",
+      "label": "URITHIRU",
+      "subtitle": "HOME OF THE KNIGHTS RADIANT",
+      "root": "Landmark_Urithiru",
+      "kind": "city",
+      "start_seconds": 159.985488,
+      "end_seconds": 179.861333,
+      "start_frame": 3840,
+      "end_frame": 4317,
+      "orbit_degrees": 64
+    }
+  ]
+}
