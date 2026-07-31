@@ -820,6 +820,7 @@ def camera_text(
     camera: bpy.types.Object,
     collection: bpy.types.Collection,
     text_material: bpy.types.Material,
+    x: float,
     y: float,
     scale: float,
 ) -> bpy.types.Object:
@@ -835,7 +836,7 @@ def camera_text(
     collection.objects.link(obj)
     obj.parent = camera
     obj.matrix_parent_inverse = Matrix.Identity(4)
-    obj.location = (0, y, -2.0)
+    obj.location = (x, y, -2.0)
     obj.rotation_euler = (0, 0, 0)
     obj.scale = (scale, scale, scale)
     data.materials.append(text_material)
@@ -879,18 +880,43 @@ def build_camera_labels(
             duration = shot["end_frame"] - shot["start_frame"]
             visible_start = shot["start_frame"] + min(132, max(76, int(duration * 0.42))) + 10
         visible_end = shot["end_frame"] - 16
-        title_scale = min(0.092, 1.08 / max(8.0, len(shot["label"]) * 0.62))
-        subtitle_scale = min(
-            0.038,
-            1.0 / max(14.0, len(shot["subtitle"]) * 0.62),
-        )
+        is_intro = shot["kind"] == "map-intro"
+        if is_intro:
+            text_x = 0.0
+            title_y = -0.19
+            subtitle_y = -0.265
+            title_scale = min(
+                0.092,
+                1.08 / max(8.0, len(shot["label"]) * 0.62),
+            )
+            subtitle_scale = min(
+                0.038,
+                1.0 / max(14.0, len(shot["subtitle"]) * 0.62),
+            )
+            plaque_location = (0, -0.23, -2.025)
+            plaque_scale = (0.55, 0.11, 1)
+        else:
+            text_x = -0.40
+            title_y = -0.285
+            subtitle_y = -0.342
+            title_scale = min(
+                0.058,
+                0.68 / max(8.0, len(shot["label"]) * 0.62),
+            )
+            subtitle_scale = min(
+                0.029,
+                0.72 / max(14.0, len(shot["subtitle"]) * 0.62),
+            )
+            plaque_location = (-0.40, -0.315, -2.025)
+            plaque_scale = (0.27, 0.065, 1)
         title = camera_text(
             f"CINE2_Title_{shot['id']}",
             shot["label"],
             camera,
             collection,
             gold,
-            -0.19,
+            text_x,
+            title_y,
             title_scale,
         )
         subtitle = camera_text(
@@ -899,7 +925,8 @@ def build_camera_labels(
             camera,
             collection,
             cyan,
-            -0.265,
+            text_x,
+            subtitle_y,
             subtitle_scale,
         )
         active_collection(collection)
@@ -908,9 +935,9 @@ def build_camera_labels(
         plaque.name = f"CINE2_Label_Plaque_{shot['id']}"
         plaque.parent = camera
         plaque.matrix_parent_inverse = Matrix.Identity(4)
-        plaque.location = (0, -0.23, -2.025)
+        plaque.location = plaque_location
         plaque.rotation_euler = (0, 0, 0)
-        plaque.scale = (0.69, 0.13, 1)
+        plaque.scale = plaque_scale
         plaque.data.materials.append(plaque_material)
         animate_visibility(title, visible_start, visible_end)
         animate_visibility(subtitle, visible_start, visible_end)
