@@ -757,6 +757,12 @@ def build_continuous_camera(
 
         radius = max(size.x, size.y) * 0.72 + 2.0
         height = max(2.8, size.z * 0.62 + 1.2)
+        if root_name == "Landmark_Shinovar":
+            # The authored Misted Mountains rise above the generic arrival arc
+            # on Shinovar's eastern approach. Keep the full orbit safely above
+            # the sampled ridge so the terrain never occludes the camera.
+            height = max(height, 6.2)
+            radius *= 1.12
         default_angle = math.degrees(math.atan2(-delta.y, -delta.x))
         angle = camera_angle_overrides.get(root_name, default_angle)
         orbit = float(shot["orbit_degrees"])
