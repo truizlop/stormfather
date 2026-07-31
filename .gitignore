@@ -9,6 +9,7 @@ playwright-report/
 test-results/
 artifacts/cinematic/
 blender/roshar-cinematic.blend
+blender/roshar-map-cinematic-v2.blend
 
 # The living execution plan is deliberately local and is not committed.
 ROSHAR_EXECPLAN.md
