@@ -79,6 +79,7 @@ def render_proof() -> None:
     frames = {
         1,
         96,
+        145,
         192,
         383,
         575,

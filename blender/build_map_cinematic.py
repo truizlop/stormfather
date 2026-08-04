@@ -1195,14 +1195,14 @@ def build_camera_labels(
             64 if shot["kind"] == "map-intro" else 16
         )
         if shot["kind"] == "map-intro":
-            visible_end = min(visible_end, shot["start_frame"] + 210)
+            visible_end = min(visible_end, shot["start_frame"] + 177)
         if shot.get("root") == "Landmark_Urithiru":
             visible_end = min(visible_end, 4075)
         is_intro = shot["kind"] == "map-intro"
         if is_intro:
-            text_x = -0.39
-            title_y = 0.305
-            subtitle_y = 0.252
+            text_x = -0.47
+            title_y = 0.355
+            subtitle_y = 0.307
             title_scale = min(
                 0.072,
                 0.84 / max(8.0, len(shot["label"]) * 0.62),
@@ -1211,8 +1211,8 @@ def build_camera_labels(
                 0.031,
                 0.78 / max(14.0, len(shot["subtitle"]) * 0.62),
             )
-            plaque_location = (-0.39, 0.279, -2.025)
-            plaque_scale = (0.29, 0.075, 1)
+            plaque_location = (-0.47, 0.331, -2.025)
+            plaque_scale = (0.25, 0.068, 1)
         else:
             text_x = -0.40
             title_y = -0.285
@@ -1518,13 +1518,13 @@ def build_epic_intro(
     key = lights["CINE2_Key"].data
     storm_rim = lights["CINE2_Storm_Rim"].data
     sun = lights["CINE2_Sun"].data
-    for frame, energy in ((start, 250), (67, 900), (115, 2100), (289, 2250), (end, 2100)):
+    for frame, energy in ((start, 600), (67, 1050), (115, 2100), (289, 2250), (end, 2100)):
         key.energy = energy
         key.keyframe_insert(data_path="energy", frame=frame)
     for frame, energy in ((start, 900), (193, 3000), (289, 3900), (end, 2500)):
         storm_rim.energy = energy
         storm_rim.keyframe_insert(data_path="energy", frame=frame)
-    for frame, energy in ((start, 0.15), (67, 0.55), (115, 1.1), (289, 1.75), (end, 1.6)):
+    for frame, energy in ((start, 0.28), (67, 0.62), (115, 1.1), (289, 1.75), (end, 1.6)):
         sun.energy = energy
         sun.keyframe_insert(data_path="energy", frame=frame)
 
@@ -1542,7 +1542,7 @@ def build_epic_intro(
     if background:
         world_strength = background.inputs.get("Strength")
         if world_strength:
-            for frame, value in ((start, 0.025), (184, 0.07), (292, 0.14), (end, 0.12)):
+            for frame, value in ((start, 0.05), (184, 0.08), (292, 0.14), (end, 0.12)):
                 world_strength.default_value = value
                 world_strength.keyframe_insert("default_value", frame=frame)
 
