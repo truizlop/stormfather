@@ -73,19 +73,32 @@ def render_proof() -> None:
     directory.mkdir(parents=True, exist_ok=True)
     scene = bpy.context.scene
     scene.render.resolution_percentage = 50
-    frames = {1, int(PLAN["render_end_frame"])}
-    for shot in PLAN["shots"]:
-        start = int(shot["start_frame"])
-        end = int(shot["end_frame"])
-        frames.update(
-            {
-                start,
-                start + (end - start) // 4,
-                start + (end - start) // 2,
-                start + (end - start) * 3 // 4,
-                end,
-            }
-        )
+    # Target the exact frames where V2 exposed its bookend, ring, resident, and
+    # composition failures. This keeps the proof fast enough to iterate while
+    # covering every requested correction before the 4,317-frame final render.
+    frames = {
+        1,
+        96,
+        192,
+        383,
+        575,
+        959,
+        1151,
+        1535,
+        1727,
+        1919,
+        2687,
+        2879,
+        3071,
+        3263,
+        3455,
+        3551,
+        3647,
+        3959,
+        4078,
+        4197,
+        int(PLAN["render_end_frame"]),
+    }
     for frame in sorted(frames):
         output = directory / f"proof_{frame:04d}.png"
         if valid_png(output):
