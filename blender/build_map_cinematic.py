@@ -14,7 +14,7 @@ from mathutils import Matrix, Vector
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_BLEND = PROJECT_ROOT / "blender" / "roshar-landmarks.blend"
-OUTPUT_BLEND = PROJECT_ROOT / "blender" / "roshar-map-cinematic-v2.blend"
+OUTPUT_BLEND = PROJECT_ROOT / "blender" / "roshar-map-cinematic-v3.blend"
 GEOGRAPHY_PATH = PROJECT_ROOT / "docs" / "cinematic" / "map-geography.json"
 SHOT_PLAN_PATH = PROJECT_ROOT / "docs" / "cinematic" / "map-shot-plan.json"
 TERRAIN_PATH = (
@@ -23,7 +23,7 @@ TERRAIN_PATH = (
     / "cinematic"
     / "roshar-runtime-terrain.json"
 )
-COLLECTION_NAME = "Roshar_Map_Cinematic"
+COLLECTION_NAME = "Roshar_Map_Cinematic_V3"
 FPS = 24
 OCEAN_HEIGHT = -0.16
 
@@ -466,7 +466,7 @@ def create_curve(
     return obj
 
 
-def build_routes_and_markers(
+def build_geographic_route(
     collection: bpy.types.Collection,
     bounds: dict[str, dict[str, Vector]],
 ) -> None:
@@ -477,9 +477,6 @@ def build_routes_and_markers(
         0.2,
         (0.02, 0.65, 0.9, 1),
         1.7,
-    )
-    brass = bpy.data.materials.get("SF_Aged_Brass") or material(
-        "CINE2_Brass", (0.35, 0.16, 0.035, 1), 0.85, 0.23
     )
     points = [
         Vector(
@@ -518,29 +515,16 @@ def build_routes_and_markers(
         route.hide_render = hidden
         route.keyframe_insert(data_path="hide_render", frame=frame)
 
-    for shot in SHOTS:
-        if shot["kind"] != "city":
-            continue
-        center = bounds[shot["root"]]["center"]
-        active_collection(collection)
-        bpy.ops.mesh.primitive_torus_add(
-            major_radius=0.72,
-            minor_radius=0.045,
-            major_segments=48,
-            minor_segments=8,
-            location=(
-                center.x,
-                center.y,
-                terrain_height_at(center.x, center.y) + 0.18,
-            ),
-        )
-        ring = bpy.context.object
-        ring.name = f"CINE2_Marker_{shot['id']}"
-        ring.data.materials.append(brass)
-        ring.rotation_euler.z = 0
-        ring.keyframe_insert(data_path="rotation_euler", frame=shot["start_frame"])
-        ring.rotation_euler.z = math.radians(220)
-        ring.keyframe_insert(data_path="rotation_euler", frame=shot["end_frame"])
+
+
+def assert_no_destination_rings() -> None:
+    rings = [
+        obj.name
+        for obj in bpy.context.scene.objects
+        if obj.name.startswith("CINE2_Marker_")
+    ]
+    if rings:
+        raise RuntimeError(f"Destination rings must not render in V3: {rings}")
 
 
 def clone_hierarchy(
@@ -1151,7 +1135,7 @@ def configure_render(scene: bpy.types.Scene) -> None:
     scene.frame_start = 1
     scene.frame_end = int(PLAN["render_end_frame"])
     scene.render.filepath = str(
-        PROJECT_ROOT / "artifacts" / "cinematic" / "map-v2-frames" / "frame_"
+        PROJECT_ROOT / "artifacts" / "cinematic" / "map-v3-frames" / "frame_"
     )
     scene.render.use_file_extension = True
     scene.render.use_motion_blur = False
@@ -1173,7 +1157,8 @@ def main() -> None:
     configure_render(bpy.context.scene)
     build_map_relief(collection)
     bounds = place_landmarks_on_map()
-    build_routes_and_markers(collection, bounds)
+    build_geographic_route(collection, bounds)
+    assert_no_destination_rings()
     populate_dressed_residents(collection)
     camera, _ = build_continuous_camera(collection, bounds)
     build_camera_labels(camera, collection)

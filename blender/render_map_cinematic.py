@@ -48,7 +48,7 @@ def ranges(frames: list[int]) -> list[tuple[int, int]]:
 
 
 def render_final() -> None:
-    directory = PROJECT_ROOT / "artifacts" / "cinematic" / "map-v2-frames"
+    directory = PROJECT_ROOT / "artifacts" / "cinematic" / "map-v3-frames"
     directory.mkdir(parents=True, exist_ok=True)
     missing = [
         frame
@@ -69,7 +69,7 @@ def render_final() -> None:
 
 
 def render_proof() -> None:
-    directory = PROJECT_ROOT / "artifacts" / "cinematic" / "map-v2-proof"
+    directory = PROJECT_ROOT / "artifacts" / "cinematic" / "map-v3-proof"
     directory.mkdir(parents=True, exist_ok=True)
     scene = bpy.context.scene
     scene.render.resolution_percentage = 50

@@ -8,8 +8,8 @@ fi
 
 soundtrack=$1
 project_root=$(cd "$(dirname "$0")/.." && pwd)
-frames="$project_root/artifacts/cinematic/map-v2-frames"
-output="$project_root/artifacts/cinematic/roshar-map-cinematic-v2.mp4"
+frames="$project_root/artifacts/cinematic/map-v3-frames"
+output="$project_root/artifacts/cinematic/roshar-map-cinematic-v3.mp4"
 expected_frames=4317
 
 if [[ ! -f "$soundtrack" ]]; then
@@ -66,7 +66,7 @@ ffmpeg \
   -c:a aac \
   -b:a 320k \
   -movflags +faststart \
-  -metadata title="Storm Over Roshar · Map Cut" \
+  -metadata title="Storm Over Roshar · Epic Map Cut" \
   -metadata comment="Unofficial fan-made Roshar cinematic" \
   -t "$duration" \
   "$output"
