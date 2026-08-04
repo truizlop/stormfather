@@ -71,17 +71,63 @@ HD_ACTOR_ROOTS = (
     "Actor_Kharbranth_Thaylen_Sailor_HD",
 )
 
-RESIDENT_LAYOUTS = {
-    "Landmark_Kholinar": [(-4.0, -3.8), (-2.7, -4.2), (-1.4, -4.0)],
-    "Landmark_Shattered_Plains": [(-4.2, -3.7), (-2.9, -4.1)],
-    "Landmark_Kharbranth": [(-2.1, -5.1), (-0.7, -5.0), (0.7, -4.8), (2.0, -4.4)],
-    "Landmark_ThaylenCity": [(-1.8, -4.4), (0.0, -4.7), (1.8, -4.3)],
-    "Landmark_Vedenar": [(-1.7, 4.2), (0.0, 4.6), (1.7, 4.2)],
-    "Landmark_Azimir": [(4.0, -1.1), (4.2, 0.5)],
-    "Landmark_Shinovar": [(3.4, 3.0), (2.2, 4.0)],
-    "Landmark_Purelake": [(-4.0, -1.0), (-4.2, 0.7)],
-    "Landmark_Akinah": [(4.0, -0.5)],
-    "Landmark_Urithiru": [(-1.5, -4.9), (0.0, -5.2), (1.5, -4.8)],
+# Actor meshes are authored in metres while each city uses a documented
+# metres-per-authored-unit contract. These reciprocal values keep every person
+# at honest architectural scale instead of enlarging them into map icons.
+RESIDENT_AUTHORED_SCALES = {
+    "Landmark_Kholinar": 0.088541667,
+    "Landmark_Shattered_Plains": 0.114962121,
+    "Landmark_Kharbranth": 0.068691406,
+    "Landmark_ThaylenCity": 0.095744681,
+    "Landmark_Vedenar": 0.096938776,
+    "Landmark_Azimir": 0.092198582,
+    "Landmark_Shinovar": 0.076362847,
+    "Landmark_Purelake": 0.074531250,
+    "Landmark_Akinah": 0.092391304,
+    "Landmark_Urithiru": 0.116904762,
+}
+
+# Every route is tied to one visible, authored walking surface. Coordinates are
+# in landmark-local space and deliberately short so residents remain on roads,
+# plazas, quays, bridges, and terraces instead of crossing chasms or buildings.
+RESIDENT_ROUTES = {
+    "Landmark_Kholinar": [
+        ("Kholinar_TheaterSquare", (-2.54, 1.74), (-2.30, 1.82)),
+    ],
+    "Landmark_Shattered_Plains": [
+        ("ShatteredPlains_Plateau_01", (-0.16, 0.0), (0.16, 0.02)),
+    ],
+    "Landmark_Kharbranth": [
+        ("Kharbranth_Harbor_Quay", (-0.38, -4.15), (0.32, -4.15)),
+        ("Kharbranth_Terrace_01", (-0.22, -2.18), (0.22, -2.18)),
+    ],
+    "Landmark_ThaylenCity": [
+        ("ThaylenCity_Dock_2_StoneLanding", (-1.62, -3.34), (-1.38, -3.34)),
+        ("ThaylenCity_Dock_6_Plank_04", (1.42, -3.98), (1.58, -3.98)),
+    ],
+    "Landmark_Vedenar": [
+        ("Vedenar_BurnedHarbor_Dock_03", (-0.77, -5.35), (-0.57, -5.35)),
+        ("Vedenar_Valhav_Oathgate_Garden", (-0.61, -0.08), (-0.29, -0.08)),
+    ],
+    "Landmark_Azimir": [
+        ("Azimir_GrandMarket_Piazza", (0.89, -0.74), (1.25, -0.74)),
+    ],
+    "Landmark_Shinovar": [
+        ("Shinovar_FarmHome_01_Footpath", (-2.47, 0.48), (-2.24, 0.48)),
+        ("Shinovar_Field_4", (-0.14, -2.20), (0.24, -2.20)),
+    ],
+    "Landmark_Purelake": [
+        ("Purelake_Walkway_1_01", (0.89, -0.53), (1.04, -0.53)),
+        ("Purelake_Hut_0_DoorLanding", (-2.57, -2.19), (-2.43, -2.19)),
+    ],
+    "Landmark_Akinah": [
+        ("Akinah_HiddenOathgateCausewayBatch", (-1.22, 1.22), (-1.54, 1.54)),
+        ("Akinah_HiddenOathgateCausewayBatch", (1.22, -1.22), (1.54, -1.54)),
+    ],
+    "Landmark_Urithiru": [
+        ("Urithiru_GrandTerrace_01", (-4.38, -0.53), (-4.02, -0.53)),
+        ("Urithiru_GrandTerrace_01", (4.02, -0.53), (4.38, -0.53)),
+    ],
 }
 
 
@@ -500,6 +546,10 @@ def build_geographic_route(
         stormlight,
         collection,
     )
+    route.data.bevel_factor_end = 0.0
+    route.data.keyframe_insert(data_path="bevel_factor_end", frame=115)
+    route.data.bevel_factor_end = 1.0
+    route.data.keyframe_insert(data_path="bevel_factor_end", frame=289)
     route_events = {1: False}
     for shot in SHOTS:
         start = int(shot["start_frame"])
@@ -554,17 +604,232 @@ def clone_hierarchy(
     return copies[source]
 
 
+def hierarchy_local_bounds(
+    root: bpy.types.Object,
+) -> tuple[Vector, Vector]:
+    inverse = root.matrix_world.inverted()
+    corners = [
+        inverse @ (obj.matrix_world @ Vector(corner))
+        for obj in descendants(root)
+        if obj.type == "MESH"
+        for corner in obj.bound_box
+    ]
+    if not corners:
+        return Vector((0, 0, 0)), Vector((0, 0, 0))
+    return (
+        Vector(tuple(min(corner[axis] for corner in corners) for axis in range(3))),
+        Vector(tuple(max(corner[axis] for corner in corners) for axis in range(3))),
+    )
+
+
+def projected_route_samples(
+    city_root: bpy.types.Object,
+    surface_name: str,
+    start: tuple[float, float],
+    end: tuple[float, float],
+    sample_count: int = 9,
+    quiet: bool = False,
+) -> tuple[bpy.types.Object, list[Vector]] | None:
+    surface = bpy.data.objects.get(surface_name)
+    if (
+        surface is None
+        or surface.type != "MESH"
+        or surface.hide_render
+        or surface not in descendants(city_root)
+    ):
+        if not quiet:
+            print(f"RESIDENT_SKIP {city_root.name}: missing visible surface {surface_name}")
+        return None
+    city_inverse = city_root.matrix_world.inverted()
+    surface_inverse = surface.matrix_world.inverted()
+    samples: list[Vector] = []
+    for index in range(sample_count):
+        progress = index / (sample_count - 1)
+        x = start[0] + (end[0] - start[0]) * progress
+        y = start[1] + (end[1] - start[1]) * progress
+        world_origin = city_root.matrix_world @ Vector((x, y, 50.0))
+        world_direction = (
+            city_root.matrix_world.to_3x3() @ Vector((0, 0, -1))
+        ).normalized()
+        object_origin = surface_inverse @ world_origin
+        object_direction = (
+            surface_inverse.to_3x3() @ world_direction
+        ).normalized()
+        hit, location, normal, _ = surface.ray_cast(
+            object_origin,
+            object_direction,
+            distance=200.0,
+        )
+        if not hit:
+            if not quiet:
+                print(
+                    f"RESIDENT_SKIP {city_root.name}: {surface_name} misses "
+                    f"route sample ({x:.3f}, {y:.3f})"
+                )
+            return None
+        world_normal = (surface.matrix_world.to_3x3() @ normal).normalized()
+        # Several legacy plaza meshes have inward face winding even though the
+        # ray hits their horizontal top. Slope is what matters for footing.
+        if abs(world_normal.z) < 0.72:
+            if not quiet:
+                print(
+                    f"RESIDENT_SKIP {city_root.name}: {surface_name} is too steep "
+                    f"at ({x:.3f}, {y:.3f}), normal.z={world_normal.z:.3f}"
+                )
+            return None
+        city_location = city_inverse @ (surface.matrix_world @ location)
+        samples.append(Vector((x, y, city_location.z)))
+    return surface, samples
+
+
+def route_has_actor_clearance(
+    city_root: bpy.types.Object,
+    surface: bpy.types.Object,
+    samples: list[Vector],
+    actor_minimum: Vector,
+    actor_maximum: Vector,
+    actor_scale: float,
+    quiet: bool = False,
+) -> bool:
+    city_scale = max(city_root.matrix_world.to_scale())
+    body_height = (actor_maximum.z - actor_minimum.z) * actor_scale
+    body_radius = (
+        max(
+            actor_maximum.x - actor_minimum.x,
+            actor_maximum.y - actor_minimum.y,
+        )
+        * actor_scale
+        * 0.48
+        + 0.04 * actor_scale
+    )
+    world_radius = body_radius * city_scale
+    city_inverse = city_root.matrix_world.inverted()
+    obstacles: list[tuple[bpy.types.Object, Vector, Vector]] = []
+    for obj in descendants(city_root):
+        if obj == surface or obj.type != "MESH" or obj.hide_render:
+            continue
+        local_corners = [
+            city_inverse @ (obj.matrix_world @ Vector(corner))
+            for corner in obj.bound_box
+        ]
+        minimum = Vector(
+            tuple(min(corner[axis] for corner in local_corners) for axis in range(3))
+        )
+        maximum = Vector(
+            tuple(max(corner[axis] for corner in local_corners) for axis in range(3))
+        )
+        obstacles.append((obj, minimum, maximum))
+
+    for sample in samples:
+        for height_fraction in (0.42, 0.78):
+            local_probe = Vector(
+                (sample.x, sample.y, sample.z + body_height * height_fraction)
+            )
+            world_probe = city_root.matrix_world @ local_probe
+            for obstacle, minimum, maximum in obstacles:
+                if not (
+                    minimum.x - body_radius <= local_probe.x <= maximum.x + body_radius
+                    and minimum.y - body_radius <= local_probe.y <= maximum.y + body_radius
+                    and minimum.z - body_radius <= local_probe.z <= maximum.z + body_radius
+                ):
+                    continue
+                obstacle_inverse = obstacle.matrix_world.inverted()
+                found, nearest, _, _ = obstacle.closest_point_on_mesh(
+                    obstacle_inverse @ world_probe
+                )
+                if not found:
+                    continue
+                nearest_world = obstacle.matrix_world @ nearest
+                if (nearest_world - world_probe).length < world_radius:
+                    if not quiet:
+                        print(
+                            f"RESIDENT_SKIP {city_root.name}: route on {surface.name} "
+                            f"collides with {obstacle.name}"
+                        )
+                    return False
+    return True
+
+
+def find_validated_resident_route(
+    city_root: bpy.types.Object,
+    surface_name: str,
+    start: tuple[float, float],
+    end: tuple[float, float],
+    actor_minimum: Vector,
+    actor_maximum: Vector,
+    actor_scale: float,
+) -> tuple[bpy.types.Object, list[Vector]] | None:
+    offsets = sorted(
+        (
+            (x_step * 0.12, y_step * 0.12)
+            for x_step in range(-6, 7)
+            for y_step in range(-6, 7)
+        ),
+        key=lambda offset: offset[0] ** 2 + offset[1] ** 2,
+    )
+    for attempt, (offset_x, offset_y) in enumerate(offsets):
+        projection = projected_route_samples(
+            city_root,
+            surface_name,
+            (start[0] + offset_x, start[1] + offset_y),
+            (end[0] + offset_x, end[1] + offset_y),
+            quiet=attempt != 0,
+        )
+        if projection is None:
+            continue
+        surface, samples = projection
+        if not route_has_actor_clearance(
+            city_root,
+            surface,
+            samples,
+            actor_minimum,
+            actor_maximum,
+            actor_scale,
+            quiet=attempt != 0,
+        ):
+            continue
+        if attempt:
+            print(
+                f"RESIDENT_REROUTE {city_root.name} {surface_name}: "
+                f"offset=({offset_x:.2f}, {offset_y:.2f})"
+            )
+        return surface, samples
+    print(
+        f"RESIDENT_SKIP {city_root.name}: no grounded collision-free segment "
+        f"on {surface_name}"
+    )
+    return None
+
+
 def populate_dressed_residents(
     collection: bpy.types.Collection,
 ) -> None:
     city_shots = {shot["root"]: shot for shot in SHOTS if shot["kind"] == "city"}
     actor_sources = [bpy.data.objects[name] for name in HD_ACTOR_ROOTS]
-    for city_index, (root_name, positions) in enumerate(RESIDENT_LAYOUTS.items()):
+    placement_count = 0
+    populated_cities: set[str] = set()
+    for city_index, (root_name, routes) in enumerate(RESIDENT_ROUTES.items()):
         city_root = bpy.data.objects[root_name]
         shot = city_shots[root_name]
         stable_start = shot["start_frame"] + min(132, int((shot["end_frame"] - shot["start_frame"]) * 0.42))
-        for resident_index, (x, y) in enumerate(positions):
+        for resident_index, (surface_name, start, end) in enumerate(routes):
             source = actor_sources[(city_index + resident_index) % len(actor_sources)]
+            actor_minimum, actor_maximum = hierarchy_local_bounds(source)
+            authored_scale = RESIDENT_AUTHORED_SCALES[root_name] * (
+                0.98 + 0.02 * ((city_index + resident_index) % 3)
+            )
+            projection = find_validated_resident_route(
+                city_root,
+                surface_name,
+                start,
+                end,
+                actor_minimum,
+                actor_maximum,
+                authored_scale,
+            )
+            if projection is None:
+                continue
+            surface, route_samples = projection
             resident = clone_hierarchy(
                 source,
                 f"CINE2_{shot['id']}_Resident_{resident_index + 1:02d}",
@@ -572,21 +837,43 @@ def populate_dressed_residents(
             )
             resident.parent = city_root
             resident.matrix_parent_inverse = Matrix.Identity(4)
-            resident.location = (x, y, 0.18)
-            resident.rotation_euler.z = math.radians(20 + resident_index * 67)
-            resident.scale = (1.08, 1.08, 1.08)
-            resident.keyframe_insert(data_path="location", frame=stable_start)
-            resident.keyframe_insert(data_path="rotation_euler", frame=stable_start)
+            resident.scale = (authored_scale,) * 3
+            direction = Vector((end[0] - start[0], end[1] - start[1]))
+            resident.rotation_euler.z = math.atan2(direction.y, direction.x)
             walk_end = max(stable_start + 2, shot["end_frame"] - 18)
-            resident.location.x += 0.55 * math.cos(resident.rotation_euler.z)
-            resident.location.y += 0.55 * math.sin(resident.rotation_euler.z)
-            resident.keyframe_insert(data_path="location", frame=walk_end)
-            resident.rotation_euler.z += math.radians(18)
-            resident.keyframe_insert(data_path="rotation_euler", frame=walk_end)
-            for step in range(1, 5):
-                frame = stable_start + (walk_end - stable_start) * step // 5
-                resident.location.z = 0.18 + (0.055 if step % 2 else 0.0)
+            foot_clearance = -actor_minimum.z * authored_scale + 0.02 * authored_scale
+            for sample_index, sample in enumerate(route_samples):
+                progress = sample_index / (len(route_samples) - 1)
+                frame = round(stable_start + (walk_end - stable_start) * progress)
+                gait_bob = (
+                    0.025 * authored_scale
+                    if 0 < sample_index < len(route_samples) - 1 and sample_index % 2
+                    else 0.0
+                )
+                resident.location = (
+                    sample.x,
+                    sample.y,
+                    sample.z + foot_clearance + gait_bob,
+                )
                 resident.keyframe_insert(data_path="location", frame=frame)
+                resident.keyframe_insert(data_path="rotation_euler", frame=frame)
+            placement_count += 1
+            populated_cities.add(root_name)
+            world_height = (
+                (actor_maximum.z - actor_minimum.z)
+                * authored_scale
+                * city_root.matrix_world.to_scale().z
+            )
+            print(
+                f"RESIDENT_OK {city_root.name} {surface.name}: "
+                f"world_height={world_height:.4f}, samples={len(route_samples)}"
+            )
+    missing_cities = sorted(set(RESIDENT_ROUTES) - populated_cities)
+    if placement_count < 10 or missing_cities:
+        raise RuntimeError(
+            f"Only {placement_count} collision-free residents were placed; "
+            f"cities without a validated route: {missing_cities}"
+        )
 
 
 def insert_key(obj: bpy.types.ID, path: str, frame: int) -> None:
@@ -628,10 +915,13 @@ def build_continuous_camera(
     tracking.up_axis = "UP_Y"
     bpy.context.scene.camera = camera
 
-    intro = SHOTS[0]
     intro_poses = [
-        (1, Vector((-12, -58, 58)), Vector((0, 0, 0)), 55),
-        (170, Vector((0, -28, 68)), Vector((0, 0, 0)), 50),
+        (1, Vector((-1.5, 5.0, 172)), Vector((-1.5, 5.0, 0.2)), 42),
+        (67, Vector((-1.5, 1.0, 154)), Vector((-1.5, 5.0, 0.4)), 40),
+        (115, Vector((-5.0, -22.0, 139)), Vector((-1.5, 4.0, 0.5)), 38),
+        (193, Vector((2.0, -38.0, 118)), Vector((5.0, 0.0, 1.0)), 35),
+        (289, Vector((8.0, -31.0, 64)), Vector((17.0, -2.0, 1.0)), 43),
+        (343, Vector((15.0, -22.0, 40)), Vector((23.0, -3.0, 1.2)), 46),
         (383, Vector((18, -18, 31)), Vector((25, -3, 0)), 48),
     ]
     for frame, position, aim, lens in intro_poses:
@@ -717,20 +1007,27 @@ def build_continuous_camera(
         route_one = previous_map + delta * 0.34
         route_two = previous_map + delta * 0.72
 
-        route_poses = [
-            (
-                first_route,
-                route_one + Vector((-5.5, -8.0, 18.5)),
-                route_one + Vector((0, 0, 0.4)),
-                48,
-            ),
-            (
-                second_route,
-                route_two + Vector((-4.0, -6.5, 15.5)),
-                route_two + Vector((0, 0, 0.5)),
-                50,
-            ),
-        ]
+        if root_name == "Landmark_Urithiru":
+            route_poses = [
+                (3871, Vector((-10.8, -26.0, 17.5)), Vector((-5.0, 4.0, 5.5)), 51),
+                (3907, Vector((-10.2, -13.5, 15.8)), Vector((-7.0, 5.5, 5.9)), 53),
+                (3955, Vector((-9.8, -4.8, 13.6)), center, 55),
+            ]
+        else:
+            route_poses = [
+                (
+                    first_route,
+                    route_one + Vector((-5.5, -8.0, 18.5)),
+                    route_one + Vector((0, 0, 0.4)),
+                    48,
+                ),
+                (
+                    second_route,
+                    route_two + Vector((-4.0, -6.5, 15.5)),
+                    route_two + Vector((0, 0, 0.5)),
+                    50,
+                ),
+            ]
         for frame, position, aim, lens in route_poses:
             camera.location = position
             target.location = aim
@@ -751,26 +1048,40 @@ def build_continuous_camera(
         angle = camera_angle_overrides.get(root_name, default_angle)
         orbit = float(shot["orbit_degrees"])
         aim = Vector((center.x, center.y, center.z + size.z * 0.05))
-        city_poses = [
-            (
-                arrival,
-                camera_pose(aim, radius * 1.25, height * 1.25, angle),
-                aim,
-                50,
-            ),
-            (
-                arrival + max(28, (end - arrival) // 2),
-                camera_pose(aim, radius, height, angle + orbit * 0.52),
-                aim + Vector((0, 0, size.z * 0.04)),
-                55 if root_name == "Landmark_Urithiru" else 52,
-            ),
-            (
-                end,
-                camera_pose(aim, radius * 1.08, height * 1.08, angle + orbit),
-                aim + Vector((0, 0, size.z * 0.08)),
-                52,
-            ),
-        ]
+        if root_name == "Landmark_Urithiru":
+            city_poses = [
+                (3973, Vector((-9.1, -2.0, 13.0)), center + Vector((0, 0, 0.10)), 55),
+                (4003, Vector((-8.2, -0.4, 12.6)), center + Vector((0, 0, 0.25)), 57),
+                (4075, Vector((-3.0, 0.3, 12.0)), center + Vector((0, 0, 0.35)), 54),
+                (4111, Vector((-2.0, 1.3, 12.6)), center + Vector((0, 0, 0.55)), 52),
+                (4141, Vector((-1.8, 1.6, 12.8)), center + Vector((0, 0, 0.85)), 51),
+                (4165, Vector((-1.0, 0.8, 13.7)), center + Vector((0, 0, 1.15)), 49),
+                (4195, Vector((-0.4, -0.2, 14.5)), center + Vector((0, 0, 1.25)), 47),
+                (4225, Vector((-0.2, -1.8, 15.4)), center + Vector((0, 0, 1.10)), 46),
+                (4263, Vector((-0.1, -2.4, 15.8)), center + Vector((0, 0, 1.05)), 47),
+                (end, Vector((-0.1, -2.6, 16.0)), center + Vector((0, 0, 1.05)), 48),
+            ]
+        else:
+            city_poses = [
+                (
+                    arrival,
+                    camera_pose(aim, radius * 1.25, height * 1.25, angle),
+                    aim,
+                    50,
+                ),
+                (
+                    arrival + max(28, (end - arrival) // 2),
+                    camera_pose(aim, radius, height, angle + orbit * 0.52),
+                    aim + Vector((0, 0, size.z * 0.04)),
+                    52,
+                ),
+                (
+                    end,
+                    camera_pose(aim, radius * 1.08, height * 1.08, angle + orbit),
+                    aim + Vector((0, 0, size.z * 0.08)),
+                    52,
+                ),
+            ]
         for frame, position, aim_position, lens in city_poses:
             camera.location = position
             target.location = aim_position
@@ -863,28 +1174,34 @@ def build_camera_labels(
     )
     for shot in SHOTS:
         if shot["kind"] == "map-intro":
-            visible_start = shot["start_frame"] + 48
+            visible_start = shot["start_frame"] + 110
         elif shot["kind"] == "highstorm":
             visible_start = shot["start_frame"] + 70
         else:
             duration = shot["end_frame"] - shot["start_frame"]
             visible_start = shot["start_frame"] + min(132, max(76, int(duration * 0.42))) + 10
-        visible_end = shot["end_frame"] - 16
+        visible_end = shot["end_frame"] - (
+            64 if shot["kind"] == "map-intro" else 16
+        )
+        if shot["kind"] == "map-intro":
+            visible_end = min(visible_end, shot["start_frame"] + 210)
+        if shot.get("root") == "Landmark_Urithiru":
+            visible_end = min(visible_end, 4075)
         is_intro = shot["kind"] == "map-intro"
         if is_intro:
-            text_x = 0.0
-            title_y = -0.19
-            subtitle_y = -0.265
+            text_x = -0.39
+            title_y = 0.305
+            subtitle_y = 0.252
             title_scale = min(
-                0.092,
-                1.08 / max(8.0, len(shot["label"]) * 0.62),
+                0.072,
+                0.84 / max(8.0, len(shot["label"]) * 0.62),
             )
             subtitle_scale = min(
-                0.038,
-                1.0 / max(14.0, len(shot["subtitle"]) * 0.62),
+                0.031,
+                0.78 / max(14.0, len(shot["subtitle"]) * 0.62),
             )
-            plaque_location = (0, -0.23, -2.025)
-            plaque_scale = (0.55, 0.11, 1)
+            plaque_location = (-0.39, 0.279, -2.025)
+            plaque_scale = (0.29, 0.075, 1)
         else:
             text_x = -0.40
             title_y = -0.285
@@ -1082,7 +1399,361 @@ def build_highstorm(collection: bpy.types.Collection) -> bpy.types.Object:
     return parent
 
 
-def add_lights(collection: bpy.types.Collection) -> None:
+def animate_hierarchy_visibility(
+    root: bpy.types.Object,
+    start: int,
+    end: int,
+) -> None:
+    for obj in descendants(root):
+        animate_visibility(obj, start, end)
+
+
+def build_epic_intro(
+    collection: bpy.types.Collection,
+    lights: dict[str, bpy.types.Object],
+) -> None:
+    shot = next(shot for shot in SHOTS if shot["kind"] == "map-intro")
+    start = int(shot["start_frame"])
+    end = int(shot["end_frame"])
+    rng = random.Random(7717)
+    cloud_material = material(
+        "CINE3_Intro_Storm_Cloud",
+        (0.012, 0.027, 0.052, 1),
+        0.0,
+        0.92,
+        (0.006, 0.02, 0.055, 1),
+        0.42,
+    )
+    lightning_material = material(
+        "CINE3_Intro_Lightning",
+        (0.3, 0.78, 1.0, 1),
+        0.0,
+        0.06,
+        (0.52, 0.9, 1.0, 1),
+        13.0,
+    )
+    rig = bpy.data.objects.new("CINE3_Intro_Stormfront_Rig", None)
+    collection.objects.link(rig)
+    cloud_parts: list[bpy.types.Object] = []
+    active_collection(collection)
+    for index in range(34):
+        bpy.ops.mesh.primitive_ico_sphere_add(
+            subdivisions=2,
+            radius=1,
+            location=(
+                rng.uniform(-2.6, 2.6),
+                -31 + index * 1.9 + rng.uniform(-0.8, 0.8),
+                rng.uniform(7.0, 15.5),
+            ),
+        )
+        cloud = bpy.context.object
+        cloud.scale = (
+            rng.uniform(4.6, 8.2),
+            rng.uniform(3.5, 6.8),
+            rng.uniform(1.5, 3.2),
+        )
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        for polygon in cloud.data.polygons:
+            polygon.use_smooth = True
+        cloud.data.materials.append(cloud_material)
+        cloud_parts.append(cloud)
+    cloud_wall = join_objects(cloud_parts, "CINE3_Intro_Eastern_Stormfront")
+    cloud_wall.parent = rig
+    cloud_wall.matrix_parent_inverse = Matrix.Identity(4)
+    animate_visibility(cloud_wall, start, end)
+    rig.location = (62, 0, 0)
+    rig.keyframe_insert(data_path="location", frame=start)
+    rig.location = (49, -1.5, 0)
+    rig.keyframe_insert(data_path="location", frame=end)
+
+    for bolt_index, (flash, y) in enumerate(
+        ((43, -22), (97, -7), (193, 8), (289, 23))
+    ):
+        points = [
+            Vector(
+                (
+                    54 + rng.uniform(-1.8, 1.8),
+                    y + rng.uniform(-1.0, 1.0),
+                    17.0 - point_index * 1.65,
+                )
+            )
+            for point_index in range(8)
+        ]
+        bolt = create_curve(
+            f"CINE3_Intro_Lightning_{bolt_index + 1}",
+            points,
+            0.075,
+            lightning_material,
+            collection,
+        )
+        animate_visibility(bolt, flash, flash + 3)
+
+    flash_data = bpy.data.lights.new("CINE3_Intro_Lightning_Flash_Data", "AREA")
+    flash_data.color = (0.2, 0.68, 1.0)
+    flash_data.shape = "DISK"
+    flash_data.size = 44
+    flash_light = bpy.data.objects.new("CINE3_Intro_Lightning_Flash", flash_data)
+    collection.objects.link(flash_light)
+    flash_light.location = (50, 0, 24)
+    flash_light.rotation_euler = (
+        Vector((12, 0, 0)) - flash_light.location
+    ).to_track_quat("-Z", "Y").to_euler()
+    for flash in (43, 97, 193, 289):
+        for frame, energy in ((flash - 1, 0), (flash, 7200), (flash + 3, 0)):
+            flash_data.energy = energy
+            flash_data.keyframe_insert(data_path="energy", frame=frame)
+    animate_visibility(flash_light, start, end)
+
+    key = lights["CINE2_Key"].data
+    storm_rim = lights["CINE2_Storm_Rim"].data
+    sun = lights["CINE2_Sun"].data
+    for frame, energy in ((start, 250), (67, 900), (115, 2100), (289, 2250), (end, 2100)):
+        key.energy = energy
+        key.keyframe_insert(data_path="energy", frame=frame)
+    for frame, energy in ((start, 900), (193, 3000), (289, 3900), (end, 2500)):
+        storm_rim.energy = energy
+        storm_rim.keyframe_insert(data_path="energy", frame=frame)
+    for frame, energy in ((start, 0.15), (67, 0.55), (115, 1.1), (289, 1.75), (end, 1.6)):
+        sun.energy = energy
+        sun.keyframe_insert(data_path="energy", frame=frame)
+
+    river_material = bpy.data.materials.get("CINE2_Runtime_River_Water")
+    if river_material and river_material.node_tree:
+        principled = river_material.node_tree.nodes.get("Principled BSDF")
+        if principled:
+            strength = principled.inputs.get("Emission Strength")
+            if strength:
+                for frame, value in ((start, 0.18), (110, 0.4), (184, 2.6), (292, 1.15), (end, 0.65)):
+                    strength.default_value = value
+                    strength.keyframe_insert("default_value", frame=frame)
+
+    background = bpy.context.scene.world.node_tree.nodes.get("Background")
+    if background:
+        world_strength = background.inputs.get("Strength")
+        if world_strength:
+            for frame, value in ((start, 0.025), (184, 0.07), (292, 0.14), (end, 0.12)):
+                world_strength.default_value = value
+                world_strength.keyframe_insert("default_value", frame=frame)
+
+
+def create_flying_radiant(
+    name: str,
+    collection: bpy.types.Collection,
+    metal: bpy.types.Material,
+    stormlight: bpy.types.Material,
+) -> bpy.types.Object:
+    source = bpy.data.objects.get("Actor_Alethi")
+    if source is None:
+        raise RuntimeError("Actor_Alethi is required for the Windrunner finale")
+    rig = clone_hierarchy(source, name, collection)
+    rig.location = (0, 0, 0)
+    rig.rotation_euler = (0, 0, 0)
+    # Actor_Alethi is 2.104 source units tall. This absolute scale makes each
+    # airborne knight 6.7 cm in the map miniature, roughly one-fortieth of the
+    # Urithiru tower height instead of another building-sized figure.
+    rig.scale = (0.032, 0.032, 0.032)
+    active_collection(collection)
+    bpy.ops.mesh.primitive_cylinder_add(
+        vertices=8,
+        radius=0.04,
+        depth=2.35,
+        location=(0.2, 0.45, 1.05),
+    )
+    spear = bpy.context.object
+    spear.name = f"{name}_ShardSpear"
+    spear.rotation_euler.y = math.radians(90)
+    spear.data.materials.append(metal)
+    spear.parent = rig
+    spear.matrix_parent_inverse = Matrix.Identity(4)
+    active_collection(collection)
+    bpy.ops.mesh.primitive_ico_sphere_add(
+        subdivisions=1,
+        radius=0.18,
+        location=(-0.12, 0, 1.0),
+    )
+    glow = bpy.context.object
+    glow.name = f"{name}_StormlightCore"
+    glow.data.materials.append(stormlight)
+    glow.parent = rig
+    glow.matrix_parent_inverse = Matrix.Identity(4)
+    trail = create_curve(
+        f"{name}_StormlightRibbon",
+        [Vector((-0.2, 0, 1.0)), Vector((-2.4, 0, 0.9)), Vector((-5.2, 0, 0.72))],
+        0.035,
+        stormlight,
+        collection,
+    )
+    trail.parent = rig
+    trail.matrix_parent_inverse = Matrix.Identity(4)
+    return rig
+
+
+def build_urithiru_finale(
+    collection: bpy.types.Collection,
+    bounds: dict[str, dict[str, Vector]],
+) -> None:
+    shot = next(shot for shot in SHOTS if shot.get("root") == "Landmark_Urithiru")
+    end = int(shot["end_frame"])
+    start = 3955
+    city = bounds["Landmark_Urithiru"]
+    center = city["center"]
+    size = city["size"]
+    top = Vector((center.x, center.y, city["maximum"].z + 0.08))
+    rng = random.Random(4242)
+    cloud_material = material(
+        "CINE3_Urithiru_CloudSea",
+        (0.025, 0.05, 0.075, 1),
+        0.0,
+        0.94,
+        (0.01, 0.04, 0.08, 1),
+        0.5,
+    )
+    stormlight = material(
+        "CINE3_Urithiru_Stormlight",
+        (0.22, 0.78, 1.0, 1),
+        0.0,
+        0.06,
+        (0.48, 0.92, 1.0, 1),
+        10.0,
+    )
+    metal = material("CINE3_Shardspear", (0.42, 0.64, 0.72, 1), 0.72, 0.14, (0.16, 0.55, 0.72, 1), 2.2)
+
+    cloud_parts: list[bpy.types.Object] = []
+    active_collection(collection)
+    cloud_radius = max(size.x, size.y) * 0.7
+    for index in range(22):
+        angle = index / 22 * math.tau + rng.uniform(-0.12, 0.12)
+        radius = cloud_radius + rng.uniform(0.8, 4.2)
+        bpy.ops.mesh.primitive_ico_sphere_add(
+            subdivisions=2,
+            radius=1,
+            location=(
+                center.x + math.cos(angle) * radius,
+                center.y + math.sin(angle) * radius,
+                city["minimum"].z - 0.65 + rng.uniform(-0.18, 0.18),
+            ),
+        )
+        cloud = bpy.context.object
+        cloud.scale = (rng.uniform(2.3, 4.8), rng.uniform(1.8, 3.7), rng.uniform(0.35, 0.72))
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        for polygon in cloud.data.polygons:
+            polygon.use_smooth = True
+        cloud.data.materials.append(cloud_material)
+        cloud_parts.append(cloud)
+    cloud_sea = join_objects(cloud_parts, "CINE3_Urithiru_Cloud_Sea")
+    animate_visibility(cloud_sea, start, end)
+    cloud_sea.location.x = -0.45
+    cloud_sea.keyframe_insert(data_path="location", frame=start)
+    cloud_sea.location.x = 0.55
+    cloud_sea.keyframe_insert(data_path="location", frame=end)
+
+    beacon = create_curve(
+        "CINE3_Urithiru_Radiant_Beacon",
+        [top, top + Vector((0.0, 0.0, 9.0)), top + Vector((0.12, -0.08, 22.0))],
+        0.055,
+        stormlight,
+        collection,
+    )
+    animate_visibility(beacon, 4111, end)
+    beacon.data.bevel_factor_end = 0.0
+    beacon.data.keyframe_insert(data_path="bevel_factor_end", frame=4111)
+    beacon.data.bevel_factor_end = 1.0
+    beacon.data.keyframe_insert(data_path="bevel_factor_end", frame=4165)
+    light_data = bpy.data.lights.new("CINE3_Urithiru_Beacon_Light_Data", "POINT")
+    light_data.color = (0.22, 0.72, 1.0)
+    light_data.shadow_soft_size = 4.0
+    light = bpy.data.objects.new("CINE3_Urithiru_Beacon_Light", light_data)
+    collection.objects.link(light)
+    light.location = top
+    for frame, energy in ((start, 0), (4111, 0), (4141, 2800), (4165, 5200), (end, 3200)):
+        light_data.energy = energy
+        light_data.keyframe_insert(data_path="energy", frame=frame)
+
+    for material_name in (
+        "SF_Urithiru_Radiant_Stormlight",
+        "SF_Stormlight_Glass",
+    ):
+        radiant_material = bpy.data.materials.get(material_name)
+        if not radiant_material or not radiant_material.node_tree:
+            continue
+        principled = radiant_material.node_tree.nodes.get("Principled BSDF")
+        strength = principled.inputs.get("Emission Strength") if principled else None
+        if strength is None:
+            continue
+        for frame, value in (
+            (3955, 1.35),
+            (4003, 4.8),
+            (4165, 6.0),
+            (4317, 2.5),
+        ):
+            strength.default_value = value
+            strength.keyframe_insert("default_value", frame=frame)
+
+    clearance = max(size.x, size.y) * 0.62 + 0.75
+    for index in range(6):
+        flyer = create_flying_radiant(
+            f"CINE3_Windrunner_{index + 1:02d}",
+            collection,
+            metal,
+            stormlight,
+        )
+        if index == 0:
+            flyer.scale = (0.038, 0.038, 0.038)
+        animate_hierarchy_visibility(flyer, 3973, end)
+        base_angle = math.radians(18 + index * 58)
+        direction = -1 if index % 3 == 1 else 1
+        for frame, progress in (
+            (3973, 0.0),
+            (4003, 0.12),
+            (4075, 0.34),
+            (4165, 0.66),
+            (4225, 0.84),
+            (4263, 0.94),
+            (end, 1.0),
+        ):
+            angle = base_angle + direction * progress * math.radians(92 + index * 7)
+            radius = clearance + (index % 3) * 0.55 + math.sin(progress * math.pi) * 0.4
+            altitude = city["minimum"].z + size.z * (0.46 + (index % 4) * 0.12) + progress * 0.7
+            flyer.location = (
+                center.x + math.cos(angle) * radius,
+                center.y + math.sin(angle) * radius,
+                altitude,
+            )
+            flyer.rotation_euler = (
+                math.radians(74 - progress * 10),
+                math.radians((index % 2 * 2 - 1) * 12),
+                angle + direction * math.pi / 2,
+            )
+            flyer.keyframe_insert(data_path="location", frame=frame)
+            flyer.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+    mote_parts: list[bpy.types.Object] = []
+    active_collection(collection)
+    for index in range(24):
+        angle = index / 24 * math.tau
+        radius = 0.45 + (index % 5) * 0.18
+        bpy.ops.mesh.primitive_ico_sphere_add(
+            subdivisions=1,
+            radius=0.028 + (index % 3) * 0.008,
+            location=(
+                top.x + math.cos(angle) * radius,
+                top.y + math.sin(angle) * radius,
+                top.z + 0.2 + (index % 7) * 0.23,
+            ),
+        )
+        mote = bpy.context.object
+        mote.data.materials.append(stormlight)
+        mote_parts.append(mote)
+    motes = join_objects(mote_parts, "CINE3_Urithiru_Gloryspren_Motes")
+    animate_visibility(motes, 4111, end)
+    motes.rotation_euler.z = 0
+    motes.keyframe_insert(data_path="rotation_euler", frame=4111)
+    motes.rotation_euler.z = math.radians(150)
+    motes.keyframe_insert(data_path="rotation_euler", frame=end)
+
+
+def add_lights(collection: bpy.types.Collection) -> dict[str, bpy.types.Object]:
+    result: dict[str, bpy.types.Object] = {}
     lights = [
         (
             "CINE2_Key",
@@ -1112,6 +1783,7 @@ def add_lights(collection: bpy.types.Collection) -> None:
         obj.location = location
         rotation = (Vector((0, 0, 0)) - obj.location).to_track_quat("-Z", "Y")
         obj.rotation_euler = rotation.to_euler()
+        result[name] = obj
 
     sun_data = bpy.data.lights.new("CINE2_Sun", "SUN")
     sun_data.energy = 1.6
@@ -1119,6 +1791,8 @@ def add_lights(collection: bpy.types.Collection) -> None:
     sun = bpy.data.objects.new("CINE2_Sun", sun_data)
     collection.objects.link(sun)
     sun.rotation_euler = (math.radians(28), math.radians(-18), math.radians(24))
+    result[sun.name] = sun
+    return result
 
 
 def configure_render(scene: bpy.types.Scene) -> None:
@@ -1163,7 +1837,9 @@ def main() -> None:
     camera, _ = build_continuous_camera(collection, bounds)
     build_camera_labels(camera, collection)
     build_highstorm(collection)
-    add_lights(collection)
+    lights = add_lights(collection)
+    build_epic_intro(collection, lights)
+    build_urithiru_finale(collection, bounds)
     bpy.context.scene["cinematic_title"] = PLAN["title"]
     bpy.context.scene["soundtrack_duration_seconds"] = PLAN[
         "audio_duration_seconds"
