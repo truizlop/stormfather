@@ -87,6 +87,10 @@ RESIDENT_AUTHORED_SCALES = {
     "Landmark_Urithiru": 0.116904762,
 }
 
+# Dense Azimir needs the narrower surgeon silhouette on its market route; the
+# other cities rotate naturally through the dressed cast.
+RESIDENT_ACTOR_OFFSETS = {"Landmark_Azimir": 1}
+
 # Every route is tied to one visible, authored walking surface. Coordinates are
 # in landmark-local space and deliberately short so residents remain on roads,
 # plazas, quays, bridges, and terraces instead of crossing chasms or buildings.
@@ -813,7 +817,14 @@ def populate_dressed_residents(
         shot = city_shots[root_name]
         stable_start = shot["start_frame"] + min(132, int((shot["end_frame"] - shot["start_frame"]) * 0.42))
         for resident_index, (surface_name, start, end) in enumerate(routes):
-            source = actor_sources[(city_index + resident_index) % len(actor_sources)]
+            source = actor_sources[
+                (
+                    city_index
+                    + resident_index
+                    + RESIDENT_ACTOR_OFFSETS.get(root_name, 0)
+                )
+                % len(actor_sources)
+            ]
             actor_minimum, actor_maximum = hierarchy_local_bounds(source)
             authored_scale = RESIDENT_AUTHORED_SCALES[root_name] * (
                 0.98 + 0.02 * ((city_index + resident_index) % 3)
