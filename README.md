@@ -1,3 +1,5 @@
+![Stormfather — an interactive map and simulation of Roshar](banner.png)
+
 # Stormfather
 
 An original, unofficial fan-made living 3D atlas of Roshar, built with React, Three.js, and Blender.
