@@ -32,3 +32,13 @@
 .curiosity-list em{display:block;font-style:normal;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#c9b581;margin-top:8px}
 
 .destination-list{min-height:0;flex:1}.destination-browser>header,.destination-search,.destination-browser>footer{flex-shrink:0}@media(min-width:761px){.destination-browser{max-height:calc(100dvh - 340px)}.atlas-intro{padding:16px 17px}.atlas-intro p{line-height:1.55}}
+
+.model-loading{position:absolute;z-index:60;left:50%;top:78px;transform:translateX(-50%);width:min(320px,calc(100% - 28px));padding:14px 18px;pointer-events:none;color:#dce5df;font-size:13px}
+.model-loading strong,.model-loading span,.model-loading small{display:block}
+.model-loading strong{font-family:var(--field-serif);font-size:22px;color:#e2c68e;margin-bottom:4px}
+.model-loading span{line-height:1.5}.model-loading small{font-size:11px;line-height:1.5;color:#a2b0b8}
+.model-loading progress{display:block;width:100%;height:5px;margin:12px 0;accent-color:#83bfbb}
+.model-loading button{pointer-events:auto;margin-top:10px;padding:8px 12px;border:1px solid #83bfbb;border-radius:4px}
+@media(max-width:760px){.model-loading{top:auto;bottom:121px;left:13px;transform:none;width:min(280px,calc(100% - 74px));padding:10px 13px}.model-loading strong{font-size:18px}.model-loading small{display:none}}
+
+@media(max-width:760px){.atlas-v2:has(.model-loading) .destination-browser{max-height:calc(100dvh - 290px)}}

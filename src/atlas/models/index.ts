@@ -40,4 +40,4 @@ export function buildPlace(id:PlaceId):PlaceModel{
   Object.assign(model.group.userData,{units:'metres',reconstruction:'Original source-informed interpretation',routes:model.routes.map(r=>({id:r.id,species:r.species,activity:r.activity,points:r.points}))});
   return model;
 }
-export function disposePlace(model:PlaceModel){model.group.traverse(o=>{if('geometry' in o){const mesh=o as import('three').Mesh;mesh.geometry.dispose();mesh.customDepthMaterial?.dispose();mesh.customDistanceMaterial?.dispose();(Array.isArray(mesh.material)?mesh.material:[mesh.material]).forEach(m=>m.dispose());}});}
+export { disposePlace } from './dispose';

@@ -1,6 +1,7 @@
 import * as T from 'three';
 /** Fine surface variation uses world units, so stone never grows with the camera. */
 export function enrichMaterial(material:T.MeshStandardMaterial,kind:string){
+  material.userData.surface=kind;
   if(kind==='window')return;
   material.onBeforeCompile=shader=>{
     shader.vertexShader='varying vec3 vSurfacePosition;\n'+shader.vertexShader;

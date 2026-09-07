@@ -88,7 +88,7 @@ export function constrainCity(model:PlaceModel,p:CityPlacement){
     }
     // The pre-existing ocean-side ground sheets span kilometres. Tight bounds
     // retain useful frustum culling after the shader limits their footprint.
-    o.geometry.computeBoundingSphere();
+    if(!o.geometry.boundingSphere)o.geometry.computeBoundingSphere();
   });
 }
 export function cutCityFootprints(material:T.MeshStandardMaterial){
