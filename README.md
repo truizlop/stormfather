@@ -1,66 +1,66 @@
 ![Stormfather — an interactive map and simulation of Roshar](banner.png)
 
-# Stormfather
+# Stormfather — a living atlas of Roshar
 
-An original, unofficial fan-made living 3D atlas of Roshar, built with React, Three.js, and Blender.
+Stormfather v2 is an unofficial, reference-informed 3D atlas built with React, Three.js and TypeScript. Explore the registered continental coastline, enter sixteen original local reconstructions, watch inhabitants and native creatures, and consult the sources behind each place.
 
-The project aims for the immediacy of a 3D map and the ambient life of a city-builder: travel from a continent view into regional landmarks, watch inhabitants and caravans move through the world, and follow a Highstorm from the Ocean of Origins toward the west.
+## The new version
 
-> Stormlight Archive, Roshar, and related names belong to Brandon Sanderson and Dragonsteel Entertainment. This non-commercial fan project is not endorsed by or affiliated with them. All application code, terrain meshes, textures, UI designs, and 3D interpretations in this repository are original.
+- A coastline-constrained relief map, north-up comparison camera, place labels, optional political borders and searchable gazetteer.
+- Sixteen detailed places: Urithiru, Kholinar, Kharbranth, Thaylen City, Azimir, Shattered Plains, Shinovar, Purelake, Vedenar, Akinah, Yeddaw, Sesemalex Dar, Hearthstone, Revolar, Kasitor and Rall Elorim.
+- A continuous map: scroll into cities at their registered anchors and pull back to the continent. Terrain joins replace isolated model stages. City footprints are enlarged for exploration.
+- Metric city models with distinct overview, street, wildlife and Radiant cameras. Published silhouettes and plan relationships guide the models; fine building layouts are interpretations.
+- Articulated inhabitants with occupation props, routes checked against building volumes, endpoint activities and storm shelter behavior.
+- Six original creature rigs: chull, axehound, chasmfiend, skyeel, goat and cremling; fish shoals in the Purelake and twelve blue-uniformed Windrunners patrolling Urithiru’s western approaches, with a separate Radiants layer and follow camera.
+- A Scenes browser with a coordinated 40-person bridge run, a lure-and-withdrawal chasmfiend hunt, and a listener settlement with workform routines, paired warform patrols and communal rhythms.
+- All ten Radiant orders in an illustrative Urithiru practice court, with flight, gliding, illusions, plant growth, Soulcasting and stone-working demonstrations. Close/wide views keep the powers legible.
+- Ten in-world curiosities with persistent discovery notes.
+- Shared pause/speed controls, daylight, a volumetric east-to-west highstorm with a following camera, branching lightning and windblown debris, local rain, retracting chulls and rockbuds, and receding Purelake water.
+- Responsive HUD, searchable destinations, keyboard controls, source notes and downloadable GLB models.
 
-## Visual direction
+The generated concept in `docs/concepts/v2` is **not** a geographic reference. Its invented map was rejected. The implementation uses registered cartography and actual published drawings. See the [reference ledger](docs/research/v2-references.md) for evidence, orientation corrections and reconstruction limits. In particular, Akinah’s continental marker identifies the Aimia region rather than claiming a surveyed island location. Records with unknown geography receive no invented map pin.
 
-The accepted design concepts are preserved in [`docs/concepts`](docs/concepts). They establish a dark mineral cartographic interface, fine brass rules, restrained Stormlight cyan, editorial place-name typography, and a detailed miniature-diorama world.
+## Run locally
 
-## What is in the atlas
-
-- Smooth travel from a full-continent view to region, city, and street detail
-- Alethkar, Azir, the Shattered Plains, Urithiru, Shinovar, Jah Keved, the Purelake, Aimia, Kharbranth, Kholinar, and Thaylen City
-- A moving east-to-west Highstorm with rain, lightning, settlement dimming, sheltering inhabitants, retracting flora, and an aerial follow camera
-- Animated articulated cultural populations with occupation props, bridge runs,
-  fishing rafts, working harbor cargo, caravans, ships, and storm shelter behavior
-- Meter-calibrated inhabitants, doors, districts, and Blender landmarks, with
-  pedestrian navigation generated from rendered building footprints, chasm-safe
-  walkable areas, and local crowd separation
-- Storm-reactive deep seas, coastal foam, shallow Purelake caustics and drainage,
-  shoals, wakes, and animated harbor basins
-- Location-specific close districts: Kharbranth terraces and docks, Shattered
-  Plains warcamp infrastructure, Purelake walkways and nets, Azish domes, Shin
-  farms, Aimian ruins, and more
-- Solid national, dashed disputed, and porous country frontiers shared by the 3D
-  terrain and minimap, with a visibility control and broad-zoom country labels
-- A responsive brass-and-slate interface with search, minimap, semantic scale
-  bars, LOD controls, day/night lighting, and a compact mobile travel sheet
-- Settlement lights, roads, mountain chains, culturally distinct materials, and
-  ten hidden discoveries
-- An original Blender-authored landmark and inhabitant kit, plus original generated tiling materials
-
-The scene adapts population counts, architecture, modules, labels, landmarks,
-frontiers, and water quality to the current camera distance. Geographic mode is
-calibrated to an approximately 4,000-mile-wide Roshar; city and street views
-explicitly switch to a 12-meters-per-unit local district scale. Instancing keeps
-the busy “living miniature” views practical on mobile GPUs. Detailed inhabitants
-remain within a calibrated 1.56–2.00 m range, while pathfinding preserves 0.77 m
-of body-plus-environment clearance.
-
-## Controls
-
-- Drag to orbit; secondary-drag to pan; wheel or pinch to zoom.
-- Use the Travel rail, search button, or mobile destination sheet to jump to a place.
-- Select **Highstorm** to move with the stormwall over Roshar.
-- The top detail controls and map zoom buttons move between continent, region, city, and street scales.
-- Select a small cyan discovery marker to reveal an easter egg.
-- Use the map-layer button to show or hide political frontiers.
-## Development
-
-Requires Node.js 22 or newer.
+Node.js 22 or newer:
 
 ```bash
 npm install
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
-Quality checks:
+Open the address printed by Vite, normally `http://127.0.0.1:5173/`.
+
+## Controls
+
+| Control | Action |
+| --- | --- |
+| Drag / one finger | Orbit |
+| Right drag / two fingers | Pan |
+| Wheel / pinch / + and − | Zoom |
+| Scroll toward a city / destination label | Zoom or fly into its integrated reconstruction |
+| Overview / Street view / Wildlife / Radiants | Study architecture, street life, native creatures or Urithiru’s patrol |
+| Scenes | Launch a living-world activity; choose any Radiant order in The ten orders |
+| Scenes → Curiosities | Follow hints, then inspect the actual object to record a discovery |
+| Compass | North-up view |
+| Space | Pause or resume the living world |
+| `/` or Ctrl/⌘ K | Search |
+| Highstorm | Start or clear the storm; choose “Follow the stormwall” to ride along |
+| Field notes | Read sources and download the current model |
+| Escape | Dismiss notes, help or layers |
+
+The atlas uses interpreted terrain relief with coast-to-sea tapering. Cities stay in one world at their registered anchors; their metric models use an enlarged display scale of up to 0.002 atlas units per metre, not a claimed geographic footprint. Adjacent Azimir and Yeddaw use 0.0011 to keep their terrain footprints apart without moving their registered anchors. Local models use metres, with humans approximately 1.6–1.95 m tall. This is an illustrative fan reconstruction rather than a surveyed landscape or a full city traffic simulation. Intact cities are shown without asserting one exact canonical date.
+
+## Model kit
+
+```bash
+npm run export:v2
+npm run validate:v2
+```
+
+This deterministically rebuilds sixteen place models, six articulated creature rigs and fourteen humanoid rigs (ten orders, workform, warform, bridge crew and hunter) in `public/models/v2`. `manifest.json` records units, geometry statistics, route counts and source identifiers (resolved in `src/atlas/data.ts`). The 36 GLBs contain static geometry and articulated limb hierarchies; the app supplies behavior, animation, Surge effects and weather at runtime. Custom procedural material grain is a renderer effect and is not baked into the GLBs. The kit is downloaded on demand; the atlas builds its scene locally and does not fetch all model files at startup.
+
+## Development checks
 
 ```bash
 npm run typecheck
@@ -69,18 +69,8 @@ npm run lint
 npm run build
 ```
 
-Rebuild the source Blender scene and exported GLB with:
+Tests cover the retained cartographic/gazetteer foundations and new simulation, model navigation and HUD behavior. The test runner limits workers to avoid oversubscribing memory during geometry checks.
 
-```bash
-/Applications/Blender.app/Contents/MacOS/Blender --background --python blender/build_landmarks.py
-```
+`src/main.tsx` mounts the new `src/atlas/App.tsx`. The previous renderer (`src/App.tsx`, `src/world`, `src/ui`) and original Blender kit remain in the repository; v2 reuses their geographic datasets but has its own scene, HUD, models and simulation. Legacy asset validation remains available through `npm run validate:assets`.
 
-The deterministic authoring script writes `blender/roshar-landmarks.blend`,
-one GLB per landmark plus the shared actor/module kit in
-`public/models/landmarks`, and the preview render in `docs`. It also exports
-semantic extras such as Urithiru’s ten local Oathgate destinations. Run
-`npm run validate:assets` after every export to verify split-asset isolation,
-modeled-city density, required architectural systems, and the separation
-between local Oathgate portals and their distant destination cities.
-
-The `main` branch is published to GitHub Pages by [the deployment workflow](.github/workflows/deploy.yml).
+Stormlight Archive, Roshar and related names belong to Brandon Sanderson and Dragonsteel Entertainment. This project is not endorsed by or affiliated with them. New code and model geometry are original fan work; linked reference artwork belongs to its respective creators. Reference pages can contain spoilers.

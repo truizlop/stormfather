@@ -30,4 +30,6 @@ export default tseslint.config(
       ],
     },
   },
+  // Frame callbacks mutate externally owned Three.js GPU objects, not React state.
+  { files: ['src/atlas/{Scene,Ocean,LifeEffects,Creatures,Activities,RadiantArts,Discoveries,Campfire,Stormwall,CityAtmosphere}.tsx'], rules: {'react-hooks/immutability':'off'} },
 );

@@ -1,7 +1,7 @@
 {
   "name": "stormfather",
   "private": true,
-  "version": "0.1.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "validate:assets": "node scripts/validate-assets.mjs"
+    "validate:assets": "node scripts/validate-assets.mjs",
+    "export:v2": "node scripts/export-v2-models.mjs",
+    "validate:v2": "node scripts/validate-v2-models.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

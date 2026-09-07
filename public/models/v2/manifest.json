@@ -1,0 +1,590 @@
+{
+  "version": 2,
+  "units": "metres",
+  "generatedBy": "npm run export:v2",
+  "references": {
+    "hearthstone": {
+      "title": "Hearthstone · architecture",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Hearthstone?mobileaction=toggle_view_desktop",
+      "kind": "Book-cited reference"
+    },
+    "revolar": {
+      "title": "Revolar · geography",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Revolar",
+      "kind": "Book-cited reference"
+    },
+    "kasitor": {
+      "title": "Kasitor · the harbor",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Kasitor?mobileaction=toggle_view_desktop",
+      "kind": "Book-cited reference"
+    },
+    "rall": {
+      "title": "Rall Elorim · published city illustration",
+      "author": "Romain Kurdi / Brotherwise Games",
+      "url": "https://www.kickstarter.com/projects/brotherwise/the-stormlight-archive-rpg/posts/4168574",
+      "kind": "Cosmere RPG illustration"
+    },
+    "rallText": {
+      "title": "Rall Elorim · the City of Shadows",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki?mobileaction=toggle_view_desktop&title=Rall_Elorim",
+      "kind": "Book-cited reference"
+    },
+    "highstorm": {
+      "title": "Highstorm · stormwall and direction",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Highstorm",
+      "kind": "Book-cited reference"
+    },
+    "yeddaw": {
+      "title": "Yeddaw · trenches and daily life",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Yeddaw",
+      "kind": "Book-cited reference"
+    },
+    "sesemalex": {
+      "title": "Sesemalex Dar · sheltered troughs",
+      "author": "Reactor / Stormlight ecology",
+      "url": "https://reactormag.com/the-ecology-of-roshar-continued-quest-for-blood/",
+      "kind": "Book-based architectural description"
+    },
+    "listeners": {
+      "title": "Listeners · homes, forms and rhythms",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Listener?mobileaction=toggle_view_desktop",
+      "kind": "Book-cited reference"
+    },
+    "surges": {
+      "title": "Surgebinding · the ten Surges",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Surgebinding?mobileaction=toggle_view_desktop",
+      "kind": "Book-cited reference"
+    },
+    "bridge": {
+      "title": "Bridge crews · structure and dimensions",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Alethkar",
+      "kind": "Book-cited reference"
+    },
+    "hunt": {
+      "title": "The Way of Kings · chapter 15",
+      "author": "Brandon Sanderson",
+      "url": "https://www.brandonsanderson.com/blogs/blog/the-way-of-kings-chapter-15-d",
+      "kind": "Author-hosted excerpt"
+    },
+    "windrunners": {
+      "title": "Windrunners • orders and duties",
+      "author": "Brandon Sanderson",
+      "url": "https://www.brandonsanderson.com/blogs/blog/the-ten-orders-of-knights-radiant",
+      "kind": "Author’s reference"
+    },
+    "radiantProse": {
+      "title": "Windrunner uniforms and Stormlight",
+      "author": "Brandon Sanderson / Gollancz",
+      "url": "https://www.hachette.co.uk/wp-content/uploads/2020/10/Rhythm-of-War-UK-Chapter-sampler.pdf",
+      "kind": "Published chapter sampler · pp. 58, 68"
+    },
+    "towerStrata": {
+      "title": "Urithiru • stone and strata",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Urithiru?mobileaction=toggle_view_desktop",
+      "kind": "Book-cited reference"
+    },
+    "map": {
+      "title": "Roshar • official map",
+      "author": "Isaac Stewart / Dragonsteel",
+      "url": "https://www.dragonsteelbooks.com/products/roshar-map-poster",
+      "kind": "Official cartography"
+    },
+    "tower": {
+      "title": "Urithiru • Shallan’s sketch",
+      "author": "Ben McSweeney",
+      "url": "https://coppermind.net/wiki/File:Urithiru.jpg",
+      "kind": "In-book illustration"
+    },
+    "towerText": {
+      "title": "Oathbringer • chapters 4–6",
+      "author": "Brandon Sanderson / Reactor",
+      "url": "https://reactormag.com/oathbringer-by-brandon-sanderson-chapters-4-6/",
+      "kind": "Published prose"
+    },
+    "kholinar": {
+      "title": "Kholinar and its windblades",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Kholinar",
+      "kind": "Book-cited reference"
+    },
+    "kholinarMap": {
+      "title": "Map of Kholinar",
+      "author": "Isaac Stewart",
+      "url": "https://coppermind.net/wiki/File:Kholinar.jpg",
+      "kind": "Official cartography"
+    },
+    "kharbranth": {
+      "title": "Kharbranth • geography & architecture",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Kharbranth",
+      "kind": "Book-cited reference"
+    },
+    "kharbranthArt": {
+      "title": "Kharbranth • port to Conclave",
+      "author": "Isaac Stewart / Dragonsteel",
+      "url": "https://www.brandonsanderson.com/the-way-of-kings-interior-illustrations-now-uploaded/",
+      "kind": "In-book illustration"
+    },
+    "thaylen": {
+      "title": "A survey of the Great Thaylen City",
+      "author": "Isaac Stewart",
+      "url": "https://coppermind.net/wiki/File:Thaylen_City.jpg",
+      "kind": "Official cartography"
+    },
+    "azimir": {
+      "title": "The Bronze Palace",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Bronze_Palace",
+      "kind": "Book-cited reference"
+    },
+    "azimirMap": {
+      "title": "Plan of the City of Azimir",
+      "author": "Isaac Stewart",
+      "url": "https://coppermind.net/wiki/File:Plan_of_the_City_of_Azimir.jpg",
+      "kind": "Official cartography"
+    },
+    "plains": {
+      "title": "Shattered Plains • maps & symmetry",
+      "author": "Isaac Stewart / Ben McSweeney",
+      "url": "https://uploads.coppermind.net/Shattered_Plains_WoR_map.jpeg",
+      "kind": "Published density sketch"
+    },
+    "plainsText": {
+      "title": "Shattered Plains • terrain",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Shattered_Plains",
+      "kind": "Book-cited reference"
+    },
+    "shinovar": {
+      "title": "Shinovar • geography & ecology",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Shinovar",
+      "kind": "Book-cited reference"
+    },
+    "purelake": {
+      "title": "Purelake • geography",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Purelake",
+      "kind": "Book-cited reference"
+    },
+    "vedenar": {
+      "title": "Vedenar",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Vedenar",
+      "kind": "Book-cited reference"
+    },
+    "akinah": {
+      "title": "Akinah",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Akinah",
+      "kind": "Book-cited reference"
+    },
+    "chull": {
+      "title": "Chull • anatomy & behavior",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Chull",
+      "kind": "Book-cited reference"
+    },
+    "axehound": {
+      "title": "Axehound",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Axehound",
+      "kind": "Book-cited reference"
+    },
+    "skyeel": {
+      "title": "Skyeel • anatomy & flight",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Skyeel",
+      "kind": "Book-cited reference"
+    },
+    "chasmfiend": {
+      "title": "Chasmfiend • anatomy",
+      "author": "The Coppermind",
+      "url": "https://coppermind.net/wiki/Chasmfiend",
+      "kind": "Book-cited reference"
+    },
+    "fourCities": {
+      "title": "Four Cities • cymatic plans",
+      "author": "Isaac Stewart",
+      "url": "https://uploads.coppermind.net/Four_Cities.jpg",
+      "kind": "In-book illustration"
+    },
+    "ecology": {
+      "title": "A world of stone and storms",
+      "author": "Brandon Sanderson",
+      "url": "https://www.brandonsanderson.com/pages/the-stormlight-archive-series",
+      "kind": "Author’s introduction"
+    }
+  },
+  "models": [
+    {
+      "id": "urithiru",
+      "file": "urithiru.glb",
+      "bytes": 26727284,
+      "triangles": 246476,
+      "routes": 13,
+      "sources": [
+        "tower",
+        "towerText",
+        "towerStrata",
+        "windrunners",
+        "radiantProse",
+        "surges",
+        "map"
+      ],
+      "interpretation": "The tier proportions follow the published sketch. Rock formations, terrace planting and the local population are reconstructed. Height is approximately 823 m; the books do not provide a surveyed footprint or precise exterior color swatches. Blue-uniformed Windrunner patrols illustrate activity at the tower; their count and routes are interpreted."
+    },
+    {
+      "id": "kholinar",
+      "file": "kholinar.glb",
+      "bytes": 55235424,
+      "triangles": 509448,
+      "routes": 9,
+      "sources": [
+        "kholinarMap",
+        "kholinar",
+        "map"
+      ],
+      "interpretation": "The main forms follow the city map. Individual houses, market stalls and the walkable district are representative reconstructions."
+    },
+    {
+      "id": "kharbranth",
+      "file": "kharbranth.glb",
+      "bytes": 16377168,
+      "triangles": 151044,
+      "routes": 26,
+      "sources": [
+        "kharbranthArt",
+        "kharbranth",
+        "map"
+      ],
+      "interpretation": "The port-to-Conclave relationship follows the in-book drawing. Red/orange façades and colored shop accents follow the prose; exact swatches, fine building layouts and harbor traffic are interpreted; the underground Palanaeum is not depicted as a separate exterior tower."
+    },
+    {
+      "id": "thaylen-city",
+      "file": "thaylen-city.glb",
+      "bytes": 52986288,
+      "triangles": 488044,
+      "routes": 30,
+      "sources": [
+        "thaylen",
+        "map"
+      ],
+      "interpretation": "Ward relationships follow the official map. The harbor and street-level architecture show an intact, illustrative city rather than a specific battle aftermath."
+    },
+    {
+      "id": "azimir",
+      "file": "azimir.glb",
+      "bytes": 56460200,
+      "triangles": 517452,
+      "routes": 63,
+      "sources": [
+        "azimir",
+        "azimirMap",
+        "map"
+      ],
+      "interpretation": "The palace and market follow textual descriptions; the modeled street district is an original interpretation of the ordered urban plan."
+    },
+    {
+      "id": "shattered-plains",
+      "file": "shattered-plains.glb",
+      "bytes": 9336948,
+      "triangles": 86144,
+      "routes": 7,
+      "sources": [
+        "plains",
+        "plainsText",
+        "chasmfiend",
+        "bridge",
+        "hunt",
+        "listeners"
+      ],
+      "interpretation": "The published sketch maps plateau density, not every individual outline. The model uses a fourfold field of irregular adjoining plateaus with wider eastern gaps. Creature paths stay inside broad chasm corridors and people use selected western crossings."
+    },
+    {
+      "id": "shinovar",
+      "file": "shinovar.glb",
+      "bytes": 14508232,
+      "triangles": 133848,
+      "routes": 13,
+      "sources": [
+        "shinovar",
+        "map"
+      ],
+      "interpretation": "This is a representative rural valley. It is not an exact reconstruction of a named monastery or a claim about the unknown Oathgate position."
+    },
+    {
+      "id": "purelake",
+      "file": "purelake.glb",
+      "bytes": 1051232,
+      "triangles": 9472,
+      "routes": 8,
+      "sources": [
+        "purelake",
+        "map"
+      ],
+      "interpretation": "The settlement is a representative lakeside community. Its paths and buildings are invented to illustrate daily life, not placed as a canonical named city."
+    },
+    {
+      "id": "vedenar",
+      "file": "vedenar.glb",
+      "bytes": 53622256,
+      "triangles": 494692,
+      "routes": 10,
+      "sources": [
+        "fourCities",
+        "vedenar",
+        "map"
+      ],
+      "interpretation": "The ancient core follows the published city diagram. Individual architecture and terrace dimensions are interpreted. This view depicts an illustrative intact city, not the later civil-war damage."
+    },
+    {
+      "id": "akinah",
+      "file": "akinah.glb",
+      "bytes": 2915388,
+      "triangles": 26520,
+      "routes": 50,
+      "sources": [
+        "fourCities",
+        "akinah",
+        "map"
+      ],
+      "interpretation": "The tenfold plan follows the published Four Cities diagram. Building remains are interpreted, and the buried Oathgate is not invented as a visible active portal. The continental marker identifies the Aimia region rather than a surveyed island position."
+    },
+    {
+      "id": "yeddaw",
+      "file": "yeddaw.glb",
+      "bytes": 24163596,
+      "triangles": 222366,
+      "routes": 7,
+      "sources": [
+        "yeddaw",
+        "map"
+      ],
+      "interpretation": "The spiral, farms and central mound follow Edgedancer descriptions. The number of cuts, architecture, exact colors and street dimensions are interpreted; the map anchor comes from the registered gazetteer."
+    },
+    {
+      "id": "sesemalex-dar",
+      "file": "sesemalex-dar.glb",
+      "bytes": 31061116,
+      "triangles": 286656,
+      "routes": 10,
+      "sources": [
+        "sesemalex",
+        "map"
+      ],
+      "interpretation": "The troughs, covers and drainage follow descriptions of the city. No surveyed plan is published in the consulted references; the seven modeled troughs and muted stone palette are illustrative. The map anchor comes from the registered gazetteer."
+    },
+    {
+      "id": "hearthstone",
+      "file": "hearthstone.glb",
+      "bytes": 9815136,
+      "triangles": 89956,
+      "routes": 12,
+      "sources": [
+        "hearthstone",
+        "map"
+      ],
+      "interpretation": "House shape and the breakwall follow textual descriptions. The arrangement of streets, manor grounds and market is reconstructed. The geographic anchor follows the registered map."
+    },
+    {
+      "id": "revolar",
+      "file": "revolar.glb",
+      "bytes": 33415996,
+      "triangles": 307344,
+      "routes": 19,
+      "sources": [
+        "revolar",
+        "map"
+      ],
+      "interpretation": "The hollow, older walls and eastern yards follow descriptions. Building plans, colors and street geometry are illustrative. No story event or political occupation is depicted."
+    },
+    {
+      "id": "kasitor",
+      "file": "kasitor.glb",
+      "bytes": 22473716,
+      "triangles": 207048,
+      "routes": 15,
+      "sources": [
+        "kasitor",
+        "map"
+      ],
+      "interpretation": "Materials, pedestals and the platform follow the prose. The harbor plan, ships, building details and palette are reconstructed; the exact shoreline within the city is not surveyed."
+    },
+    {
+      "id": "rall-elorim",
+      "file": "rall-elorim.glb",
+      "bytes": 29931520,
+      "triangles": 276250,
+      "routes": 9,
+      "sources": [
+        "rall",
+        "rallText",
+        "map"
+      ],
+      "interpretation": "The silhouette and muted stone-and-green palette follow Romain Kurdi’s published Cosmere RPG illustration. Fine architecture and the walkable reservoir district are reconstructed; the exact building plan is illustrative."
+    }
+  ],
+  "creatures": [
+    {
+      "species": "chull",
+      "file": "chull.glb",
+      "legs": 6,
+      "foreclaws": 2
+    },
+    {
+      "species": "axehound",
+      "file": "axehound.glb",
+      "legs": 6,
+      "foreclaws": 0
+    },
+    {
+      "species": "chasmfiend",
+      "file": "chasmfiend.glb",
+      "legs": 18,
+      "foreclaws": 4
+    },
+    {
+      "species": "skyeel",
+      "file": "skyeel.glb",
+      "legs": 0,
+      "foreclaws": 0
+    },
+    {
+      "species": "goat",
+      "file": "goat.glb",
+      "legs": 4,
+      "foreclaws": 0
+    },
+    {
+      "species": "cremling",
+      "file": "cremling.glb",
+      "legs": 8,
+      "foreclaws": 0
+    }
+  ],
+  "characters": [
+    {
+      "id": "windrunner",
+      "kind": "radiant",
+      "file": "windrunner.glb",
+      "bytes": 729740,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "skybreaker",
+      "kind": "radiant",
+      "file": "skybreaker.glb",
+      "bytes": 639024,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "dustbringer",
+      "kind": "radiant",
+      "file": "dustbringer.glb",
+      "bytes": 638992,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "edgedancer",
+      "kind": "radiant",
+      "file": "edgedancer.glb",
+      "bytes": 691132,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "truthwatcher",
+      "kind": "radiant",
+      "file": "truthwatcher.glb",
+      "bytes": 603972,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "lightweaver",
+      "kind": "radiant",
+      "file": "lightweaver.glb",
+      "bytes": 626472,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "elsecaller",
+      "kind": "radiant",
+      "file": "elsecaller.glb",
+      "bytes": 694732,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "willshaper",
+      "kind": "radiant",
+      "file": "willshaper.glb",
+      "bytes": 604988,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "stoneward",
+      "kind": "radiant",
+      "file": "stoneward.glb",
+      "bytes": 639016,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "bondsmith",
+      "kind": "radiant",
+      "file": "bondsmith.glb",
+      "bytes": 691156,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "workform",
+      "kind": "workform",
+      "file": "workform.glb",
+      "bytes": 1366380,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "warform",
+      "kind": "warform",
+      "file": "warform.glb",
+      "bytes": 1630148,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "bridger",
+      "kind": "bridger",
+      "file": "bridger.glb",
+      "bytes": 610952,
+      "arms": 2,
+      "legs": 2
+    },
+    {
+      "id": "hunter",
+      "kind": "hunter",
+      "file": "hunter.glb",
+      "bytes": 825128,
+      "arms": 2,
+      "legs": 2
+    }
+  ]
+}
