@@ -1,0 +1,12 @@
+{
+  "tool": "built-in imagegen",
+  "date": "2026-09-07",
+  "asset": "public/textures/people/chitin-atlas-v1.png",
+  "dimensions": [
+    1774,
+    887
+  ],
+  "layout": "Left square: color; right square: independently generated approximate height. Single UV tile per shell plate.",
+  "limitations": "Authored artistic material, not a calibrated PBR scan. Correspondence is approximate; seamless tiling is unverified and not relied upon.",
+  "prompt": "Use case: stylized-concept. Asset type: a physically based texture atlas for detailed fantasy chitin armor on a living humanoid, to be applied to curved Three.js mesh plates. Produce one wide 2:1 image, 2048 by 1024 pixels, containing EXACTLY TWO square texture panels side by side, edge to edge, no gap, border, text, legend or labels. LEFT HALF: photorealistic diffuse base color of weathered biological chitin. Deep oxblood and warm umber shell with fine pale beige mineral growth veins, irregular tiny branching fissures, layered fibrous grain, slightly lighter rubbed growth rims, dense subtle pores. Natural large-scale color mottling, mesoscopic growth striations, microscopic grain. Organic protective keratin/carapace, not stone bricks, cloth or metal. Flat diffuse illumination, no directional shadows, no specular highlights, no vignette, no perspective. The entire square is filled with shell surface. RIGHT HALF: an exactly spatially registered grayscale HEIGHT MAP of that same square of chitin: middle gray shell surface, dark fine cracks and fissures, gently lighter shallow growth ridges, subtle fine pore detail. Height data only, not a grayscale photo or a lighting pass; low relief, no cast shadows. Both halves share the SAME pattern locations. Both should tile seamlessly at their square boundaries. High-end game material scan quality, varied natural details, restrained contrast, no large holes, no objects, no silhouettes. This is an original material texture, not a rendering of a character."
+}

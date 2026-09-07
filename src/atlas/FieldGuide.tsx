@@ -75,14 +75,15 @@ function Court() {
     </group>)}
   </>;
 }
-function GuideCamera({portrait}:{portrait:boolean}) {
+function GuideCamera({portrait,warform}:{portrait:boolean;warform:boolean}) {
  const {camera,controls}=useThree();
  useEffect(()=>{
    const orbit=controls as unknown as {target:T.Vector3;update:()=>void}|null;
    if(!orbit)return;
-   camera.position.set(...(portrait?[.62,2.35,1.43]:[2.45,2.1,5.65]) as [number,number,number]);
-   orbit.target.set(0,portrait?2.30:1.30,portrait?.11:0);orbit.update();
- },[camera,controls,portrait]);
+   const stature=warform?1.1:1;
+   camera.position.set(...(portrait?[.62,2.35*stature,1.43*stature]:[2.45,2.1,5.65]) as [number,number,number]);
+   orbit.target.set(0,portrait?2.30*stature:1.30,portrait?.11:0);orbit.update();
+ },[camera,controls,portrait,warform]);
  return null;
 }
 export function FieldGuide({onClose}:{onClose:()=>void}) {
@@ -97,7 +98,7 @@ export function FieldGuide({onClose}:{onClose:()=>void}) {
       <directionalLight position={[-3,7,4]} color="#e4e9e5" intensity={1.9} castShadow shadow-mapSize={[2048,2048]} shadow-camera-left={-6} shadow-camera-right={6} shadow-camera-top={7} shadow-camera-bottom={-5} shadow-bias={-.00015} shadow-normalBias={.02}/>
       <directionalLight position={[4,3,-2]} color="#8cbbd9" intensity={1.5}/>
       <Suspense fallback={null}><Environment resolution={64} environmentIntensity={.5}><Lightformer position={[-5,4,3]} scale={[5,6,1]} intensity={2} color="#d0e6f3"/><Lightformer position={[4,3,-3]} scale={[4,5,1]} intensity={3} color="#d3b586"/></Environment><HeadAssets/><Court/><Specimen key={`${id}-${variant}`} entry={entry} playing={playing} variant={variant}/></Suspense>
-      <GuideCamera portrait={portrait&&Boolean(entry.person)}/>
+      <GuideCamera portrait={portrait&&Boolean(entry.person)} warform={entry.person==='warform'}/>
       <OrbitControls makeDefault target={[0,1.3,0]} minDistance={.8} maxDistance={10} minPolarAngle={.35} maxPolarAngle={Math.PI*.49} enablePan={false}/>
     </Canvas></div>
     <header className="guide-header"><div><span className="guide-overline">STORMFATHER / FIELD GUIDE</span><p>The living world</p></div><button className="guide-close" aria-label="Close field guide" onClick={onClose}><X size={22}/></button></header>

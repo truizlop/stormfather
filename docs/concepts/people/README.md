@@ -33,6 +33,16 @@ Warform shell uses overlapping pointed chest, shoulder, forearm, shin and back p
 
 The loaded actor geometry remains under the existing 180,000-triangle regression budget. Pose tests now check every deforming cloth and shell mesh as well as skin. Browser review covers both body types, all people profiles, side/rear orbit, walk/reach/carry poses and five regional cities.
 
+## Surface fidelity correction
+
+The procedural person shader now hashes absolute lattice corners. The earlier scalar sine offsets produced visible cell seams on the singer's skin; a controlled no-shadow and plain-material comparison isolated this from the anatomical mesh. Arbitrary view-space normal noise has also been removed. Fine woven color and roughness variation remain.
+
+`public/textures/people/chitin-atlas-v1.png` is an original built-in imagegen material, with its exact prompt recorded in `chitin-generation.json`. The 1774 × 887 atlas contains an 887px color panel and a separately authored approximate height panel. Color uses sRGB; height stays linear and drives 2mm bump relief. Each shell plate keeps its own UV layout through geometry merging and skinning. This is an artistic material, not a calibrated scan; exact color/height correspondence and seamless tiling are not claimed. Per-plate mapping does not rely on tiling.
+
+Shell fitting now samples a triangle-rasterized body surface at 4mm spacing. Chest and shoulder shields have rounded, tapered contours; smaller fitted cheek and brow shields replace the jaw tubes. The same material is used for workform facial shell. The standing collar is hollow, the garment neckline preserves clearance behind the neck, and eye placement accounts for singer/Aimian head width. Hair has a feathered scalp boundary, a consistent pale-hair palette, and derivative-filtered fibers to limit shimmer. The guide frames warforms according to their taller stature.
+
+The regression suite exercises both anatomical bodies in five roles and verifies that shell UVs survive merging and skinning. Browser review covers every guide culture/body option, profile and rear views, arm/leg poses, mobile dismissal, five regional cities and the listener scene link.
+
 ## Current fidelity limit
 
 This is an anatomical and regional-detail iteration. Layered hair, fitted garments and grown shell remain visibly stylized, especially in portrait views. The result remains below the cinematic reference quality; passing runtime tests does not imply photographic likeness.

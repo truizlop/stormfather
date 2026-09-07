@@ -9,7 +9,7 @@ const noise=(n:number)=>T.MathUtils.euclideanModulo(Math.sin(n*127.1+31.7)*43758
 /** A swept, shallow ribbon: several fine fibers share a flowing lock, while
  * its silhouette tapers independently. UV.y follows the root-to-tip direction. */
 function ribbon(points:V3[],width:number,seed:number){
-  const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p))),rows=26,cols=4;
+  const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p))),rows=22,cols=4;
   const positions:number[]=[],uv:number[]=[],indices:number[]=[];
   for(let i=0;i<=rows;i++){
     const t=i/rows,p=curve.getPoint(t),tangent=curve.getTangent(t);
@@ -26,9 +26,31 @@ function ribbon(points:V3[],width:number,seed:number){
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();return g;
 }
 
+function hairColor(color:string){const c=new T.Color(color);if(c.getHSL({h:0,s:0,l:0}).l>.45)c.multiplyScalar(.67);return c;}
+
+/** A feathered hairline on continuous scalp topology, with no triangle-shaped
+ * crop at the forehead. This underlayer fills the spaces between real locks. */
+export function createScalpMaterial(color:string){
+  const m=new T.MeshStandardMaterial({color:hairColor(color),roughness:.87,alphaTest:.45,alphaToCoverage:true});
+  m.onBeforeCompile=shader=>{
+    shader.vertexShader='varying vec3 vScalp;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvScalp=position;');
+    shader.fragmentShader='varying vec3 vScalp;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      float angle=atan(vScalp.x,vScalp.z-.045);
+      float line=.105+.125*smoothstep(-.2,.98,cos(angle));
+      float fibers=sin(angle*230.+vScalp.y*36.)*.5+.5;
+      diffuseColor.a*=smoothstep(line-.004,line+.004,vScalp.y+fibers*.003);
+      // Ears are part of the anatomical source, but never part of the scalp.
+      diffuseColor.a*=1.-smoothstep(.072,.086,abs(vScalp.x))*(1.-smoothstep(.195,.219,vScalp.y))*smoothstep(-.02,.018,vScalp.z);
+      diffuseColor.rgb*=.72+.24*fibers;
+    `);
+  };
+  m.customProgramCacheKey=()=> 'feathered-scalp-v1';return m;
+}
+
 function hairMaterial(color:string){
-  const m=new T.MeshPhysicalMaterial({color,roughness:.72,specularIntensity:.14,side:T.DoubleSide,alphaTest:.42,anisotropy:0,anisotropyRotation:Math.PI/2});
-  if(new T.Color(color).getHSL({h:0,s:0,l:0}).l>.45)m.color.multiplyScalar(.6);
+  const m=new T.MeshPhysicalMaterial({color:hairColor(color),roughness:.76,specularIntensity:.22,side:T.DoubleSide,alphaTest:.26,alphaToCoverage:true,anisotropy:0});
   m.userData.surface='hair';
   m.onBeforeCompile=shader=>{
     shader.vertexShader='varying vec2 vStrandUv;\n'+shader.vertexShader;
@@ -36,15 +58,18 @@ function hairMaterial(color:string){
     shader.fragmentShader='varying vec2 vStrandUv;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       float u=vStrandUv.x,v=vStrandUv.y;
-      float fiber=sin(u*147.+sin(v*17.)*.35)*.5+.5;
-      float fine=sin(u*431.+sin(v*31.)*.6)*.5+.5;
+      float phase=u*71.+sin(v*17.)*.35;
+      float resolved=1.-smoothstep(.6,2.,fwidth(phase));
+      float fiber=sin(phase)*.5*resolved+.5;
+      float fine=sin(u*211.+sin(v*31.)*.6)*.5*(1.-smoothstep(.6,2.,fwidth(u*211.)))+.5;
       diffuseColor.rgb*=.64+.25*fiber+.20*fine;
       float feather=smoothstep(0.,.12,u)*smoothstep(0.,.12,1.-u);
-      diffuseColor.a*=feather*smoothstep(0.,.035,v)*(1.-smoothstep(.84+.13*fiber,1.,v));
+      float separate=mix(1.,smoothstep(.12,.32,fiber),resolved);
+      diffuseColor.a*=separate*feather*smoothstep(0.,.025,v)*(1.-smoothstep(.80+.17*fiber,1.,v));
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor+=.12*(1.-fiber);');
   };
-  m.customProgramCacheKey=()=> 'flowing-hair-fibers-v1';return m;
+  m.customProgramCacheKey=()=> 'flowing-hair-fibers-v2';return m;
 }
 
 /** Rooted layers sweep away from a softly irregular hairline, with independent
@@ -106,6 +131,6 @@ export function createInhabitantHair(look:PersonAppearance){
   const g=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());
   const mesh=new T.Mesh(g!,hairMaterial(look.hair));mesh.name='swept_fiber_locks';mesh.castShadow=true;root.add(mesh);
   const fine=mergeGeometries(flyaways);flyaways.forEach(g=>g.dispose());
-  const fibers=new T.Mesh(fine!,new T.MeshPhysicalMaterial({color:look.hair,roughness:.7,specularIntensity:.3}));fibers.name='individual_hair_and_braids';fibers.castShadow=true;root.add(fibers);
+  const fibers=new T.Mesh(fine!,new T.MeshPhysicalMaterial({color:hairColor(look.hair),roughness:.68,specularIntensity:.3}));fibers.name='individual_hair_and_braids';fibers.castShadow=true;root.add(fibers);
   return root;
 }

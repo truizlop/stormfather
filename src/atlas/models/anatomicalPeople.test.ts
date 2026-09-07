@@ -17,8 +17,9 @@ beforeAll(async()=>{
  };
  installAnatomicalPeople({male:await load('male'),female:await load('female')});
 });
-it.each(['resident','bridger','radiant','workform','warform'] as PersonKind[])('keeps the loaded %s anatomy and skin weights valid through motion',kind=>{
- const rig=buildPerson(0,kind);expect(rig.group.userData.anatomical).toBe(true);
+const bodies=(['resident','bridger','radiant','workform','warform'] as PersonKind[]).flatMap(kind=>[0,1].map(variant=>({kind,variant})));
+it.each(bodies)('keeps the loaded $kind body $variant valid through motion',({kind,variant})=>{
+ const rig=buildPerson(variant,kind);expect(rig.group.userData.anatomical).toBe(true);
  let triangles=0,skin:T.SkinnedMesh|undefined;const deforming:T.SkinnedMesh[]=[];
  rig.group.traverse(o=>{if(o instanceof T.Mesh)triangles+=(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;if(o.name==='continuous_anatomy')skin=o as T.SkinnedMesh;if(o instanceof T.SkinnedMesh)deforming.push(o);});
  expect(triangles).toBeLessThan(180000);expect(skin).toBeDefined();
@@ -30,6 +31,16 @@ it.each(['resident','bridger','radiant','workform','warform'] as PersonKind[])('
   // bounds too: a valid skin mesh alone cannot catch bad accessory weights.
   for(const mesh of deforming)for(let i=0;i<mesh.geometry.getAttribute('position').count;i+=31){mesh.getVertexPosition(i,vertex);expect(vertex.toArray().every(Number.isFinite)).toBe(true);expect(vertex.length()).toBeLessThan(3);}
  }
+ disposePlace({group:rig.group} as PlaceModel);
+});
+it('retains complete shell UVs through merging and skeleton binding',()=>{
+ const rig=buildPerson(1,'warform');let shells=0;
+ rig.group.traverse(o=>{
+  if(!(o instanceof T.Mesh)||(o.material as T.Material).userData.surface!=='grown-shell')return;
+  shells++;const uv=o.geometry.getAttribute('uv');expect(uv).toBeDefined();expect(uv.count).toBe(o.geometry.getAttribute('position').count);
+  for(const value of uv.array){expect(Number.isFinite(value)).toBe(true);expect(value).toBeGreaterThanOrEqual(0);expect(value).toBeLessThanOrEqual(1);}
+ });
+ expect(shells).toBe(2); // Independently animated head and body surfaces.
  disposePlace({group:rig.group} as PlaceModel);
 });
 it('changes pooled identity without replacing animation joints, cargo or world pose',()=>{

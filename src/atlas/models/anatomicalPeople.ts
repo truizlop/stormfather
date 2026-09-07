@@ -1,21 +1,22 @@
 import * as T from 'three';
 import { OrganicBuilder, loft } from './organic';
-import { createInhabitantHair } from './inhabitantHair';
-import { addTailoredLayers, addGrownCarapace } from './inhabitantTailoring';
+import { createInhabitantHair, createScalpMaterial } from './inhabitantHair';
+import { addTailoredLayers, addGrownCarapace, addFacialCarapace } from './inhabitantTailoring';
 import { peopleProfiles, type PersonAppearance } from './peopleProfiles';
 import type { PersonRig } from './person';
 
 type BodySources = Record<'male'|'female',T.BufferGeometry>;
 let sources:BodySources|undefined;
 let skinAtlas:T.Texture|undefined,clothAtlas:T.Texture|undefined;
+let shellTextures:{color:T.Texture;height:T.Texture}|undefined;
 const waiting=new Set<WeakRef<PersonRig>>();
 const appearance=new WeakMap<PersonRig,PersonAppearance>();
 const owned=new WeakMap<PersonRig,T.Object3D[]>();
 const smooth=(a:number,b:number,x:number)=>T.MathUtils.smoothstep(x,a,b);
 
-export function installAnatomicalPeople(next:BodySources,skinTexture?:T.Texture,clothTexture?:T.Texture) {
+export function installAnatomicalPeople(next:BodySources,skinTexture?:T.Texture,clothTexture?:T.Texture,chitin?:{color:T.Texture;height:T.Texture}) {
   if(sources?.male===next.male&&sources?.female===next.female)return;
-  sources=next;skinAtlas=skinTexture;clothAtlas=clothTexture;
+  sources=next;skinAtlas=skinTexture;clothAtlas=clothTexture;shellTextures=chitin;
   for(const ref of waiting){const rig=ref.deref();if(rig)rebuild(rig);}waiting.clear();
 }
 export function registerAnatomicalPerson(rig:PersonRig,look:PersonAppearance) {
@@ -44,6 +45,10 @@ function subset(source:T.BufferGeometry,keep:(x:number,y:number,z:number)=>boole
   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setAttribute('faceUv',new T.Float32BufferAttribute(faceUV,2));g.setIndex(indices);g.setAttribute('normal',new T.Float32BufferAttribute(normals,3));g.computeBoundingSphere();return g;
 }
 function material(surface:string,color:string,look:PersonAppearance){
+  if(surface==='grown-shell'){
+    const shell=new T.MeshPhysicalMaterial({color:shellTextures?'#dcc6b2':'#754333',map:shellTextures?.color??null,bumpMap:shellTextures?.height??null,bumpScale:.002,roughness:.66,specularIntensity:.32,clearcoat:.12,clearcoatRoughness:.6});
+    shell.userData.surface=surface;return shell;
+  }
   const m=new T.MeshPhysicalMaterial({color,roughness:surface==='skin'?.58:surface==='hair'?.57:surface==='cloth'?.9:surface==='leather'?.62:surface==='carapace'?.48:.36,metalness:surface==='metal'?.82:0});
   m.userData.surface=surface;
   if(surface==='cloth'){m.sheen=.25;m.sheenColor.set(color).lerp(new T.Color('#d1c6b0'),.3);m.sheenRoughness=.8;}
@@ -59,7 +64,13 @@ function material(surface:string,color:string,look:PersonAppearance){
       if(surface==='cloth'){shader.uniforms.clothAtlas={value:clothAtlas??null};shader.fragmentShader='uniform sampler2D clothAtlas;\n'+shader.fragmentShader;}
       shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvRestSurface=position;'+(surface==='skin'?'vFaceUv=faceUv;':''));
       shader.fragmentShader=`varying vec3 vRestSurface;
-float personNoise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);vec3 d=vec3(17.13,113.7,53.9);float n=dot(i,d);return mix(mix(mix(fract(sin(n)*43758.5),fract(sin(n+17.13)*43758.5),f.x),mix(fract(sin(n+113.7)*43758.5),fract(sin(n+130.83)*43758.5),f.x),f.y),mix(mix(fract(sin(n+53.9)*43758.5),fract(sin(n+71.03)*43758.5),f.x),mix(fract(sin(n+167.6)*43758.5),fract(sin(n+184.73)*43758.5),f.x),f.y),f.z);}
+// Hash absolute lattice corners: scalar sine offsets magnified floating-point
+// differences into visible discontinuities at adjacent cell boundaries.
+float personHash(vec3 p){p=fract(p*.1031);p+=dot(p,p.yzx+33.33);return fract((p.x+p.y)*p.z);}
+float personNoise(vec3 p){
+ vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+ return mix(mix(mix(personHash(i),personHash(i+vec3(1,0,0)),f.x),mix(personHash(i+vec3(0,1,0)),personHash(i+vec3(1,1,0)),f.x),f.y),mix(mix(personHash(i+vec3(0,0,1)),personHash(i+vec3(1,0,1)),f.x),mix(personHash(i+vec3(0,1,1)),personHash(i+vec3(1,1,1)),f.x),f.y),f.z);
+}
 `+shader.fragmentShader;
       const marble=look.culture==='singer'&&surface==='skin'?`
 vec3 flow=vRestSurface*vec3(25.,16.,25.);
@@ -79,9 +90,8 @@ ${surface==='cloth'&&clothAtlas?`float fiber=texture2D(clothAtlas,vRestSurface.x
 ${surface==='skin'&&look.sex==='male'&&look.culture!=='singer'&&peopleProfiles[look.culture].hairStyle!=='short'?`float beard=smoothstep(1.525,1.55,vRestSurface.y)*(1.-smoothstep(1.59,1.625,vRestSurface.y))*smoothstep(.08,.12,vRestSurface.z);float mouth=(1.-smoothstep(.016,.03,abs(vRestSurface.x)))*smoothstep(1.58,1.59,vRestSurface.y)*(1.-smoothstep(1.598,1.61,vRestSurface.y));diffuseColor.rgb*=1.-beard*(1.-mouth)*(.20+grain*.24);`:''}
 `);
       shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>\nroughnessFactor=clamp(roughnessFactor+(grain-.5)*.12,.12,1.);`);
-      shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>\nnormal=normalize(normal+vec3((grain-.5)*${surface==='skin'?'.045':surface==='carapace'?'.02':'.06'},(wear-.5)*.03,0.));`);
     };
-    m.customProgramCacheKey=()=>`inhabitant-v4-${surface}-${look.culture}-${look.variant%2}-${look.sex}-${skinAtlas?'textured':'plain'}`;
+    m.customProgramCacheKey=()=>`inhabitant-v5-${surface}-${look.culture}-${look.variant%2}-${look.sex}-${skinAtlas?'textured':'plain'}`;
   }
   return m;
 }
@@ -159,6 +169,13 @@ function rebuild(rig:PersonRig){
     const folds=Math.sin(v.y*83+Math.abs(v.x)*30)*.006*tension+Math.sin(v.x*72+v.y*9)*.002*waist;
     const fullness=look.sex==='female'&&torso(v.x,v.y)?.009:0;
     v.addScaledVector(n,(v.y>1.48?.008:.019)+fullness+folds+waist*.008);v.y=Math.min(v.y,1.531);
+    if(v.y>1.487&&Math.abs(v.x)<.15){
+      const t=smooth(1.487,1.520,v.y),center=.022+t*.015;
+      const angle=Math.atan2((v.z-center)/.075,v.x/.11),rx=.123-t*.035,rz=.089-t*.021;
+      v.x=T.MathUtils.lerp(v.x,Math.cos(angle)*rx,t);
+      const fittedZ=T.MathUtils.lerp(v.z,center+Math.sin(angle)*rz,t);
+      v.z=v.z<center?Math.min(v.z,fittedZ):Math.max(v.z,fittedZ);
+    }
     if(torso(v.x,v.y)&&v.y<1.42){
       const chest=Math.exp(-Math.pow((v.y-1.29)/.17,2)),rx=.20+chest*.01;
       const envelope=Math.sqrt(Math.max(0,1-Math.pow(v.x/rx,2)))*(.153+chest*(look.sex==='female'?.045:.016));
@@ -169,7 +186,7 @@ function rebuild(rig:PersonRig){
     else if(profile.garment!=='wrap'){const side=Math.sign(v.x),cut=(v.x-side*.397)*side*.34-(v.y-.99)*.94;if(cut>0){v.x-=side*.34*cut;v.y+=.94*cut;}}
   };
   if(!bare&&!war){
-    const top=subset(source,(x,y)=>y>.95&&y<1.534&&(torso(x,y)||y>(profile.garment==='wrap'?1.19:.965)),clothMove);
+    const top=subset(source,(x,y)=>y>.95&&y<1.520&&(torso(x,y)||y>(profile.garment==='wrap'?1.19:.965)),clothMove);
     top.computeVertexNormals();made.push(bind(top,material('cloth',look.cloth,look),skeleton,rig,'fitted_jacket_and_sleeves',true));
   }
   const garmentLength=profile.garment==='robe'?.80:profile.garment==='coat'?.49:profile.garment==='tunic'?.37:.30;
@@ -236,7 +253,7 @@ function addClothingDetails(rig:PersonRig,look:PersonAppearance,bare:boolean,arm
     }
   }
   const details=b.finish('tailoring_and_fasteners');
-  for(const child of [...details.children])if(child instanceof T.Mesh){child.removeFromParent();const m=material((child.material as T.Material).userData.surface,'#ffffff',look);m.vertexColors=child.geometry.hasAttribute('color');m.side=T.DoubleSide;if(m.userData.surface==='cloth')m.sheenColor.set(look.cloth);made.push(bind(child.geometry,m,skeleton,rig,details.name,true));(child.material as T.Material).dispose();}
+  for(const child of [...details.children])if(child instanceof T.Mesh){child.removeFromParent();const m=material((child.material as T.Material).userData.surface,'#ffffff',look);m.vertexColors=m.userData.surface!=='grown-shell'&&child.geometry.hasAttribute('color');m.side=T.DoubleSide;if(m.userData.surface==='cloth')m.sheenColor.set(look.cloth);made.push(bind(child.geometry,m,skeleton,rig,`${details.name}_${m.userData.surface}`,true));(child.material as T.Material).dispose();}
   if(rig.kind==='radiant'){
     const c=new OrganicBuilder();c.form([[.39,.228,.025,-.103],[.7,.25,.029,-.14],[1.09,.205,.027,-.13],[1.44,.181,.025,-.08]],look.cloth,'cloth',.05);
     const cloak=c.finish('traveling_cloak');for(const child of [...cloak.children])if(child instanceof T.Mesh){child.removeFromParent();made.push(bind(child.geometry,material('cloth',look.cloth,look),skeleton,rig,'traveling_cloak',true));(child.material as T.Material).dispose();}
@@ -248,10 +265,10 @@ function addPortrait(rig:PersonRig,source:T.BufferGeometry,look:PersonAppearance
   // Eye surfaces sit behind the source mesh's eyelid opening, with irises on
   // the corneal surface; their size is measured in millimetres, not head radii.
   for(const side of [-1,1]){
-    const x=side*(look.sex==='female'?.0364:.0345),y=.163,z=.121;
-    b.ellipsoid([x,y,z],[.016,.012,.012],'#aaa38f','eye');
-    b.ellipsoid([x,y,z+.0111],[.0067,.0067,.0011],look.culture==='iriali'?'#a68433':singer?'#5c2820':'#443729','eye');
-    b.ellipsoid([x,y,z+.0122],[.0025,.0028,.0006],'#151310','eye');
+    const x=side*(look.sex==='female'?.0364:.0345)*(singer?1.13:look.culture==='aimian'?.9:1),y=.163,z=.118;
+    b.ellipsoid([x,y,z],[.0145,.0092,.011],'#8c897b','eye');
+    b.ellipsoid([x,y,z+.0102],[.0067,.0067,.0011],look.culture==='iriali'?'#a68433':singer?'#5c2820':'#443729','eye');
+    b.ellipsoid([x,y,z+.0113],[.0025,.0028,.0006],'#151310','eye');
     if(look.culture==='thaylen'){
       for(let k=0;k<5;k++)b.curve([[side*.014,.181+k*.001,.139],[side*.05,.194+k*.002,.138],[side*.083,.169-k*.003,.119],[side*(.087+k*.003),.09-k*.012,.102]],[.002,.003,.002,.0003],'#d3d0be','hair',5,16);
     }
@@ -259,13 +276,12 @@ function addPortrait(rig:PersonRig,source:T.BufferGeometry,look:PersonAppearance
     b.ellipsoid([side*.012,.120,.165],[.0045,.0022,.002],new T.Color(skin).multiplyScalar(.40).getStyle(),'skin');
   }
   b.curve([[-.022,.089,.139],[0,.087,.145],[.022,.089,.139]],[.0009,.0013,.0009],new T.Color(skin).multiplyScalar(.54).getStyle(),'skin',5,10);
-  const scalp=subset(source,(x,y,z)=>y>(z>.055?1.711:z>.005?1.655:1.61),(v,n)=>v.addScaledVector(n,.004));scalp.translate(0,-1.5,0);
-  const cap=new T.Mesh(scalp,material('hair',look.hair,look));cap.name='fitted_scalp';cap.castShadow=true;rig.head.add(cap);
+  // Keep a 6mm margin beneath the shader's feathered hairline, without copying
+  // the dense face topology into a fully transparent scalp underlayer.
+  const scalp=subset(source,(x,y,z)=>y>1.599+.125*smooth(-.2,.98,Math.cos(Math.atan2(x,z-.045))),(v,n)=>v.addScaledVector(n,.0015));scalp.translate(0,-1.5,0);
+  const cap=new T.Mesh(scalp,createScalpMaterial(look.hair));cap.name='fitted_scalp';cap.castShadow=false;rig.head.add(cap);
   rig.head.add(createInhabitantHair(look));
-  if(singer)for(const side of [-1,1]){
-    b.curve([[side*.009,.242,.088],[side*.059,.213,.111],[side*.096,.167,.05],[side*.095,.105,.008]],[.010,war?.027:.015,.020,.002],'#714437','carapace',10,22);
-    b.curve([[side*.094,.095,.058],[side*.065,.047,.107],[side*.025,.034,.107]],[.016,.014,.002],'#b79b7b','carapace',8,14);
-  }
+  if(singer)addFacialCarapace(b,source,war);
   const details=b.finish('portrait_hair_and_features');details.userData.anatomicalDetail=true;
-  details.traverse(o=>{if(o instanceof T.Mesh){const old=o.material as T.MeshStandardMaterial;if(old.userData.surface==='hair'){const m=material('hair','#ffffff',look);m.vertexColors=true;m.sheenColor.set(look.hair).lerp(new T.Color('#a89576'),.15);o.material=m;old.dispose();}else if(old.userData.surface==='eye'){o.material=new T.MeshPhysicalMaterial({vertexColors:true,roughness:.23,specularIntensity:.3});old.dispose();}}});rig.head.add(details);
+  details.traverse(o=>{if(o instanceof T.Mesh){const old=o.material as T.MeshStandardMaterial;if(old.userData.surface==='hair'){const m=material('hair','#ffffff',look);m.vertexColors=true;m.sheenColor.set(look.hair).lerp(new T.Color('#a89576'),.15);o.material=m;old.dispose();}else if(old.userData.surface==='eye'){o.material=new T.MeshPhysicalMaterial({vertexColors:true,roughness:.23,specularIntensity:.3});old.dispose();}else if(old.userData.surface==='grown-shell'){o.material=material('grown-shell','#ffffff',look);o.material.side=T.DoubleSide;old.dispose();}}});rig.head.add(details);
 }

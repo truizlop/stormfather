@@ -30,7 +30,9 @@ export class ModelBuilder {
   add(geometry:T.BufferGeometry,color:string,position:V3=[0,0,0],scale:V3=[1,1,1],rotation:V3=[0,0,0],surface='stone'){
     const g=geometry.index ? geometry.toNonIndexed():geometry.clone();
     mat.compose(new T.Vector3(...position),q.setFromEuler(euler.set(...rotation)),new T.Vector3(...scale)); g.applyMatrix4(mat);
-    g.deleteAttribute('uv');
+    // Grown shell has an authored per-plate UV layout. Other merged surfaces
+    // retain their existing position-based mapping and compatible attributes.
+    if(surface!=='grown-shell')g.deleteAttribute('uv');
     const c=new T.Color(color); const colors=new Float32Array(g.getAttribute('position').count*3);
     for(let i=0;i<colors.length;i+=3){colors[i]=c.r;colors[i+1]=c.g;colors[i+2]=c.b;}
     g.setAttribute('color',new T.BufferAttribute(colors,3));
