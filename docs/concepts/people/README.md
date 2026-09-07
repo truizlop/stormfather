@@ -23,6 +23,16 @@ These are representative individuals; cultures are not reduced to one facial typ
 
 The field guide includes Alethi, Azish, Veden, Thaylen, Shin, Purelaker, Reshi, Iriali, Siah Aimian and singer representatives. Singer workform and warform have different shell coverage. The world uses regional crowd profiles and a mixed Urithiru population. Siah Aimians remain an illustrative guide subject rather than turning the deserted ruins of Akinah into a populated city.
 
+## Hair, tailoring and shell refinement
+
+The follow-up replaces tube hair clumps with overlapping swept ribbons, fiber shading, tapered edges, temple layers, nape locks and braided strands. The scalp fit uses separate male/female crown proportions. Hair stays attached to the existing animated head joint.
+
+Coats now have rolled lapels, a finished standing collar, seams, stitched flat straps, buckles and pocket welts. Lapels and straps fit the actual dressed male/female body. Garments have more room and tension folds around elbows and the waist; hidden trousers are omitted beneath long hems to prevent intersections. Woven detail and cloth sheen are quieter at close range.
+
+Warform shell uses overlapping pointed chest, shoulder, forearm, shin and back plates with physical rims and raised keels. A front/back surface field fits those plates to the selected anatomical body while preserving shell thickness. Skin marbling uses layered, warped pigmentation rather than smooth graphic islands. These are authored approximations, not a scanned creature.
+
+The loaded actor geometry remains under the existing 180,000-triangle regression budget. Pose tests now check every deforming cloth and shell mesh as well as skin. Browser review covers both body types, all people profiles, side/rear orbit, walk/reach/carry poses and five regional cities.
+
 ## Current fidelity limit
 
-This is an anatomical and regional-detail iteration. Hair uses solid clumps, garments are fitted approximations and singer shell sculpting is simplified. The result remains below the cinematic reference quality; passing runtime tests does not imply photographic likeness.
+This is an anatomical and regional-detail iteration. Layered hair, fitted garments and grown shell remain visibly stylized, especially in portrait views. The result remains below the cinematic reference quality; passing runtime tests does not imply photographic likeness.

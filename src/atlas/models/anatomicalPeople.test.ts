@@ -19,14 +19,16 @@ beforeAll(async()=>{
 });
 it.each(['resident','bridger','radiant','workform','warform'] as PersonKind[])('keeps the loaded %s anatomy and skin weights valid through motion',kind=>{
  const rig=buildPerson(0,kind);expect(rig.group.userData.anatomical).toBe(true);
- let triangles=0,skin:T.SkinnedMesh|undefined;
- rig.group.traverse(o=>{if(o instanceof T.Mesh)triangles+=(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;if(o.name==='continuous_anatomy')skin=o as T.SkinnedMesh;});
+ let triangles=0,skin:T.SkinnedMesh|undefined;const deforming:T.SkinnedMesh[]=[];
+ rig.group.traverse(o=>{if(o instanceof T.Mesh)triangles+=(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;if(o.name==='continuous_anatomy')skin=o as T.SkinnedMesh;if(o instanceof T.SkinnedMesh)deforming.push(o);});
  expect(triangles).toBeLessThan(180000);expect(skin).toBeDefined();
  const w=skin!.geometry.getAttribute('skinWeight');for(let i=0;i<w.count;i++)expect(w.getX(i)+w.getY(i)+w.getZ(i)+w.getW(i)).toBeCloseTo(1,5);
  const vertex=new T.Vector3();
  for(const [time,pace,carry,gesture] of [[0,0,0,0],[.3,1,0,0],[1.2,1,0,0],[1,0,1,0],[2,0,0,1]]){
   animatePerson(rig,time,pace,Boolean(carry),gesture);rig.group.updateMatrixWorld(true);
-  for(let i=0;i<skin!.geometry.getAttribute('position').count;i+=17){skin!.getVertexPosition(i,vertex);expect(vertex.toArray().every(Number.isFinite)).toBe(true);expect(vertex.length()).toBeLessThan(3);}
+  // Fitted shell, collars and cloth share the body rig. Check their deformed
+  // bounds too: a valid skin mesh alone cannot catch bad accessory weights.
+  for(const mesh of deforming)for(let i=0;i<mesh.geometry.getAttribute('position').count;i+=31){mesh.getVertexPosition(i,vertex);expect(vertex.toArray().every(Number.isFinite)).toBe(true);expect(vertex.length()).toBeLessThan(3);}
  }
  disposePlace({group:rig.group} as PlaceModel);
 });
