@@ -1,3 +1,4 @@
+import { personAppearance, peopleCultureForPlace, type PersonAppearance, type PeopleCulture } from './models/peopleProfiles';
 import type { Route, V3, PlaceModel } from './models/kit';
 import { random } from './models/kit';
 export interface PreparedRoute extends Route { distances:number[]; length:number }
@@ -10,7 +11,7 @@ export function sampleRoute(route:PreparedRoute,distance:number):{position:V3;ya
   const a=route.points[i-1],b=route.points[i];const t=(d-route.distances[i-1])/Math.max(.0001,route.distances[i]-route.distances[i-1]);
   return {position:[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t],yaw:Math.atan2(b[0]-a[0],b[2]-a[2])};
 }
-export interface Resident {id:string;route:PreparedRoute;distance:number;direction:1|-1;speed:number;height:number;phase:number;wait:number;mode:'walking'|'resting'|'sheltering';skin:string;cloth:string;occupation:'porter'|'resident'|'guard'|'fisher';lane:number;}
+export interface Resident {id:string;appearance:PersonAppearance;route:PreparedRoute;distance:number;direction:1|-1;speed:number;height:number;phase:number;wait:number;mode:'walking'|'resting'|'sheltering';skin:string;cloth:string;occupation:'porter'|'resident'|'guard'|'fisher';lane:number;}
 export function createResidents(model:PlaceModel):Resident[]{
   if(model.id==='akinah')return [];
   const cargoSegments=model.routes.filter(r=>r.species==='chull').flatMap(r=>r.points.slice(1).map((b,i)=>({a:r.points[i],b})));
@@ -19,9 +20,10 @@ export function createResidents(model:PlaceModel):Resident[]{
   // a second population down the center of the chulls' occupied lane.
   const routes=model.routes.filter(r=>!r.species||r.species==='human').map(prepareRoute).filter(r=>r.length>4&&!([.15,.5,.85].every(t=>onCargoRoad(sampleRoute(r,r.length*t).position))));
   const rng=random(model.id.length*99+34);const residents:Resident[]=[];
-  const clothes=model.id==='azimir'?['#d4a760','#8c656d','#6f96a4','#d0c3a3']:['#728b94','#8b624a','#aa8d67','#c2b69c','#516b7e'];
+  const culture=peopleCultureForPlace(model.id);
+  const towerCultures:PeopleCulture[]=['alethi','azish','veden','thaylen','iriali','purelaker','reshi','shin'];
   const perRoute=model.id==='urithiru'?4:5;
-  routes.forEach((route,i)=>{const count=Math.min(perRoute,Math.max(1,Math.floor(route.length/7)));for(let j=0;j<count;j++)residents.push({id:`${model.id}-${i}-${j}`,route,distance:(j+.5)/count*route.length,direction:j%2?1:-1,speed:.95+rng()*.4,height:1.6+rng()*.35,phase:rng()*6.28,wait:0,mode:'walking',skin:['#ad7a56','#8b573c','#c09873','#684431'][Math.floor(rng()*4)],cloth:clothes[Math.floor(rng()*clothes.length)],occupation:model.id==='purelake'?'fisher':j%4===0?'porter':j%7===0?'guard':'resident',lane:(j%2?1:-1)*.48});});
+  routes.forEach((route,i)=>{const count=Math.min(perRoute,Math.max(1,Math.floor(route.length/7)));for(let j=0;j<count;j++){const appearance=personAppearance(model.id==='urithiru'?towerCultures[residents.length%towerCultures.length]:culture,residents.length);residents.push({appearance,id:`${model.id}-${i}-${j}`,route,distance:(j+.5)/count*route.length,direction:j%2?1:-1,speed:.95+rng()*.4,height:1.6+rng()*.35,phase:rng()*6.28,wait:0,mode:'walking',skin:appearance.skin,cloth:appearance.cloth,occupation:model.id==='purelake'?'fisher':j%4===0?'porter':j%7===0?'guard':'resident',lane:(j%2?1:-1)*.48});}});
   return residents.slice(0,260);
 }
 /** Advance on a fixed route; no straight-line teleportation through architecture. */

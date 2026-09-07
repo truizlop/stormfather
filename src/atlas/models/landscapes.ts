@@ -1,3 +1,4 @@
+import {ruinedHouse,stoneColumn} from './landmarkDetails';
 import {addPlainsActivities} from './activitySets';
 import * as T from 'three';
 import { ModelBuilder,random,palette,mountains,type PlaceModel,type V3 } from './kit';
@@ -12,7 +13,7 @@ function clipCell(points:CellPoint[],nx:number,nz:number,limit:number):CellPoint
   }return out;
 }
 export function buildPlains():PlaceModel{
-  const b=new ModelBuilder(),rng=random(414);
+  const b=new ModelBuilder([-450,0,33]),rng=random(414);
   b.box([0,-49,0],[1040,10,960],'#514d44');
   // The published drawing maps plateau density, not individual hexagonal towers.
   // Partition a fourfold seed field into adjoining irregular cells, then inset
@@ -36,8 +37,9 @@ export function buildPlains():PlaceModel{
     if(points.length<3)return;
     const top=index===0?3:3+rng()*1.3;
     const shape=new T.Shape(points.map(([px,pz])=>new T.Vector2(px,-pz)));
-    const geometry=new T.ExtrudeGeometry(shape,{depth:47+top,bevelEnabled:false});geometry.rotateX(-Math.PI/2);
-    b.add(geometry,index%3?'#998269':'#a38b6e',[0,-47,0]);geometry.dispose();
+    const geometry=new T.ExtrudeGeometry(shape,{depth:47+top,bevelEnabled:true,bevelSize:.12,bevelThickness:.08,bevelSegments:1,steps:12});geometry.rotateX(-Math.PI/2);
+    const sides=geometry.getAttribute('position');for(let v=0;v<sides.count;v++){const yy=sides.getY(v),xx=sides.getX(v),zz=sides.getZ(v);if(yy>0&&yy<46+top){const erosion=Math.sin(xx*.4+zz*.37+yy*.61)*.18;sides.setXYZ(v,xx+erosion,yy,zz+erosion*.7);}}geometry.computeVertexNormals();
+    b.add(geometry,index%3?'#998269':'#a38b6e',[0,-47,0],[1,1,1],[0,0,0],'rock');geometry.dispose();
     // Thin strata trace the actual cliff edges, rather than floating inside them.
     for(let level=0;level<3;level++)for(let i=0;i<points.length;i++){
       const a=points[i],c=points[(i+1)%points.length];b.beam([a[0],-9-level*11,a[1]],[c[0],-9-level*11,c[1]],.18,'#b09673');
@@ -70,14 +72,14 @@ export function buildPlains():PlaceModel{
   return {id:'shattered-plains',group,routes:b.routes,overview:{eye:[640,560,760],target:[-50,-8,0]},close:{eye:[-450,8,80],target:[-443,3,33]},radius:800,features:['Fourfold plateau density','Western camps and bridges','Narrow irregular fractures']};
 }
 export function buildShinovar():PlaceModel{
-  const b=new ModelBuilder();const rng=random(712);
+  const b=new ModelBuilder([0,0,4],'plaster');const rng=random(712);
   const g=new T.PlaneGeometry(1000,1000,100,100);g.rotateX(-Math.PI/2);const p=g.getAttribute('position');const cols:number[]=[];
   for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);const y=Math.max(0,Math.hypot(x,z)-170)*.045*(1+Math.sin(x*.03)*.3);p.setY(i,y-.2);const c=new T.Color(i%4?'#7f9256':'#8b9b61');cols.push(c.r,c.g,c.b);}g.computeVertexNormals();
-  b.add(g,'#81945c');g.dispose();
+  b.add(g,'#81945c',[0,0,0],[1,1,1],[0,0,0],'grass');g.dispose();
   for(let row=-3;row<=3;row++)for(let col=-4;col<=4;col++){
     const x=col*35,z=row*42;if(Math.abs(x)<25)continue;
-    b.box([x,0,z],[29,.3,35],(row+col)%3?'#a3a35c':'#8a9149');
-    for(let k=-4;k<=4;k++)b.box([x+k*3,.27,z],[.65,.35,32],(row+col)%3?'#b7ad67':'#687d45');
+    b.box([x,-.04,z],[29,.12,35],(row+col)%3?'#a3a35c':'#8a9149',[0,0,0],'earth');
+    for(let k=-4;k<=4;k++)b.box([x+k*3,.04,z],[.65,.09,32],(row+col)%3?'#b7ad67':'#687d45');
   }
   for(let i=0;i<13;i++){
     const x=i%2?24:-24,z=(i-6)*24;b.building(x,0,z,13,12,4.5,'#b7a98c','pitched');
@@ -88,11 +90,11 @@ export function buildShinovar():PlaceModel{
   for(let i=-3;i<=3;i++)b.path(`field-path-${i}`,[[-155,.2,i*42+20],[155,.2,i*42+20]],3,'Tending the fields','#96966b');
   b.routes.push({id:'grazing',points:[[80,.3,168],[135,.3,180],[156,.3,151],[91,.3,152],[80,.3,168]],activity:'Grazing',species:'goat'});
   mountains(b,15,610,400,112);
-  return {id:'shinovar',group:b.finish('Shinovar_v2'),routes:b.routes,overview:{eye:[400,280,460],target:[0,0,0]},close:{eye:[24,9,32],target:[0,2,4]},radius:740,features:['Soil and ordinary grass','Earth-built houses','Sheltering mountains']};
+  return {id:'shinovar',group:b.finish('Shinovar_v2'),routes:b.routes,overview:{eye:[400,280,460],target:[0,0,0]},close:{eye:[1.8,3.2,38],target:[-5,2,-6]},radius:740,features:['Soil and ordinary grass','Earth-built houses','Sheltering mountains']};
 }
 export function buildPurelake():PlaceModel{
   const b=new ModelBuilder();const rng=random(626);
-  b.box([0,-1.5,0],[20000,2,20000],'#a4a27c');
+  b.box([0,-1.5,0],[20000,2,20000],'#a4a27c',[0,0,0],'earth');
   for(let i=0;i<28;i++){
     const a=i/28*Math.PI*2,r=80+rng()*80;const x=Math.sin(a)*r,z=Math.cos(a)*r;
     if(i%3===0)b.rock(x,-.5,z,8,4,11,'#909784',i);
@@ -102,7 +104,7 @@ export function buildPurelake():PlaceModel{
   b.box([0,.6,-65],[110,1,6],palette.wood);
   for(let i=-5;i<=5;i++){b.cylinder([i*10,-.2,-65],.3,4,palette.wood);b.box([i*10,2,-65],[1,1,1],palette.wood);}
   b.path('lake-walkway',[[-50,1.15,-65],[50,1.15,-65]],3,'Mending fishing nets',palette.wood);
-  return {id:'purelake',group:b.finish('Purelake_v2'),routes:b.routes,overview:{eye:[285,150,325],target:[0,0,0]},close:{eye:[21,5,20],target:[0,.5,0]},radius:650,water:{y:.45,size:20000,shallow:true},features:['Shallow inland water','Wading settlement','Stone outcrops']};
+  return {id:'purelake',group:b.finish('Purelake_v2'),routes:b.routes,overview:{eye:[285,150,325],target:[0,0,0]},close:{eye:[-5,3.1,23],target:[-18,1.7,5]},radius:650,water:{y:.45,size:20000,shallow:true},features:['Shallow inland water','Wading settlement','Stone outcrops']};
 }
 export function buildAkinah():PlaceModel{
   const b=new ModelBuilder();const rng=random(510);
@@ -114,9 +116,10 @@ export function buildAkinah():PlaceModel{
     const shape=new T.Shape();shape.moveTo(-15,-65);shape.lineTo(-36,7);shape.lineTo(-27,58);shape.lineTo(0,72);shape.lineTo(27,58);shape.lineTo(36,7);shape.lineTo(15,-65);shape.closePath();
     const g=new T.ExtrudeGeometry(shape,{depth:3,bevelEnabled:false});g.rotateX(-Math.PI/2);b.add(g,'#a29c85',center,[1,1,1],[0,a,0]);g.dispose();
     for(let j=0;j<11;j++){
+      if(j%3===1)continue;
       const rr=80+Math.floor(j/3)*27,side=((j%3)-1)*15;const x=Math.sin(a)*rr+Math.cos(a)*side,z=Math.cos(a)*rr-Math.sin(a)*side;
-      b.box([x,3+rng()*2,z],[10,5+rng()*7,8],'#8b8f7a',[0,a,0]);
-      b.cylinder([x+4,6,z],.9,10,'#bab399');
+      ruinedHouse(b,x,3,z,10,8,5+rng()*7,a);
+      stoneColumn(b,[x+4,3,z],4+rng()*5,.62,true);
       if(j%3===0)b.rock(x-4,3,z,3,2,3,'#717d64',j);
     }
     b.routes.push({id:`petal-${petal}`,points:[[Math.sin(a)*46,3,Math.cos(a)*46],[Math.sin(a)*209,3,Math.cos(a)*209]],activity:'Scavenging among the ruins',species:'cremling'});
@@ -124,5 +127,5 @@ export function buildAkinah():PlaceModel{
   for(let i=0;i<72;i++){const a=i/72*Math.PI*2;b.cone([Math.sin(a)*252,5,Math.cos(a)*252],3,12,'#777e73');}
   for(let i=0;i<12;i++)b.rock((rng()-.5)*55,0,(rng()-.5)*55,7,20+rng()*30,8,'#4c5753',i);
   // The real Oathgate is subterranean; no invented exposed active portal.
-  return {id:'akinah',group:b.finish('Akinah_v2'),routes:b.routes,overview:{eye:[415,365,460],target:[0,0,0]},close:{eye:[24,12,85],target:[0,5,115]},radius:500,water:{y:-2,size:2000,shallow:false},features:['Tenfold flower plan','Stone spike defenses','Subterranean Oathgate omitted']};
+  return {id:'akinah',group:b.finish('Akinah_v2'),routes:b.routes,overview:{eye:[415,365,460],target:[0,0,0]},close:{eye:[4,5.5,190],target:[0,4.5,126]},radius:500,water:{y:-2,size:2000,shallow:false},features:['Tenfold flower plan','Stone spike defenses','Subterranean Oathgate omitted']};
 }

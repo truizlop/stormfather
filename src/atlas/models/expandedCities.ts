@@ -1,4 +1,7 @@
 import * as T from 'three';
+import {prayerStatue} from './landmarkDetails';
+import {sailingBoat} from './maritime';
+import {archway,facadeWindow} from './architecture';
 import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 import {refineTerrain} from '../terrainMesh';
 import {ModelBuilder,random,palette,type PlaceModel,type V3} from './kit';
@@ -8,26 +11,29 @@ function lamp(b:ModelBuilder,x:number,y:number,z:number,ceramic=false){
  b.sphere([x+.55,y+3,z],[.25,.33,.25],ceramic?'#c5b397':'#9dcdd3','lamp');b.cylinder([x+.55,y+3.3,z],.28,.1,'#746249');
 }
 function urn(b:ModelBuilder,x:number,y:number,z:number,s=1){b.sphere([x,y+.45*s,z],[.33*s,.45*s,.33*s],'#b58360');b.cylinder([x,y+.85*s,z],.22*s,.18*s,'#c79870');b.cylinder([x,y+.95*s,z],.17*s,.01,'#453b32');}
-function statue(b:ModelBuilder,x:number,y:number,z:number,s=1){b.box([x,y+.4*s,z],[1.5*s,.8*s,1.5*s],'#b7af96');b.cone([x,y+1.9*s,z],.49*s,2.3*s,'#c7bca1');b.sphere([x,y+3.23*s,z],[.26*s,.35*s,.26*s],'#c7bca1');b.beam([x-.33*s,y+2.75*s,z],[x-.58*s,y+2*s,z+.4*s],.18*s,'#c7bca1');}
+function statue(b:ModelBuilder,x:number,y:number,z:number,s=1){prayerStatue(b,x,y,z,s);}
 function wedgeHouse(b:ModelBuilder,x:number,z:number,w:number,d:number,h:number,color:string){
  // Eastern face slopes back from the storm. Openings are on the sheltered west.
  const shape=new T.Shape([new T.Vector2(-w/2,0),new T.Vector2(w/2,0),new T.Vector2(w*.05,h),new T.Vector2(-w/2,h)]);
- const g=new T.ExtrudeGeometry(shape,{depth:d,bevelEnabled:false});b.add(g,color,[x,0,z-d/2]);g.dispose();const bounds={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,bottom:0,top:h};b.obstacles.push(bounds);b.cameraObstacles.push(bounds);
+ const g=new T.ExtrudeGeometry(shape,{depth:d,bevelEnabled:true,bevelSize:.07,bevelThickness:.07,bevelSegments:1});b.add(g,color,[x,0,z-d/2],[1,1,1],[0,0,0],'masonry');g.dispose();const bounds={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,bottom:0,top:h};b.obstacles.push(bounds);b.cameraObstacles.push(bounds);
  b.beam([x-w/2,h+.12,z-d/2],[x+w*.05,h+.12,z-d/2],.3,'#c9bfa2');
  b.box([x-w/2-.04,1.35,z],[.12,2.7,1.3],palette.wood);
- for(const side of [-1,1]){b.box([x-w/2-.08,2.15,z+side*d*.28],[.1,1.45,1.2],palette.window,[0,0,0],'window');b.box([x-w/2-.25,1.38,z+side*d*.28],[.5,.18,1.55],'#d5c8aa');}
+ archway(b,[x-w/2-.18,0,z],1.93,2.38,.71,.37,-Math.PI/2,'#b9b8a3');
+ b.box([x-w/2-.11,.28,z],[.33,.56,d+.16],'#757d6d',[0,0,0],'cutstone');
+ b.box([x-w/2-.1,h-.12,z],[.32,.22,d+.18],'#b7b8a3',[0,0,0],'cutstone');
+ for(const side of [-1,1]){
+  facadeWindow(b,[x-w/2-.09,1.33,z+side*d*.28],1.2,1.65,-Math.PI/2,Math.round(x+z+side)%3!==0,true);
+  b.beam([x-w/2,h+.08,z+side*d/2],[x+w*.05,h+.08,z+side*d/2],.2,'#a9ac95');
+  for(let yy=.7;yy+.15<h-.3;yy+=.8)b.box([x-w/2-.065,yy,z+side*(d/2-.23)],[.16,.3,.46],'#b3b29b',[0,0,0],'cutstone');
+ }
+ for(const yy of [.6,2])b.box([x-w/2-.125,yy,z],[.035,.07,1.23],'#424c40',[0,0,0],'metal');
  b.box([x-w/2-1,.15,z],[2,.3,2.3],'#bfb69c');urn(b,x-w/2-1.3,0,z+d*.37,.8);
 }
 function boat(x:number,y:number,z:number,length=22,yaw=0){
- const boatB=new ModelBuilder(),shape=new T.Shape();shape.moveTo(0,-length*.55);shape.quadraticCurveTo(length*.22,-length*.23,length*.16,length*.35);shape.quadraticCurveTo(0,length*.53,-length*.16,length*.35);shape.quadraticCurveTo(-length*.22,-length*.23,0,-length*.55);
- const g=new T.ExtrudeGeometry(shape,{depth:2.3,bevelEnabled:true,bevelSize:.35,bevelThickness:.35,bevelSegments:1,steps:1});g.rotateX(-Math.PI/2);boatB.add(g,'#675241',[0,-1,0]);g.dispose();
- boatB.box([0,1.4,0],[length*.27,.3,length*.65],'#b69767');boatB.cylinder([0,length*.33,0],.17,length*.65,'#775b3b');
- for(const side of [-1,1])boatB.beam([0,length*.61,0],[side*length*.15,1.5,length*.26],.028,'#c2ac7f');
- const sail=new T.Shape();sail.moveTo(.5,3);sail.lineTo(.5,length*.58);sail.quadraticCurveTo(length*.45,length*.45,length*.33,4);sail.closePath();const sg=new T.ShapeGeometry(sail);boatB.add(sg,'#c8bea0');sg.dispose();
- const group=boatB.finish('Rigged_merchant_boat');group.position.set(x,y,z);group.rotation.y=yaw;return group;
+ const boatB=new ModelBuilder();sailingBoat(boatB,0,0,0,length,0,length<16);const group=boatB.finish('Rigged_merchant_boat');group.position.set(x,y,z);group.rotation.y=yaw;return group;
 }
 export function buildHearthstone():PlaceModel{
- const b=new ModelBuilder(),rng=random(730);b.cylinder([0,-6,0],330,12,'#9d9275');
+ const b=new ModelBuilder([-143,0,60]),rng=random(730);b.cylinder([0,-6,0],330,12,'#9d9275');
  // One hundred modest structures, clear western approaches and an eastern breakwall.
  for(let row=-5;row<=4;row++)for(let col=0;col<10;col++){const x=-220+col*30,z=row*33;wedgeHouse(b,x,z,17+rng()*3,17+rng()*4,5+rng()*2.8,['#ac9b7a','#b8a689','#9c947f'][col%3]);}
  for(let c=0;c<10;c++)b.path(`hearth-lane-${c}`,[[-233+c*30,.2,-185],[-233+c*30,.2,159]],5,'Visiting neighbors and the bakery','#afa182');
@@ -45,7 +51,7 @@ export function buildHearthstone():PlaceModel{
  for(let i=0;i<10;i++)lamp(b,-233+i*30,0,171);return {id:'hearthstone',group:b.finish('Hearthstone_v2'),routes:b.routes,radius:340,overview:{eye:[-455,300,445],target:[0,12,0]},close:{eye:[-143,4.6,35],target:[-143,1.7,60]},features:['East-sloping houses','Sheltering breakwall','White manor and grain stores']};
 }
 export function buildRevolar():PlaceModel{
- const b=new ModelBuilder(),rng=random(819);
+ const b=new ModelBuilder([0,0,30]),rng=random(819);
  const height=(x:number,z:number)=>Math.max(0,Math.hypot(x,z)-160)*.26*(.8+Math.sin(Math.atan2(z,x)*3)*.2)*(1-T.MathUtils.smoothstep(Math.hypot(x,z),400,580));
  const roadHeight=(x:number,z:number)=>Math.max(height(x-5,z),height(x+5,z),height(x,z-5),height(x,z+5))+.4;
  const positions:number[]=[],indices:number[]=[];for(let ring=0;ring<=40;ring++)for(let j=0;j<=120;j++){const a=j/120*Math.PI*2,r=580*ring/40,x=Math.sin(a)*r,z=Math.cos(a)*r;positions.push(x,height(x,z)-.25,z);if(ring<40&&j<120){const k=ring*121+j;indices.push(k,k+121,k+1,k+1,k+121,k+122);}}const terrain=new T.BufferGeometry();terrain.setAttribute('position',new T.Float32BufferAttribute(positions,3));terrain.setIndex(indices);terrain.computeVertexNormals();b.add(terrain,'#a39475');terrain.dispose();
@@ -60,11 +66,12 @@ export function buildRevolar():PlaceModel{
  for(let i=-4;i<=4;i++)lamp(b,9,0,i*32);return {id:'revolar',group:b.finish('Revolar_v2'),routes:b.routes,radius:560,overview:{eye:[-590,450,580],target:[0,18,0]},close:{eye:[0,4,70],target:[0,2,30]},features:['Older inner boundary walls','Irregular hillside growth','Eastern caravan yards']};
 }
 export function buildKasitor():PlaceModel{
- const b=new ModelBuilder(),rng=random(214),ships:T.Group[]=[];
+ const b=new ModelBuilder([0,0,48]),rng=random(214),ships:T.Group[]=[];
  // Bay on the northern side; the waterfront is kept clear for the viewing platform.
  b.box([0,-6,145],[810,12,490],'#a19574');
  for(let row=0;row<8;row++)for(let col=-9;col<=9;col++){const x=col*37,z=48+row*38;if(col%4===0||row%3===2)continue;b.building(x,0,z,25,25,9+rng()*16,['#b37352','#be8862','#9f634a','#b99a72'][(col+row+30)%4]);
  if((row+col)%4===0){b.box([x,5,z+13.6],[20,.25,3.5],'#c2ae8b');for(let j=-4;j<=4;j++)b.box([x+j*2.2,5.7,z+15.2],[.08,1.2,.09],'#8b7251');}}
+ b.box([0,.12,-13],[276,.1,64],'#acaa98',[0,0,0],'paving');
  b.path('kasitor-promenade',[[-330,.3,-43],[330,.3,-43]],10,'Watching the bay and meeting the tide','#c3b496');
  for(let col=-8;col<=8;col+=4)b.path(`kasitor-avenue-${col}`,[[col*37,.3,-28],[col*37,.3,307]],9,'Walking from the docks into the brick city','#baa283');
  for(let row=0;row<3;row++)b.path(`kasitor-market-${row}`,[[-325,.32,125+row*114],[325,.32,125+row*114]],7,'Trading under the awnings','#bca688');
@@ -74,17 +81,17 @@ export function buildKasitor():PlaceModel{
  for(const x of [-278,-198,210,292]){b.box([x,.3,-116],[13,2.4,145],'#77634a');for(let j=0;j<22;j++)b.box([x,1.6,-51-j*6],[13.4,.2,.9],'#b29b72');ships.push(boat(x+22,-.4,-113,30,-.03));}
  for(let j=-6;j<=6;j++){b.stall(j*20,0,-17,['#557f79','#b99764','#965c58'][Math.abs(j)%3]);lamp(b,j*45,0,-47);urn(b,j*45-3,0,-45,1.3);}
  b.path('dock-chulls',[[-350,.25,3],[350,.25,3]],8,'Moving goods along the quay','#a18c6b','chull');
- const group=b.finish('Kasitor_v2');group.add(...ships);return {id:'kasitor',group,routes:b.routes,radius:540,water:{y:-1,size:1800,shallow:false},overview:{eye:[-590,370,-650],target:[0,9,15]},close:{eye:[40,6,-43],target:[0,2,-84]},features:['Brick-built harbor city','Viewing platform over the bay','Four golden pedestals']};
+ const group=b.finish('Kasitor_v2');group.add(...ships);return {id:'kasitor',group,routes:b.routes,radius:540,water:{y:-1,size:1800,shallow:false},overview:{eye:[-590,370,-650],target:[0,9,15]},close:{eye:[0,3.7,77],target:[-22,3.2,50]},features:['Brick-built harbor city','Viewing platform over the bay','Four golden pedestals']};
 }
 export function buildRallElorim():PlaceModel{
- const b=new ModelBuilder(),rng=random(631),extra:T.Group[]=[];
+ const b=new ModelBuilder([-94,0,25]),rng=random(631),extra:T.Group[]=[];
  // A continuous vaulted overhang, with dwellings cut into pendant stone spires.
  const profile=new T.Shape();profile.moveTo(-445,0);profile.quadraticCurveTo(-490,430,-80,440);profile.quadraticCurveTo(420,470,440,30);profile.lineTo(345,0);profile.quadraticCurveTo(320,280,0,279);profile.quadraticCurveTo(-310,270,-335,0);profile.closePath();
  const rock=new T.ExtrudeGeometry(profile,{depth:230,bevelEnabled:true,bevelSize:12,bevelThickness:12,bevelSegments:2,steps:4});rock.deleteAttribute('normal');rock.deleteAttribute('uv');const welded=mergeVertices(rock);const wp=welded.getAttribute('position'),wi=welded.getIndex()!;const points:V3[]=Array.from({length:wp.count},(_,i)=>[wp.getX(i),wp.getY(i),wp.getZ(i)]);const faces:[number,number,number][]=Array.from({length:wi.count/3},(_,i)=>[wi.getX(i*3),wi.getX(i*3+1),wi.getX(i*3+2)]);const refined=refineTerrain(points,faces,24);const crag=new T.BufferGeometry();crag.setAttribute('position',new T.Float32BufferAttribute(refined.points.flat(),3));crag.setIndex(refined.faces.flat());welded.dispose();const rp=crag.getAttribute('position');
- for(let i=0;i<rp.count;i++){const x=rp.getX(i),y=rp.getY(i),z=rp.getZ(i);const grain=Math.sin(x*.059+y*.081)*Math.cos(z*.037+y*.029)*4+Math.sin(x*.14+y*.21+z*.09)*1.8;rp.setXYZ(i,x+grain,y+grain*.5,z+grain*1.7+Math.sin(y*.12)*2.5);}crag.computeVertexNormals();b.add(crag,'#858b75',[0,-4,-340]);rock.dispose();crag.dispose();
- const back=new T.BoxGeometry(650,270,30,32,18,2),backPos=back.getAttribute('position');for(let i=0;i<backPos.count;i++){const x=backPos.getX(i),y=backPos.getY(i);backPos.setZ(i,backPos.getZ(i)+Math.sin(x*.05+y*.06)*4+Math.sin(y*.12)*2);}back.computeVertexNormals();b.add(back,'#7e856f',[0,131,-314]);back.dispose();
- for(let j=-5;j<=5;j++){const x=j*66,h=70+rng()*76;const pendant=new T.ConeGeometry(32,h,9);b.add(pendant,'#8c8d76',[x,280-h*.38,-117],[1,1,1],[Math.PI,0,0]);pendant.dispose();
- for(let level=0;level<5;level++){const y=251-level*17,width=34-level*4.4;if(y<280-h*.8)continue;b.box([x,y,-101],[width,3,27],'#b5b198');for(const dx of [-.27,0,.27])b.box([x+dx*width,y+5,-86.9],[2.8,5,.2],palette.window,[0,0,0],'window');}}
+ for(let i=0;i<rp.count;i++){const x=rp.getX(i),y=rp.getY(i),z=rp.getZ(i);const grain=Math.sin(x*.059+y*.081)*Math.cos(z*.037+y*.029)*4+Math.sin(x*.14+y*.21+z*.09)*1.8;rp.setXYZ(i,x+grain,y+grain*.5,z+grain*1.7+Math.sin(y*.12)*2.5);}crag.computeVertexNormals();b.add(crag,'#858b75',[0,-4,-340],[1,1,1],[0,0,0],'rock');rock.dispose();crag.dispose();
+ const back=new T.BoxGeometry(650,270,30,32,18,2),backPos=back.getAttribute('position');for(let i=0;i<backPos.count;i++){const x=backPos.getX(i),y=backPos.getY(i);backPos.setZ(i,backPos.getZ(i)+Math.sin(x*.05+y*.06)*4+Math.sin(y*.12)*2);}back.computeVertexNormals();b.add(back,'#7e856f',[0,131,-314],[1,1,1],[0,0,0],'rock');back.dispose();
+ for(let j=-5;j<=5;j++){const x=j*66,h=70+rng()*76;const pendant=new T.ConeGeometry(32,h,48,12);b.add(pendant,'#8c8d76',[x,280-h*.38,-117],[1,1,1],[Math.PI,0,0],'rock');pendant.dispose();
+ for(let level=0;level<5;level++){const y=251-level*17,width=34-level*4.4;if(y<280-h*.8)continue;b.box([x,y,-101],[width,3,27],'#b5b198');for(const dx of [-.27,0,.27])facadeWindow(b,[x+dx*width,y+2.5,-86.9],2.8,5,0,true,true,false);}}
  for(let terrace=0;terrace<4;terrace++){const z=-175+terrace*55,y=(3-terrace)*16;b.box([0,y-7,z],[646,14,53],'#989982');
  for(let col=-7;col<=7;col++){if(col===0&&terrace>0)continue;const x=col*41,w=25+rng()*4;b.building(x,y,z,w,28,9+rng()*10,['#aca88e','#b9b19a','#999d88'][(col+terrace+20)%3],'dome');if(col%2===0)b.tree(x+15,y,z+12,5,false);}
  b.path(`rall-terrace-${terrace}`,[[-310,y+.2,z+22],[310,y+.2,z+22]],5,'Walking beneath the overhang','#b3ad92');for(let i=-6;i<=6;i++){lamp(b,i*48,y,z+18,true);if(i%2===0)statue(b,i*48+3,y,z+17,.8);}}
@@ -99,5 +106,5 @@ export function buildRallElorim():PlaceModel{
  for(let j=0;j<95;j++){const x=(rng()-.5)*700,z=-290+rng()*150;b.tree(x,ceiling(x)-8,z,7+rng()*12);}
  for(let j=0;j<90;j++){const x=(rng()-.5)*730,y=240+rng()*100,z=-99;b.beam([x,y,z],[x+Math.sin(j)*3,y-12-rng()*26,z+3],.5,'#577953');}
  extra.push(boat(-94,-.3,204,13,.7),boat(123,-.3,189,11,-.4));
- const group=b.finish('Rall_Elorim_v2');group.add(...extra);return {id:'rall-elorim',group,routes:b.routes,radius:570,water:{y:0,size:1800,shallow:false},overview:{eye:[-660,330,730],target:[0,165,-50]},close:{eye:[-146,8,273],target:[-132,4,294]},features:['Great overhang and pendant dwellings','Waterfalls and reservoir temple','Vines and prayer statues']};
+ const group=b.finish('Rall_Elorim_v2');group.add(...extra);return {id:'rall-elorim',group,routes:b.routes,radius:570,water:{y:0,size:1800,shallow:false},overview:{eye:[-660,330,730],target:[0,165,-50]},close:{eye:[-177,6,213],target:[-43,103,-108]},features:['Great overhang and pendant dwellings','Waterfalls and reservoir temple','Vines and prayer statues']};
 }

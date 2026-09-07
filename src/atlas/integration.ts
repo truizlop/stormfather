@@ -53,7 +53,7 @@ function floorAt(p:CityPlacement,x:number,z:number){
 }
 /** Local ground rolls into registered terrain; it is never a square display plinth. */
 export function createCityTerrain(p:CityPlacement){
-  const positions:number[]=[],colors:number[]=[],indices:number[]=[];const rings=36,boundary=cityTerrainBoundaries.get(p.id),segments=boundary?.length??144;
+  const positions:number[]=[],colors:number[]=[],indices:number[]=[],continentHeight:number[]=[],continentColor:number[]=[],continentNormal:number[]=[];const rings=36,boundary=cityTerrainBoundaries.get(p.id),segments=boundary?.length??144;
   const inner=p.radius,outer=p.radius*TERRAIN_RADIUS;
   for(let ring=0;ring<=rings;ring++)for(let i=0;i<=segments;i++){
     const edge=boundary?.[i%segments];
@@ -64,12 +64,15 @@ export function createCityTerrain(p:CityPlacement){
     const blend=T.MathUtils.smootherstep(r,inner*1.02,outer*.97);
     const y=T.MathUtils.lerp(floorAt(p,x,z),(height-p.origin[1])/p.scale,blend);
     positions.push(x,y,z);
+    continentHeight.push((height-p.origin[1])/p.scale);
+    const farColor=land?landColor(wx,wz,height):new T.Color('#66756b');if(ring===rings&&edge?.color)farColor.setRGB(...edge.color);continentColor.push(farColor.r,farColor.g,farColor.b);
+    const farNormal=land?new T.Vector3(atlasHeight(wx-.06,wz)-atlasHeight(wx+.06,wz),.12,atlasHeight(wx,wz-.06)-atlasHeight(wx,wz+.06)).normalize():new T.Vector3(0,1,0);continentNormal.push(farNormal.x,farNormal.y,farNormal.z);
     const color=new T.Color(p.color).lerp(land?landColor(wx,wz,height):new T.Color('#66756b'),blend);
     if(ring===rings&&edge?.color)color.setRGB(...edge.color);
     colors.push(color.r,color.g,color.b);
     if(ring<rings&&i<segments){const k=ring*(segments+1)+i;indices.push(k,k+segments+1,k+1,k+1,k+segments+1,k+segments+2);}
   }
-  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('color',new T.Float32BufferAttribute(colors,3));g.setIndex(indices);g.computeVertexNormals();return g;
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('color',new T.Float32BufferAttribute(colors,3));g.setAttribute('continentHeight',new T.Float32BufferAttribute(continentHeight,1));g.setAttribute('continentColor',new T.Float32BufferAttribute(continentColor,3));g.setAttribute('continentNormal',new T.Float32BufferAttribute(continentNormal,3));g.setIndex(indices);g.computeVertexNormals();return g;
 }
 /** Clip only the oversized outskirts/ground sheets, leaving metric actors untouched. */
 export function constrainCity(model:PlaceModel,p:CityPlacement){

@@ -38,7 +38,7 @@ describe('worker geometry transport', () => {
     expect(restored.group.position.toArray()).toEqual([1,2,3]);
     expect(restored.group.rotation.y).toBeCloseTo(.4);
     const mesh = restored.group.children[0] as T.Mesh<T.BufferGeometry, T.MeshStandardMaterial>;
-    expect(mesh.material.customProgramCacheKey()).toBe('field-surface-stone-1');
+    expect(mesh.material.customProgramCacheKey()).toBe((group.children[0] as T.Mesh<T.BufferGeometry, T.MeshStandardMaterial>).material.customProgramCacheKey());
     expect(mesh.castShadow && mesh.receiveShadow).toBe(true);
     const window = restored.group.children[1] as T.Mesh<T.BufferGeometry, T.MeshStandardMaterial>;
     expect(window.material.emissiveIntensity).toBe(.03);

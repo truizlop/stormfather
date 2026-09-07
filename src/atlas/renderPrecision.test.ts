@@ -1,6 +1,6 @@
 import {expect,it} from 'vitest';
 import * as T from 'three';
-import {cameraNear,enableLogDepth,atmosphereRange,preserveFogVisibility} from './renderPrecision';
+import {cameraNear,enableLogDepth,atmosphereRange,preserveFogVisibility,hazeLimit} from './renderPrecision';
 import {refineTerrain,type Point2} from './terrainMesh';
 it('keeps nearby geometry inside the frustum at city and continental distances',()=>{
   for(const distance of [.003,.01,.2,1,10,100,1000]){expect(cameraNear(distance)).toBeLessThan(distance*.01);expect(cameraNear(distance)).toBeLessThanOrEqual(.01);expect(cameraNear(distance)).toBeGreaterThan(0);}
@@ -44,10 +44,13 @@ it('limits haze in standard and custom shaders without losing existing material 
  for(const material of [new T.MeshStandardMaterial(),new T.ShaderMaterial()]){
   material.onBeforeCompile=shader=>{shader.vertexShader+='\n// city clipping';};
   if(material instanceof T.ShaderMaterial)enableLogDepth(material);
-  preserveFogVisibility(material);
+  preserveFogVisibility(material);preserveFogVisibility(material);
   const shader={vertexShader:'void main(){gl_Position=vec4(1.);}',fragmentShader:'void main(){\n#include <fog_fragment>\n}',uniforms:{}};
   material.onBeforeCompile(shader as T.WebGLProgramParametersWithUniforms,{} as T.WebGLRenderer);
-  expect(shader.fragmentShader).toContain('min(fogFactor, 0.32)');
+  expect(shader.fragmentShader).toContain('min(fogFactor, uHazeLimit)');
+  expect(shader.fragmentShader.match(/uniform float uHazeLimit/g)).toHaveLength(1);
+  expect((shader.uniforms as Record<string,unknown>).uHazeLimit).toBe(hazeLimit);
+  expect(hazeLimit.value).toBe(.32);
   expect(shader.vertexShader).toContain('// city clipping');
   if(material instanceof T.ShaderMaterial)expect(shader.fragmentShader).toContain('#include <logdepthbuf_fragment>');
  }

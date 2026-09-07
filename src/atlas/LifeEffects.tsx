@@ -16,8 +16,18 @@ export function Rain({model}:{model:PlaceModel}){
   useFrame(()=>{const u=rainMaterial.current?.uniforms;if(u){u.uTime.value=worldClock.time;u.uOpacity.value=worldClock.storm*(model.id==='urithiru'?0:model.id==='shinovar'?.12:.48);}});
   return <lineSegments geometry={geometry}><shaderMaterial ref={rainMaterial} uniforms={uniforms} transparent depthWrite={false} vertexShader={`attribute vec3 aBase;uniform float uTime,uSize;void main(){vec3 p=aBase;p.y=mod(aBase.y-uTime*36.,100.);p.x=mod(aBase.x-uTime*8.+uSize*.5,uSize)-uSize*.5;p+=position-aBase;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`} fragmentShader="uniform float uOpacity;void main(){gl_FragColor=vec4(.69,.78,.8,uOpacity);}"/></lineSegments>;
 }
+function rockbudLeaves(){
+ const positions:number[]=[],indices:number[]=[];
+ for(let leaf=0;leaf<8;leaf++)for(let row=0;row<=12;row++)for(let col=0;col<=4;col++){
+  const t=row/12,u=col/4*2-1,a=leaf*Math.PI/4,r=.08+t*.8,w=Math.sin(t*Math.PI)*.19;
+  positions.push(Math.cos(a)*r-Math.sin(a)*u*w,.08+Math.sin(t*Math.PI*.74)*.69+u*u*.08,Math.sin(a)*r+Math.cos(a)*u*w);
+  if(row<12&&col<4){const k=leaf*65+row*5+col;indices.push(k,k+1,k+5,k+1,k+6,k+5);}
+ }
+ const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();return g;
+}
 export function Rockbuds({model}:{model:PlaceModel}){
   const mesh=useRef<T.InstancedMesh>(null);const foliage=useRef<T.InstancedMesh>(null);
+  const leaves=useMemo(()=>rockbudLeaves(),[]);useEffect(()=>()=>leaves.dispose(),[leaves]);
   const seeds=useMemo(()=>{
     if(['urithiru','purelake','shinovar'].includes(model.id))return [];
     const rng=random(175);const points:T.Vector3[]=[];const obstacles=(model.group.userData.obstacles??[]) as Obstacle[];
@@ -27,9 +37,9 @@ export function Rockbuds({model}:{model:PlaceModel}){
   const dummy=useMemo(()=>new T.Object3D(),[]);
   useFrame(()=>{if(!mesh.current||!foliage.current)return;seeds.forEach((p,i)=>{
     dummy.position.copy(p);dummy.position.y+=.25;dummy.scale.set(.45,.28,.45);dummy.rotation.set(0,i,0);dummy.updateMatrix();mesh.current!.setMatrixAt(i,dummy.matrix);
-    dummy.position.y=p.y+.6*(1-worldClock.storm*.88);dummy.scale.set(.55*(1-worldClock.storm*.9),.65*(1-worldClock.storm*.9),.55*(1-worldClock.storm*.9));dummy.updateMatrix();foliage.current!.setMatrixAt(i,dummy.matrix);
+    dummy.position.y=p.y+.25;dummy.scale.set(.55*(1-worldClock.storm*.9),.65*(1-worldClock.storm*.9),.55*(1-worldClock.storm*.9));dummy.updateMatrix();foliage.current!.setMatrixAt(i,dummy.matrix);
   });mesh.current.instanceMatrix.needsUpdate=true;foliage.current.instanceMatrix.needsUpdate=true;});
-  return <group><instancedMesh ref={mesh} args={[undefined,undefined,Math.max(1,seeds.length)]} count={seeds.length}><sphereGeometry args={[1,8,5]}/><meshStandardMaterial color="#858b6b" roughness={1}/></instancedMesh><instancedMesh ref={foliage} args={[undefined,undefined,Math.max(1,seeds.length)]} count={seeds.length}><coneGeometry args={[1,1,5]}/><meshStandardMaterial color="#597d58" roughness={1}/></instancedMesh></group>;
+  return <group><instancedMesh ref={mesh} args={[undefined,undefined,Math.max(1,seeds.length)]} count={seeds.length}><sphereGeometry args={[1,20,12]}/><meshStandardMaterial color="#8c8972" roughness={1}/></instancedMesh><instancedMesh ref={foliage} args={[undefined,undefined,Math.max(1,seeds.length)]} count={seeds.length}><primitive object={leaves} attach="geometry"/><meshStandardMaterial color="#697764" roughness={.86} side={T.DoubleSide}/></instancedMesh></group>;
 }
 export function Windrunners(){
   const rigs=useMemo(()=>Array.from({length:WINDRUNNER_COUNT},(_,i)=>({...createWindrunner(i),i})),[]);

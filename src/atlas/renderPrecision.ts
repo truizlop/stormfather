@@ -29,14 +29,18 @@ export function atmosphereRange(distance:number){
 
 /** Haze is an atlas depth cue, never an opaque replacement for the landscape.
  * Cursor zoom can put the orbit focus much nearer than the visible terrain. */
+export const hazeLimit={value:.32};
+const fogMaterials=new WeakSet<T.Material>();
 export function preserveFogVisibility(material:T.Material){
+  if(fogMaterials.has(material))return;fogMaterials.add(material);
   const previous=material.onBeforeCompile;
   const cacheKey=material.customProgramCacheKey();
   material.onBeforeCompile=(shader,renderer)=>{
     previous.call(material,shader,renderer);
-    shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>',
-      T.ShaderChunk.fog_fragment.replace('fogColor, fogFactor','fogColor, min(fogFactor, 0.32)'));
+    shader.uniforms.uHazeLimit=hazeLimit;
+    shader.fragmentShader='uniform float uHazeLimit;\n'+shader.fragmentShader.replace('#include <fog_fragment>',
+      T.ShaderChunk.fog_fragment.replace('fogColor, fogFactor','fogColor, min(fogFactor, uHazeLimit)'));
   };
-  material.customProgramCacheKey=()=>cacheKey+'-readable-haze-v1';
+  material.customProgramCacheKey=()=>cacheKey+'-readable-haze-v2';
   material.needsUpdate=true;
 }

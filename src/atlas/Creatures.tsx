@@ -1,7 +1,7 @@
 import {useMemo,useEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as T from 'three';
-import {buildCreature,type Species} from './models/creatures';
+import {buildCreature,animateCreature,type Species} from './models/creatures';
 import {prepareRoute,sampleRoute} from './simulation';
 import type {PlaceModel,Route} from './models/kit';
 import {disposePlace} from './models';
@@ -32,10 +32,9 @@ export function Creatures({model}:{model:PlaceModel}){
     if(!retracting){actor.distance+=worldClock.delta*fast*actor.direction;if(actor.distance>route.length){actor.distance=route.length;actor.direction=-1;}if(actor.distance<0){actor.distance=0;actor.direction=1;}}
     const backward=actor.direction<0;const point=sampleRoute(route,actor.distance);
     const storm=model.id==='shinovar'?worldClock.storm*.2:worldClock.storm;
-    const retract=species==='chull'&&storm>.45;const gait=retract?0:Math.sin(t*fast*5+seed);
+    const retract=species==='chull'&&storm>.45;
     rig.group.position.set(...point.position);rig.group.rotation.y=point.yaw+(backward?0:Math.PI);
-    rig.legs.forEach((leg,i)=>{leg.rotation.x=gait*.28*(i%2?1:-1);leg.scale.y=retract?.05:1;});
-    rig.body.position.y=retract?-.7:Math.abs(gait)*.025;
+    animateCreature(rig,species,t+seed,retract?0:1,retract?1:0);
   }});
   return <group name="Native_creatures">{actors.map((a,i)=><primitive key={i} object={a.rig.group} onClick={(e:{stopPropagation:()=>void})=>{e.stopPropagation();useAtlas.getState().set({selectedActor:`${a.species} · ${a.route.activity.toLowerCase()}`});}}/>)}{['kharbranth','thaylen-city','akinah'].includes(model.id)&&<Skyeels place={model.id}/>}{model.id==='purelake'&&<Fish/>}</group>;
 }

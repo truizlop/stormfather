@@ -1,6 +1,13 @@
-import {enableLogDepth,cameraNear,atmosphereRange,preserveFogVisibility} from './renderPrecision';
+import {AtlasRivers} from './AtlasRivers';
+import { enrichMaterial } from './materials';
+import { WetMarket } from './WetMarket';
+import { HeadAssets } from './HeadAssets';
+import { StreetLighting } from './StreetLighting';
+import { SurfaceTextures } from './SurfaceTextures';
+import { Lighting } from './Lighting';
+import {enableLogDepth,cameraNear,preserveFogVisibility} from './renderPrecision';
 import {CityAtmosphere} from './CityAtmosphere';
-import { useEffect,useMemo,useRef,useState } from 'react';
+import { useEffect,useMemo,useRef,useState,Suspense } from 'react';
 import { Canvas,useFrame,useThree } from '@react-three/fiber';
 import { Html,OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -33,60 +40,53 @@ function ShaderPrecision(){
   return null;
 }
 function Clock(){useFrame((_,delta)=>{const s=useAtlas.getState();advanceClock(delta,s.playing,s.speed,s.weather==='highstorm');},-2);return null;}
-function Lighting(){
-  const isLocal=useAtlas(s=>s.view==='place');const placeId=useAtlas(s=>s.placeId);const sceneId=useAtlas(s=>s.sceneId);const close=useAtlas(s=>s.closeView);const extent=(sceneId==='radiant-arts'?42:sceneId==='listener-village'?85:sceneId?140:close?85:placeId==='urithiru'?1400:900)*.002;
-  const controls=useThree(s=>s.controls as OrbitControlsImpl|null);const camera=useThree(s=>s.camera);
-  const haze=useMemo(()=>new T.Fog('#829da8',1.1,8),[]);
-  const sun=useRef<T.DirectionalLight>(null);const ambient=useRef<T.HemisphereLight>(null);const scene=useThree(s=>s.scene);
-  useFrame(()=>{const s=useAtlas.getState(),d=s.daylight;const exposure=s.placeId==='urithiru'&&s.view==='place'?0:s.placeId==='shinovar'&&s.view==='place'?.2:1;const storm=worldClock.storm*exposure;
-    if(sun.current){sun.current.intensity=(.18+d*2.25)*(1-storm*.73);sun.current.color.set(d<.5?'#ffc98b':'#fffaf2');const p=placementById.get(s.placeId)!;const activity=s.sceneId?experienceById.get(s.sceneId):undefined;if(activity)toAtlas(p,activity.target,sun.current.target.position);else if(s.closeView&&controls?.target)sun.current.target.position.copy(controls.target);else sun.current.target.position.set(...p.origin);sun.current.target.updateMatrixWorld();
-      const shadow=sun.current.shadow;shadow.bias=activity||s.closeView?-.00001:-.00005;shadow.normalBias=activity||s.closeView?.0001:.0015;shadow.camera.updateProjectionMatrix();sun.current.position.copy(sun.current.target.position).add(new T.Vector3(-4,10,4.5));}
-    if(ambient.current)ambient.current.intensity=.4+d*.65;
-    const viewingDistance=controls?camera.position.distanceTo(controls.target):100;const atmosphere=atmosphereRange(viewingDistance);haze.near=atmosphere.near;haze.far=atmosphere.far;
-    scene.background=new T.Color('#152733').lerp(new T.Color('#829da8'),d*(1-storm*.6));haze.color.copy(scene.background);scene.fog=haze;
-  });
-  return <><hemisphereLight ref={ambient} args={['#c9e0e8','#535a48',1.2]}/><directionalLight ref={sun} position={[-400,1000,450]} intensity={2.4} castShadow={isLocal} shadow-mapSize={[2048,2048]} shadow-camera-left={-extent} shadow-camera-right={extent} shadow-camera-top={extent} shadow-camera-bottom={-extent} shadow-camera-near={.01} shadow-camera-far={25} shadow-bias={-.00005} shadow-normalBias={.0015}/></>;
-}
 function Borders(){
   const geometry=useMemo(()=>{const g=new T.BufferGeometry();const p:number[]=[];for(const f of frontiers)for(let i=1;i<f.points.length;i++){
     const a=f.points[i-1],b=f.points[i];const steps=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])*4);for(let j=0;j<steps;j++){if(j%3===2)continue;const t=j/steps,u=(j+1)/steps;const x=a[0]+(b[0]-a[0])*t,z=a[1]+(b[1]-a[1])*t,x2=a[0]+(b[0]-a[0])*u,z2=a[1]+(b[1]-a[1])*u;p.push(x,atlasHeight(x,z)+.08,z,x2,atlasHeight(x2,z2)+.08,z2);}}
     g.setAttribute('position',new T.Float32BufferAttribute(p,3));return g;},[]);
   useEffect(()=>()=>geometry.dispose(),[geometry]);return <lineSegments geometry={geometry}><lineBasicMaterial color="#ddd0a3" transparent opacity={.5}/></lineSegments>;
 }
-function MapWorld({assets}:{assets:AtlasAssets}){
+function MapWorld({assets,waterPlace}:{assets:AtlasAssets;waterPlace:PlaceId|null}){
   const stormFollowing=useAtlas(s=>s.stormFollowing);const compact=useThree(s=>s.size.width<760);const local=useAtlas(s=>s.view==='place');const placeId=useAtlas(s=>s.placeId);
   const coastMaterial=useMemo(()=>{const m=new T.MeshStandardMaterial({color:'#b9b08e',roughness:1,side:T.DoubleSide});cutCityFootprints(m);return m;},[]);
   // Heightfields expose only their upper surface; backfaces flicker along grazing ridges.
-  const landMaterial=useMemo(()=>{const m=new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.FrontSide});return m;},[]);
+  const landMaterial=useMemo(()=>{const m=new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.FrontSide});enrichMaterial(m,'atlas');return m;},[]);
   const {land,coast}=assets;const labels=useAtlas(s=>s.labels);const borders=useAtlas(s=>s.borders);const focus=useAtlas(s=>s.focusPoint);
 
-  return <><mesh geometry={land} material={landMaterial}/><mesh geometry={coast} material={coastMaterial}/><Ocean atlas/>{borders&&<Borders/>}{labels&&!local&&!stormFollowing&&<>
+  return <><mesh geometry={land} material={landMaterial}/><mesh geometry={coast} material={coastMaterial}/><Ocean atlas activeCity={waterPlace}/><AtlasRivers/>{borders&&<Borders/>}{labels&&!local&&!stormFollowing&&<>
     {places.filter(p=>!local||p.id!==placeId).map(p=><Html key={p.id} position={[p.anchor[0],atlasHeight(...p.anchor)+.15,p.anchor[1]]} zIndexRange={[20,0]}><button className="map-pin" aria-label={p.id==='akinah'?'Aimia region: open Akinah':p.name} onClick={()=>useAtlas.getState().travel(p.id)}><span className="map-pin-dot"/><span className={compact&&!['shinovar','urithiru','kholinar','thaylen-city','purelake'].includes(p.id)?'sr-only':undefined}>{p.id==='akinah'?'Aimia · Akinah ↗':p.name}</span></button></Html>)}
     {countryLabels.filter(c=>!local&&c.emphasis==='major'&&!['shinovar','thaylenah'].includes(c.id)).map(c=><Html key={c.id} position={[c.position[0],atlasHeight(...c.position)+.2,c.position[1]]} zIndexRange={[10,0]}><span className={`map-country map-country-${c.id}`}>{c.name}</span></Html>)}
     <Html position={[57,0,-25]} zIndexRange={[5,0]}><span className="ocean-label">Ocean of Origins</span></Html><Html position={[-51,0,22]} zIndexRange={[5,0]}><span className="ocean-label">Endless Ocean</span></Html><Html position={[9,0,34]} zIndexRange={[5,0]}><span className="ocean-label">Southern Depths</span></Html>
   </>}{focus&&<mesh position={[focus[0],atlasHeight(...focus)+.4,focus[1]]}><sphereGeometry args={[.5,12,8]}/><meshBasicMaterial color="#b2efe2"/></mesh>}<Stormwall/></>;
 }
-function CityGround({placement,geometry}:{placement:CityPlacement;geometry:T.BufferGeometry}){
+function CityGround({placement,geometry,occupied}:{placement:CityPlacement;geometry:T.BufferGeometry;occupied:boolean}){
+  const blend=useMemo(()=>({value:1}),[]);
   const material=useMemo(()=>{
-    const m=new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.FrontSide});
-    if(placement.id==='rall-elorim'){
-      m.onBeforeCompile=shader=>{
-        shader.vertexShader='varying vec2 vReservoir;\n'+shader.vertexShader;
-        shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvReservoir=position.xz;');
-        shader.fragmentShader='varying vec2 vReservoir;\n'+shader.fragmentShader;
-        shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(distance(vReservoir,vec2(0.,158.))<181.)discard;');
-      };
-      m.customProgramCacheKey=()=> 'rall-reservoir-bank';
-    }
-    return m;
-  },[placement.id]);
+    const m=new T.MeshStandardMaterial({vertexColors:true,roughness:1,side:T.FrontSide});enrichMaterial(m,'atlas');
+    const previous=m.onBeforeCompile;
+    m.onBeforeCompile=(shader,renderer)=>{
+      previous.call(m,shader,renderer);shader.uniforms.uTerrainBlend=blend;
+      shader.vertexShader='attribute float continentHeight;attribute vec3 continentColor,continentNormal;uniform float uTerrainBlend;varying vec2 vReservoir;\n'+shader.vertexShader;
+      shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>','#include <beginnormal_vertex>\nobjectNormal=normalize(mix(objectNormal,continentNormal,uTerrainBlend));');
+      shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed.y=mix(transformed.y,continentHeight,uTerrainBlend);vReservoir=position.xz;');
+      shader.vertexShader=shader.vertexShader.replace('vSurfacePosition=position;','vSurfacePosition=mix(position,(modelMatrix*vec4(position.x,continentHeight,position.z,1.)).xyz,uTerrainBlend);');
+      shader.vertexShader=shader.vertexShader.replace('#include <color_vertex>','#include <color_vertex>\nvColor.rgb=mix(vColor.rgb,continentColor,uTerrainBlend);');
+      if(placement.id==='rall-elorim'){
+        shader.fragmentShader='varying vec2 vReservoir;uniform float uTerrainBlend;\n'+shader.fragmentShader;
+        shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(uTerrainBlend<.5&&distance(vReservoir,vec2(0.,158.))<181.)discard;');
+      }
+    };
+    m.customProgramCacheKey=()=>`continental-ground-${placement.id==='rall-elorim'?'reservoir':'land'}-v2`;return m;
+  },[placement.id,blend]);
+  useFrame(()=>{blend.value=occupied?0:1;});
   useEffect(()=>()=>material.dispose(),[material]);
   return <mesh position={placement.origin} scale={placement.scale} geometry={geometry} material={material} receiveShadow/>;
 }
 function PlaceWorld({model,placement,active}:{model:PlaceModel;placement:CityPlacement;active:boolean}){
+  const closeView=useAtlas(s=>s.closeView);
   const sceneId=useAtlas(s=>s.sceneId);const people=useAtlas(s=>s.people),creatures=useAtlas(s=>s.creatures),radiants=useAtlas(s=>s.radiants);
   useFrame(()=>{const night=1-useAtlas.getState().daylight;model.group.children.forEach(child=>{const mesh=child as T.Mesh;const m=mesh.material as T.MeshStandardMaterial;if(child.name.endsWith('_window'))m.emissiveIntensity=night*.8;});});
-  return <group position={placement.origin} scale={placement.scale} name={`Integrated_${model.id}`}><primitive object={model.group}/>{active&&<>{people&&<People model={model}/>} {creatures&&!(model.id==='shattered-plains'&&sceneId==='greatshell-hunt')&&<Creatures model={model}/>}<CityAtmosphere model={model}/><Rain model={model}/><Rockbuds model={model}/>{radiants&&model.id==='urithiru'&&<><Windrunners/><RadiantArts/></>}<Discoveries place={model.id}/>{model.id==='shattered-plains'&&<>{people&&<><BridgeRun/><ListenerVillage/></>}{sceneId==='greatshell-hunt'&&creatures&&people&&<GreatshellHunt/>}</>}</>}{model.water&&<Ocean {...model.water} size={placement.radius*3.3} clipRadius={placement.radius*1.64}/>}</group>;
+  return <group position={placement.origin} scale={placement.scale} name={`Integrated_${model.id}`}><primitive object={model.group}/>{active&&closeView&&model.group.userData.marketCourt&&<WetMarket center={model.group.userData.marketCourt}/>}<Suspense fallback={null}><SurfaceTextures model={model}/></Suspense>{active&&<>{people&&<People model={model}/>} {creatures&&!(model.id==='shattered-plains'&&sceneId==='greatshell-hunt')&&<Creatures model={model}/>}<CityAtmosphere model={model}/><StreetLighting model={model}/><Rain model={model}/><Rockbuds model={model}/>{radiants&&model.id==='urithiru'&&<><Windrunners/><RadiantArts/></>}<Discoveries place={model.id}/>{model.id==='shattered-plains'&&<>{people&&<><BridgeRun/><ListenerVillage/></>}{sceneId==='greatshell-hunt'&&creatures&&people&&<GreatshellHunt/>}</>}</>}{model.water&&<Ocean {...model.water} size={placement.radius*3.3} clipRadius={placement.radius*1.64}/>}</group>;
 }
 function Camera({models}:{models:Map<string,PlaceModel>}){
   const ref=useRef<OrbitControlsImpl>(null),camera=useThree(s=>s.camera),size=useThree(s=>s.size),s=useAtlas();
@@ -152,7 +152,7 @@ function Camera({models}:{models:Map<string,PlaceModel>}){
     // the same metric ground clearance as the street presets.
     if(placement&&distance<.2&&!following.current&&!['scene','discovery','storm'].includes(state.cameraCommand.type)){const local=toLocal(placement,camera.position);if(local.y<1){camera.position.y=placement.origin[1]+placement.scale;}}
   });
-  return <OrbitControls ref={ref} makeDefault enableDamping dampingFactor={.08} minDistance={.003} maxDistance={Math.max(300,200*size.height/size.width)} maxPolarAngle={Math.PI*.48} zoomSpeed={2.2} zoomToCursor onStart={()=>{moving.current=false;following.current=false;sceneTracking.current=false;if(useAtlas.getState().stormFollowing)useAtlas.getState().set({stormFollowing:false});}}/>;
+  return <OrbitControls ref={ref} makeDefault enableDamping dampingFactor={.08} minDistance={.003} maxDistance={Math.max(300,200*size.height/size.width)} maxPolarAngle={s.view==='place'&&s.closeView?Math.PI*.66:Math.PI*.48} zoomSpeed={2.2} zoomToCursor onStart={()=>{moving.current=false;following.current=false;sceneTracking.current=false;if(useAtlas.getState().stormFollowing)useAtlas.getState().set({stormFollowing:false});}}/>;
 }
 function Contents({assets}:{assets:AtlasAssets}){
   const [near,setNear]=useState<PlaceId|null>(null);const lastCheck=useRef(0);
@@ -163,7 +163,7 @@ function Contents({assets}:{assets:AtlasAssets}){
     const state=useAtlas.getState();const best=activeCityForCamera(camera.position,state.view==='place'?state.placeId:undefined);
     if(best!==near)setNear(best);
   });
-  return <><Clock/><ShaderPrecision/><Lighting/><MapWorld assets={assets}/>{cityPlacements.map(p=><CityGround key={p.id} placement={p} geometry={assets.collars.get(p.id)!}/>)}{model&&<PlaceWorld key={model.id} model={model} placement={placementById.get(model.id)!} active={near===model.id}/>}<Camera models={models}/></>;
+  return <><Suspense fallback={null}><HeadAssets/></Suspense><Clock/><ShaderPrecision/><Lighting/><MapWorld assets={assets} waterPlace={model?.water?model.id:null}/>{cityPlacements.map(p=><CityGround key={p.id} placement={p} geometry={assets.collars.get(p.id)!} occupied={model?.id===p.id}/>)}{model&&<PlaceWorld key={model.id} model={model} placement={placementById.get(model.id)!} active={near===model.id}/>}<Camera models={models}/></>;
 }
 export function Scene(){
   const assets=useAtlasAssets();

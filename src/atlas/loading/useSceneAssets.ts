@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
+import {Mesh} from 'three';
+import {applySurfaceMaps,loadSurfaceTextures} from '../surfaceMaps';
 import { preserveFogVisibility } from '../renderPrecision';
 import type { BufferGeometry } from 'three';
 import type { PlaceId } from '../data';
@@ -38,6 +40,9 @@ export function usePlaceAsset(id: PlaceId | null): PlaceModel | null {
     if (!id) { useLoading.setState({ place: null }); return; }
     let model: PlaceModel | undefined;
     let cancelled = false, compiling = false;
+    const textures=loadSurfaceTextures(gl);
+    // The worker may fail or be cancelled before it consumes this promise.
+    void textures.catch(()=>{});
     useLoading.setState({ place: { label: 'Starting city model worker', completed: 0, total: 0 } });
     const cancel = generate({ type: 'place', id }, message => {
       if (message.type === 'progress') useLoading.setState({ place: { ...message, total: 0 } });
@@ -52,7 +57,11 @@ export function usePlaceAsset(id: PlaceId | null): PlaceModel | null {
         useLoading.setState({ place: { label: 'Preparing model shaders', completed: 0, total: 0 } });
         compiling = true;
         // KHR_parallel_shader_compile lets the browser service input while shaders link.
-        gl.compileAsync(prepared.group, camera, scene).then(() => {
+        textures.then(maps=>{
+          if(cancelled)return;
+          prepared.group.traverse(object=>{if(object instanceof Mesh)applySurfaceMaps(object,maps);});
+          return gl.compileAsync(prepared.group,camera,scene);
+        }).then(() => {
           compiling = false;
           if (cancelled) { disposePlace(prepared); return; }
           setResult({ id, revision, model: prepared });

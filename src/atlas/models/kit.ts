@@ -1,4 +1,6 @@
 import * as T from 'three';
+import {detailedBuilding,detailedStall} from './architecture';
+import {botanicalTree} from './nature';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { PlaceId } from '../data';
 import { enrichMaterial } from '../materials';
@@ -10,8 +12,17 @@ const baseBox=new T.BoxGeometry(1,1,1);
 const baseSphere=new T.SphereGeometry(1,12,8);
 const baseCylinder=new T.CylinderGeometry(1,1,1,16);
 const baseCone=new T.ConeGeometry(1,1,8);
+const landmarkSphere=new T.SphereGeometry(1,32,20);
+const landmarkCylinder=new T.CylinderGeometry(1,1,1,64);
+const landmarkCone=new T.ConeGeometry(1,1,32);
+function terrainNoise(x:number,z:number){
+ const hash=(a:number,c:number)=>{const n=Math.sin(a*127.1+c*311.7)*43758.5453;return n-Math.floor(n);};
+ const ix=Math.floor(x),iz=Math.floor(z),fx=x-ix,fz=z-iz,u=fx*fx*(3-2*fx),v=fz*fz*(3-2*fz);
+ return T.MathUtils.lerp(T.MathUtils.lerp(hash(ix,iz),hash(ix+1,iz),u),T.MathUtils.lerp(hash(ix,iz+1),hash(ix+1,iz+1),u),v);
+}
 const mat=new T.Matrix4(); const q=new T.Quaternion(); const euler=new T.Euler();
 export class ModelBuilder {
+  constructor(public detailOrigin:V3=[0,0,0],public wallSurface='masonry'){}
   buckets=new Map<string,T.BufferGeometry[]>();
   routes:Route[]=[];
   cameraObstacles:import('../navigation').Obstacle[]=[];
@@ -26,15 +37,17 @@ export class ModelBuilder {
     const bucket=this.buckets.get(surface)??[];bucket.push(g);this.buckets.set(surface,bucket);
   }
   box(p:V3,s:V3,c=palette.stone,rot:V3=[0,0,0],surface='stone'){
+    if(surface==='stone'&&s[0]>18&&s[2]>18&&s[1]<Math.max(s[0],s[2])*.14)surface='earth';
+    if(surface==='stone'&&c===palette.wood)surface='timber';
     this.add(baseBox,c,p,s,rot,surface);
     const w=(Math.abs(Math.cos(rot[1]))*s[0]+Math.abs(Math.sin(rot[1]))*s[2])/2,d=(Math.abs(Math.sin(rot[1]))*s[0]+Math.abs(Math.cos(rot[1]))*s[2])/2;
     const bounds={minX:p[0]-w,maxX:p[0]+w,minZ:p[2]-d,maxZ:p[2]+d,bottom:p[1]-s[1]/2,top:p[1]+s[1]/2};
     if(s[0]>=2&&s[2]>=2&&s[1]>=1&&bounds.top>.45)this.obstacles.push(bounds);
     if(s[0]>.3&&s[2]>.3&&s[1]>.3)this.cameraObstacles.push(bounds);
   }
-  sphere(p:V3,s:V3,c=palette.stone,surface='stone'){this.add(baseSphere,c,p,s,[0,0,0],surface);}
-  cylinder(p:V3,r:number,h:number,c=palette.stone,surface='stone'){this.add(baseCylinder,c,p,[r,h,r],[0,0,0],surface);}
-  cone(p:V3,r:number,h:number,c=palette.roof){this.add(baseCone,c,p,[r,h,r]);}
+  sphere(p:V3,s:V3,c=palette.stone,surface='stone'){this.add(Math.max(...s)>3?landmarkSphere:baseSphere,c,p,s,[0,0,0],surface);}
+  cylinder(p:V3,r:number,h:number,c=palette.stone,surface='stone'){this.add(r>4?landmarkCylinder:baseCylinder,c,p,[r,h,r],[0,0,0],surface);}
+  cone(p:V3,r:number,h:number,c=palette.roof){this.add(r>3?landmarkCone:baseCone,c,p,[r,h,r]);}
   beam(a:V3,b:V3,width:number,color=palette.stone,depth=width){
     const mid=new T.Vector3(...a).add(new T.Vector3(...b)).multiplyScalar(.5);
     const direction=new T.Vector3(...b).sub(new T.Vector3(...a));
@@ -44,72 +57,40 @@ export class ModelBuilder {
   path(id:string,points:V3[],width=4,activity='Walking to market',color='#b9aa8c',species:Route['species']='human',sheltered=false){
     for(let i=1;i<points.length;i++){
       const a=points[i-1],c=points[i]; const length=Math.hypot(c[0]-a[0],c[2]-a[2]);
-      this.box([(a[0]+c[0])/2,(a[1]+c[1])/2-.12,(a[2]+c[2])/2],[width,.24,Math.hypot(length,c[1]-a[1])],color,[-Math.atan2(c[1]-a[1],length),Math.atan2(c[0]-a[0],c[2]-a[2]),0]);
+      this.box([(a[0]+c[0])/2,(a[1]+c[1])/2-.12,(a[2]+c[2])/2],[width,.24,Math.hypot(length,c[1]-a[1])],color,[-Math.atan2(c[1]-a[1],length),Math.atan2(c[0]-a[0],c[2]-a[2]),0],color===palette.wood?'timber':color==='#a9a07e'||color==='#96966b'?'earth':'paving');
     }
     this.routes.push({id,points,activity,species,sheltered});
   }
   building(x:number,y:number,z:number,w:number,d:number,h:number,c=palette.stone,style:'flat'|'dome'|'pitched'='flat'){
-    this.box([x,y+h/2,z],[w,h,d],c);
-    this.box([x,y+.3,z],[w+.65,.6,d+.65],palette.dark);
-    if(style==='dome'){
-      this.cylinder([x,y+h+.3,z],w*.55,.7,palette.cream);
-      this.sphere([x,y+h,z],[w*.51,w*.43,d*.51],c);
-      this.cone([x,y+h+w*.56,z],.45,w*.45,palette.cream);
-    }else if(style==='pitched'){
-      const roof=new T.CylinderGeometry(0,1,1,4);this.add(roof,palette.roof,[x,y+h+1.6,z],[w*.78,3.2,d*.78],[0,Math.PI/4,0]);roof.dispose();
-    }else{
-      this.box([x,y+h+.2,z],[w+.8,.45,d+.8],palette.cream);
-      for(const side of [-1,1])this.box([x+side*(w/2),y+h+.6,z],[.4,1,d],c);
-      for(const side of [-1,1])this.box([x,y+h+.6,z+side*d/2],[w,1,.4],c);
-    }
-    const floors=Math.max(1,Math.floor(h/3.3));
-    const cols=Math.max(1,Math.floor(w/3));
-    for(let f=0;f<floors;f++)for(let col=0;col<cols;col++){
-      const wx=x+(col-(cols-1)/2)*Math.min(3,w*.65);
-      for(const s of [-1,1]){
-        this.box([wx,y+2+f*3.1,z+s*(d/2+.025)],[.85,1.5,.06],palette.window,[0,0,0],'window');
-        this.box([wx,y+1.15+f*3.1,z+s*(d/2+.13)],[1.2,.18,.3],palette.cream);
-      }
-    }
-    this.box([x,y+1.3,z+d/2+.04],[1.25,2.6,.12],palette.wood);
-    this.box([x-0.78,y+1.4,z+d/2+.12],[.2,2.8,.24],palette.cream);this.box([x+.78,y+1.4,z+d/2+.12],[.2,2.8,.24],palette.cream);this.box([x,y+2.86,z+d/2+.12],[1.75,.2,.24],palette.cream);
-    for(let level=1;level<floors;level++)this.box([x,y+level*3.1+.45,z],[w+.15,.1,d+.15],c);
-    if(h>9){this.box([x,y+4.05,z+d/2+.6],[w*.65,.22,1.25],palette.cream);for(let rail=0;rail<5;rail++)this.box([x+(rail-2)*w*.14,y+4.6,z+d/2+1.15],[.06,1.1,.06],palette.wood);this.box([x,y+5.1,z+d/2+1.15],[w*.67,.07,.08],palette.wood);}
-    this.box([x,y+.15,z+d/2+.6],[2.1,.3,1.2],palette.cream);
+    detailedBuilding(this,x,y,z,w,d,h,c,style);
   }
   stall(x:number,y:number,z:number,color='#a65947'){
-    this.box([x,y+.85,z],[3.5,1.7,1.5],palette.wood);
-    this.box([x,y+2.7,z],[4.3,.13,2.6],color,[.07,0,0]);
-    for(const dx of [-1.85,1.85])for(const dz of [-.9,.9])this.box([x+dx,y+1.4,z+dz],[.13,2.8,.13],palette.wood);
-    for(let j=0;j<5;j++)this.sphere([x-1.3+j*.62,y+1.8,z],[.25,.16,.35],j%2?'#ceb469':'#89954e');
+    detailedStall(this,x,y,z,color);
   }
   tree(x:number,y:number,z:number,size=7,shin=false,bronze=false){
-    const wood=bronze?palette.bronze:palette.wood;const leaf=bronze?palette.bronze:palette.leaf;
-    this.cylinder([x,y+size*.32,z],size*.07,size*.64,wood,bronze?'metal':'stone');
-    for(let j=0;j<4;j++){
-      const a=j*2.4;const p:V3=[x+Math.sin(a)*size*.2,y+size*(.58+j*.07),z+Math.cos(a)*size*.2];
-      this.beam([x,y+size*.3,z],p,size*.05,wood);
-      this.sphere(p,[size*.28,size*(shin?.25:.12),size*.3],leaf,bronze?'metal':'stone');
-    }
+    botanicalTree(this,x,y,z,size,shin,bronze);
   }
   rock(x:number,y:number,z:number,w:number,h:number,d:number,color=palette.dark,seed=1){
     if(h>50){
       // Broad, joined foothills taper into craggy ridges. Stretched sphere rocks
       // produce vertical monoliths and do not read as the mapped mountain ranges.
-      const positions:number[]=[],indices:number[]=[];const rings=16,segments=48;
+      const positions:number[]=[],indices:number[]=[];const rings=40,segments=96;
       for(let ring=0;ring<=rings;ring++)for(let j=0;j<=segments;j++){
         const a=j/segments*Math.PI*2,r=Math.max(.001,ring/rings);
         const edge=1+.12*Math.sin(a*5+seed)+.08*Math.cos(a*9-seed);
-        const ridge=1+.22*Math.sin(a*4+seed)*Math.sin(r*Math.PI)+.09*Math.sin(a*11+r*15+seed)*Math.sin(r*Math.PI);
-        const height=Math.pow(1-r,1.2)*ridge;
+        const nx=Math.cos(a)*r,nz=Math.sin(a)*r;
+        const ridge=1-Math.abs(terrainNoise(nx*4.8+seed,nz*3.4-seed)*2-1);
+        const gullies=1-Math.abs(terrainNoise(nx*13+seed*3,nz*11-seed)*2-1);
+        const crags=terrainNoise(nx*37+seed,nz*31);
+        const height=Math.pow(1-r,1.12)*(.57+ridge*.31+gullies*.09+crags*.03);
         positions.push(Math.cos(a)*r*w*2.1*edge,height*h-h*.1,Math.sin(a)*r*d*2.1*edge);
         if(ring<rings&&j<segments){const k=ring*(segments+1)+j;indices.push(k,k+1,k+segments+1,k+1,k+segments+2,k+segments+1);}
       }
-      const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();this.add(g,color,[x,y,z],[1,1,1],[0,seed,0]);g.dispose();return;
+      const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setIndex(indices);g.computeVertexNormals();this.add(g,color,[x,y,z],[1,1,1],[0,seed,0],'rock');g.dispose();return;
     }
     const g=new T.IcosahedronGeometry(1,3); const p=g.getAttribute('position');
     for(let i=0;i<p.count;i++){const n=1+Math.sin(p.getX(i)*4+p.getZ(i)*3+seed)*.14+Math.sin(p.getX(i)*17+p.getZ(i)*13+seed)*.025;p.setXYZ(i,p.getX(i)*n,p.getY(i)*n,p.getZ(i)*n);}g.computeVertexNormals();
-    this.add(g,color,[x,y+h*.3,z],[w,h,d],[.05,seed,.12]);g.dispose();
+    this.add(g,color,[x,y+h*.3,z],[w,h,d],[.05,seed,.12],'rock');g.dispose();
   }
   finish(name:string){
     const group=new T.Group();group.name=name;
@@ -117,9 +98,15 @@ export class ModelBuilder {
       const geometry=mergeGeometries(list);list.forEach(g=>g.dispose());
       const material=new T.MeshStandardMaterial({vertexColors:true,roughness:surface==='metal'?.43:.88,metalness:surface==='metal'?.55:0,side:T.DoubleSide});
       enrichMaterial(material,surface);
-      if(surface==='lamp'){material.emissive=new T.Color('#97c7d2');material.emissiveIntensity=.8;}
+      if(surface==='contact'){material.transparent=true;material.depthWrite=false;material.polygonOffset=true;material.polygonOffsetFactor=-1;material.polygonOffsetUnits=-1;}
+      if(surface==='glass'){material.roughness=.2;material.metalness=.3;}
+      if(surface==='recess'){material.roughness=1;}
+      if(surface==='canvas'){material.roughness=1;}
+      if(surface==='ceramic'){material.roughness=.48;}
+      if(surface==='cutstone'){material.roughness=.84;}
+      if(surface==='lamp'){material.emissive=new T.Color('#ffce8e');material.emissiveIntensity=.8;}
       if(surface==='window'){material.emissive=new T.Color('#e1a85c');material.emissiveIntensity=.03;}
-      const mesh=new T.Mesh(geometry,material);mesh.name=`${name}_${surface}`;mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);
+      const mesh=new T.Mesh(geometry,material);mesh.name=`${name}_${surface}`;mesh.castShadow=surface!=='contact';mesh.receiveShadow=!['windstone','contact'].includes(surface);group.add(mesh);
     }
     group.userData.obstacles=this.obstacles;
     // Runtime camera collision data need not inflate downloadable GLB extras.

@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {cropPlot} from './nature';
 import { ModelBuilder, palette, random, type PlaceModel, type V3 } from './kit';
 
 export const URITHIRU_TIERS=10;
@@ -14,9 +15,9 @@ export function halfDisk(radius:number,height:number){
   shape.closePath();const g=new T.ExtrudeGeometry(shape,{depth:height,bevelEnabled:false,steps:1,curveSegments:80});g.rotateX(-Math.PI/2);return g;
 }
 export function buildUrithiru():PlaceModel {
-  const b=new ModelBuilder();const rng=random(91);const h=URITHIRU_HEIGHT/URITHIRU_TIERS;
+  const b=new ModelBuilder([-697,0,0],'ashlar');const rng=random(91);const h=URITHIRU_HEIGHT/URITHIRU_TIERS;
   // Base and natural peaks engulf the east face and the two ends of lower tiers.
-  const forecourt=halfDisk(940,52);b.add(forecourt,'#858782',[0,-52,0]);forecourt.dispose();
+  const forecourt=halfDisk(940,52);b.add(forecourt,'#858782',[0,-52,0],[1,1,1],[0,0,0],'ashlar');forecourt.dispose();
   for(let i=0;i<32;i++){
     const z=(i-16)*72; const x=100+rng()*250; const peak=260+rng()*530;
     b.rock(x,-80,z,160+rng()*110,peak,115+rng()*120,i%3?'#747f82':'#8c9695',i);
@@ -53,6 +54,7 @@ export function buildUrithiru():PlaceModel {
     if(level<9&&radius-URITHIRU_RADII[level+1]>30)for(let i=0;i<18;i++){
       const a=(i+.5)/18*Math.PI;const rr=radius-26;
       b.box([-Math.sin(a)*rr,y+h+1,Math.cos(a)*rr],[20,.8,34],i%3?'#8f916c':'#a4a17c',[0,-a,0]);
+      cropPlot(b,[-Math.sin(a)*rr,y+h+1.42,Math.cos(a)*rr],14,14,i+level*19,false);
       for(let k=-2;k<=2;k++)b.box([-Math.sin(a)*rr+Math.cos(a)*k*3,y+h+1.6,Math.cos(a)*rr+Math.sin(a)*k*3],[.7,.45,31],'#666f51',[0,-a,0]);
     }
   }
@@ -76,5 +78,5 @@ export function buildUrithiru():PlaceModel {
     b.building(x,0,z,12,10,7,'#a7a99b');
   }
   const group=b.finish('Urithiru_v2');group.userData={...group.userData,tiers:10,floorsPerTier:18,heightMeters:823,oathgates:10,reference:'Ben McSweeney — Urithiru / Oathbringer'};
-  return {id:'urithiru',group,routes:b.routes,overview:{eye:[-1500,1050,1450],target:[-140,320,0]},close:{eye:[-751,16,42],target:[-687,5,0]},radius:1400,features:['Ten semicircular tiers','180 floors','Ten Oathgate platforms']};
+  return {id:'urithiru',group,routes:b.routes,overview:{eye:[-1500,1050,1450],target:[-140,320,0]},close:{eye:[-726,4.5,17],target:[-668,5.1,-4]},radius:1400,features:['Ten semicircular tiers','180 floors','Ten Oathgate platforms']};
 }

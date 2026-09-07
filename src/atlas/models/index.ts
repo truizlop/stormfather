@@ -1,3 +1,5 @@
+import {archway} from './architecture';
+import {dressLandmark} from './landmarkDetails';
 import {dressStreets} from './streetDetails';
 import {buildHearthstone,buildRevolar,buildKasitor,buildRallElorim} from './expandedCities';
 import {buildYeddaw,buildSesemalex} from './trenchCities';
@@ -14,7 +16,7 @@ export function buildPlace(id:PlaceId):PlaceModel{
   const model=builders[id]();model.routes=safeRoutes(model);
   // Choose a walkable camera station, so the street preset cannot begin inside
   // a procedurally placed house. Preserve the monument/ruin-specific viewpoints.
-  if(!['urithiru','purelake','akinah','hearthstone','kasitor','rall-elorim'].includes(id)){
+  if(!['urithiru','purelake','akinah','hearthstone','kasitor','rall-elorim','kholinar','shinovar','vedenar','revolar'].includes(id)){
     const desired=model.close.target;
     const candidates=model.routes.filter(r=>r.species==='human').map(prepareRoute).filter(r=>r.length>24);
     let best:{route:ReturnType<typeof prepareRoute>;distance:number;score:number}|undefined;
@@ -25,17 +27,24 @@ export function buildPlace(id:PlaceId):PlaceModel{
   // solid backs and sides give shelter without closing the approach path.
   if(!['urithiru','purelake','akinah','shinovar'].includes(id)){
     const b=new ModelBuilder();const done=new Set<string>();
-    model.routes.filter(r=>r.species==='human').forEach(r=>{
+    model.routes.filter(r=>r.species==='human'&&!r.id.includes('dock')).forEach(r=>{
       for(const index of [0,r.points.length-1]){
         const [x,y,z]=r.points[index];const next=r.points[index===0?1:index-1];
+        // The market already has deep porticoes for shelter.
+        const court=model.group.userData.marketCourt;if(court&&Math.abs(x-court[0])<17&&z-court[1]>-10&&z-court[1]<30)continue;
+        // Keep the street preset's foreground and focal area open.
+        if([model.close.eye,model.close.target].some(p=>Math.hypot(x-p[0],z-p[2])<18))continue;
         const key=`${Math.round(x/5)}:${Math.round(z/5)}`;if(done.has(key))continue;done.add(key);
         const length=Math.hypot(x-next[0],z-next[2])||1,dx=(x-next[0])/length,dz=(z-next[2])/length,yaw=Math.atan2(dx,dz);
-        b.box([x,y+4.3,z],[5.2,.6,5.2],palette.stone,[0,yaw,0]);
-        b.box([x+dx*2.3,y+2,z+dz*2.3],[5,4,.45],palette.stone,[0,yaw,0]);
-        for(const side of [-1,1])b.box([x+dz*side*2.3,y+2,z-dx*side*2.3],[.45,4,5],palette.stone,[0,yaw,0]);
+        b.box([x,y+4.3,z],[5.2,.6,5.2],palette.stone,[0,yaw,0],'ashlar');
+        b.box([x,y+4.65,z],[5.55,.14,5.55],palette.cream,[0,yaw,0],'cutstone');
+        archway(b,[x-dx*2.35,y,z-dz*2.35],4.15,2.85,1,.38,yaw+Math.PI,palette.cream);
+        b.box([x+dx*2.3,y+2,z+dz*2.3],[5,4,.45],palette.stone,[0,yaw,0],'ashlar');
+        for(const side of [-1,1])b.box([x+dz*side*2.3,y+2,z-dx*side*2.3],[.45,4,5],palette.stone,[0,yaw,0],'ashlar');
       }
     });model.group.add(b.finish('Public_shelters'));
   }
+  dressLandmark(model);
   dressStreets(model);
   Object.assign(model.group.userData,{units:'metres',reconstruction:'Original source-informed interpretation',routes:model.routes.map(r=>({id:r.id,species:r.species,activity:r.activity,points:r.points}))});
   return model;

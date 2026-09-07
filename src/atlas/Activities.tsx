@@ -3,7 +3,7 @@ import {useFrame} from '@react-three/fiber';
 import * as T from 'three';
 import {Campfire} from './Campfire';
 import {buildPerson,animatePerson} from './models/person';
-import {buildCreature} from './models/creatures';
+import {buildCreature,animateCreature} from './models/creatures';
 import {buildBridge,VILLAGE_CENTER,listenerHomes} from './models/activitySets';
 import {bridgeState,bridgeRunnerPose,huntState,phaseAt,smooth} from './experiences';
 import {disposePlace} from './models';
@@ -26,7 +26,7 @@ export function GreatshellHunt(){
   useFrame(()=>{const t=worldClock.time-useAtlas.getState().sceneStartedAt,s=huntState(t);
     creature.group.position.set(s.x,.1,510);creature.group.rotation.y=s.retreat?Math.PI/2:-Math.PI/2;creature.body.rotation.x=s.rear;
     lure.visible=s.t>=5;
-    creature.legs.forEach((leg,i)=>{leg.rotation.x=(s.phase==='Approach'||s.retreat?Math.sin(t*3.4+i*.85)*.3:Math.sin(t*2+i)*.07)+(i<4?s.rear*3:0);});
+    animateCreature(creature,'chasmfiend',t,s.phase==='Approach'||s.retreat?1:.2);creature.legs.slice(0,4).forEach(leg=>{leg.rotation.x+=s.rear*3;});
     hunters.forEach((r,i)=>{const z=(i%2?1:-1)*(7+Math.floor(i/2)*.6),withdraw=smooth((s.t-43)/10)*8;
       let x=-216+Math.floor(i/2)*2.4+withdraw;const challenge=smooth((s.t-25)/5)*(1-smooth((s.t-41)/3));if(i<2)x-=challenge*8;
       if(i===0&&s.t<10)x-=Math.sin(s.t/10*Math.PI)*12;
