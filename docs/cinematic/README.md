@@ -1,3 +1,7 @@
+# Current living-world trailer
+
+The September 2026 runtime capture is documented in [A World That Lives](living-world.md). It includes cities, street life, creatures, activities, Radiants and the highstorm.
+
 # Storm Over Roshar cinematic
 
 This directory contains the reproducible timing and shot design for the

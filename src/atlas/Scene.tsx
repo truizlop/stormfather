@@ -1,3 +1,4 @@
+import { CinematicCapture } from './CinematicCapture';
 import {AtlasRivers} from './AtlasRivers';
 import { enrichMaterial } from './materials';
 import { WetMarket } from './WetMarket';
@@ -33,6 +34,9 @@ import {Rain,Rockbuds,Windrunners} from './LifeEffects';
 import { useAtlasAssets, usePlaceAsset, type AtlasAssets } from './loading/useSceneAssets';
 import type { PlaceId } from './data';
 import type { PlaceModel } from './models/kit';
+
+/** Capture is opt-in; ordinary exploration keeps interactive camera ownership. */
+const cinematicCapture = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('capture');
 
 function ShaderPrecision(){
   const seen=useMemo(()=>new WeakSet<T.Material>(),[]);
@@ -95,7 +99,7 @@ function Camera({models}:{models:Map<string,PlaceModel>}){
   const model=s.view==='place'?models.get(s.placeId):undefined,placement=model?placementById.get(model.id):undefined;
   const cameraBoxes=useMemo(()=>{const boxes:Obstacle[]=[];model?.group.traverse(o=>{if(o.userData.cameraObstacles)boxes.push(...o.userData.cameraObstacles);});return boxes;},[model]);
   useEffect(()=>{
-    const control=ref.current;if(!control||(s.view==='place'&&!model))return;
+    const control=ref.current;if(cinematicCapture||!control||(s.view==='place'&&!model))return;
     // Crossing a zoom threshold updates the HUD without issuing a camera jump.
     const dimensions=`${size.width}:${size.height}`;if(lastCommand.current===s.cameraCommand.id&&lastSize.current===dimensions&&initialized.current)return;lastSize.current=dimensions;
     lastCommand.current=s.cameraCommand.id;
@@ -119,7 +123,7 @@ function Camera({models}:{models:Map<string,PlaceModel>}){
     else{eye.current.set(size.width<760?-4:-10,Math.max(113,fitDistance*.94),Math.max(60,fitDistance*.43));target.current.set(size.width<760?-4:-12,0,0);}
     moving.current=true;if(!initialized.current){camera.position.copy(eye.current);control.target.copy(target.current);control.update();initialized.current=true;}
   },[camera,model,placement,s.view,s.cameraCommand,s.closeView,s.focusPoint,s.sceneId,s.sceneClose,s.orderId,s.discoveryId,size.width,size.height]);
-  useFrame((_,dt)=>{const control=ref.current;if(!control)return;
+  useFrame((_,dt)=>{const control=ref.current;if(cinematicCapture||!control)return;
     const state=useAtlas.getState();const subject=model&&following.current?(state.cameraCommand.type==='radiants'?radiantSubjects:wildlifeSubjects).get(model.id):undefined;
     if(state.stormFollowing){const front=stormPosition(worldClock.stormTime),fit=Math.max(1,.78/(size.width/size.height));target.current.set(front.x,7,0);eye.current.copy(target.current).add(new T.Vector3(-48,23,58).multiplyScalar(fit));moving.current=true;}
     if(sceneTracking.current&&placement&&state.sceneId){
@@ -159,13 +163,13 @@ function Contents({assets}:{assets:AtlasAssets}){
   const selected=useAtlas(s=>s.view==='place'?s.placeId:null);
   const model=usePlaceAsset(selected??near);
   const models=useMemo(()=>new Map(model?[[model.id,model]]:[]),[model]);
-  useFrame(({camera,clock})=>{if(clock.elapsedTime-lastCheck.current<.25)return;lastCheck.current=clock.elapsedTime;
+  useFrame(({camera,clock})=>{if(cinematicCapture||clock.elapsedTime-lastCheck.current<.25)return;lastCheck.current=clock.elapsedTime;
     const state=useAtlas.getState();const best=activeCityForCamera(camera.position,state.view==='place'?state.placeId:undefined);
     if(best!==near)setNear(best);
   });
-  return <><Suspense fallback={null}><HeadAssets/></Suspense><Clock/><ShaderPrecision/><Lighting/><MapWorld assets={assets} waterPlace={model?.water?model.id:null}/>{cityPlacements.map(p=><CityGround key={p.id} placement={p} geometry={assets.collars.get(p.id)!} occupied={model?.id===p.id}/>)}{model&&<PlaceWorld key={model.id} model={model} placement={placementById.get(model.id)!} active={near===model.id}/>}<Camera models={models}/></>;
+  return <><Suspense fallback={null}><HeadAssets/></Suspense><Clock/><ShaderPrecision/><Lighting/><MapWorld assets={assets} waterPlace={model?.water?model.id:null}/>{cityPlacements.map(p=><CityGround key={p.id} placement={p} geometry={assets.collars.get(p.id)!} occupied={model?.id===p.id}/>)}{model&&<PlaceWorld key={model.id} model={model} placement={placementById.get(model.id)!} active={cinematicCapture||near===model.id}/>}<Camera models={models}/>{cinematicCapture&&<CinematicCapture model={model}/>}</>;
 }
 export function Scene(){
   const assets=useAtlasAssets();
-  return <Canvas shadows="percentage" camera={{position:[-10,113,60],fov:42,near:.1,far:2000}} dpr={[1,1.5]} gl={{logarithmicDepthBuffer:true,antialias:true,powerPreference:'high-performance',toneMapping:T.ACESFilmicToneMapping,toneMappingExposure:1}}>{assets&&<Contents assets={assets}/>}</Canvas>;
+  return <Canvas shadows="percentage" camera={{position:[-10,113,60],fov:42,near:.1,far:2000}} dpr={cinematicCapture?1:[1,1.5]} gl={{preserveDrawingBuffer:cinematicCapture,logarithmicDepthBuffer:true,antialias:true,powerPreference:'high-performance',toneMapping:T.ACESFilmicToneMapping,toneMappingExposure:1}}>{assets&&<Contents assets={assets}/>}</Canvas>;
 }

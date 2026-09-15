@@ -1,0 +1,302 @@
+{
+  "title": "STORMFATHER \u2014 A World That Lives",
+  "fps": 24,
+  "shots": [
+    {
+      "id": "01-kholinar",
+      "city": "kholinar",
+      "kind": "overview",
+      "duration": 7,
+      "orbit": 0.25,
+      "dolly": -0.16,
+      "light": 0.68,
+      "eye": [
+        360,
+        225,
+        380
+      ],
+      "target": [
+        0,
+        40,
+        0
+      ]
+    },
+    {
+      "id": "02-kharbranth",
+      "city": "kharbranth",
+      "kind": "overview",
+      "duration": 6,
+      "orbit": -0.22,
+      "dolly": -0.12,
+      "light": 0.7,
+      "eye": [
+        90,
+        180,
+        465
+      ],
+      "target": [
+        0,
+        72,
+        0
+      ]
+    },
+    {
+      "id": "03-thaylen",
+      "city": "thaylen-city",
+      "kind": "overview",
+      "duration": 6,
+      "orbit": 0.18,
+      "dolly": -0.16,
+      "light": 0.76,
+      "eye": [
+        -465,
+        270,
+        410
+      ],
+      "target": [
+        -40,
+        28,
+        0
+      ]
+    },
+    {
+      "id": "04-market",
+      "city": "kholinar",
+      "kind": "street",
+      "duration": 6,
+      "orbit": 0.08,
+      "dolly": -0.12,
+      "light": 0.58,
+      "eye": [
+        3,
+        3.2,
+        15.57
+      ],
+      "target": [
+        -0.8,
+        2.1,
+        -1.4300000000000002
+      ]
+    },
+    {
+      "id": "05-lanterns",
+      "city": "yeddaw",
+      "kind": "street",
+      "duration": 5,
+      "orbit": -0.12,
+      "dolly": -0.1,
+      "light": 0.4,
+      "eye": [
+        383,
+        3,
+        -10
+      ],
+      "target": [
+        383,
+        1.7,
+        9
+      ]
+    },
+    {
+      "id": "06-purelake",
+      "city": "purelake",
+      "kind": "street",
+      "duration": 5,
+      "orbit": 0.14,
+      "dolly": -0.15,
+      "light": 0.62
+    },
+    {
+      "id": "07-chull",
+      "city": "kholinar",
+      "kind": "wildlife",
+      "duration": 5,
+      "orbit": 0.12,
+      "light": 0.66,
+      "offset": [
+        4,
+        2,
+        6
+      ],
+      "subjectNear": [
+        5,
+        0,
+        5
+      ],
+      "close": true
+    },
+    {
+      "id": "08-shinovar",
+      "city": "shinovar",
+      "kind": "overview",
+      "duration": 5,
+      "orbit": -0.2,
+      "dolly": -0.16,
+      "light": 0.75,
+      "eye": [
+        300,
+        155,
+        330
+      ],
+      "target": [
+        0,
+        15,
+        0
+      ]
+    },
+    {
+      "id": "09-listeners",
+      "city": "shattered-plains",
+      "kind": "scene",
+      "scene": "listener-village",
+      "eye": [
+        -478,
+        4.2,
+        -310
+      ],
+      "target": [
+        -466,
+        1.3,
+        -330
+      ],
+      "duration": 6,
+      "orbit": 0.22,
+      "time": 40,
+      "light": 0.6
+    },
+    {
+      "id": "10-bridge",
+      "city": "shattered-plains",
+      "kind": "scene",
+      "scene": "bridge-run",
+      "eye": [
+        -490,
+        6,
+        311
+      ],
+      "target": [
+        -477,
+        1.5,
+        298
+      ],
+      "duration": 6,
+      "orbit": -0.16,
+      "time": 24,
+      "light": 0.62
+    },
+    {
+      "id": "11-crossing",
+      "city": "shattered-plains",
+      "kind": "scene",
+      "scene": "bridge-run",
+      "eye": [
+        -462,
+        3.2,
+        308
+      ],
+      "target": [
+        -476,
+        1.5,
+        298
+      ],
+      "duration": 4,
+      "orbit": 0.12,
+      "time": 35,
+      "light": 0.62
+    },
+    {
+      "id": "12-greatshell",
+      "city": "shattered-plains",
+      "kind": "scene",
+      "scene": "greatshell-hunt",
+      "eye": [
+        -221,
+        6,
+        555
+      ],
+      "target": [
+        -233,
+        3.5,
+        510
+      ],
+      "duration": 7,
+      "orbit": -0.14,
+      "time": 24,
+      "light": 0.62
+    },
+    {
+      "id": "12b-storm",
+      "kind": "atlas",
+      "duration": 4,
+      "eye": [
+        -19,
+        24,
+        43
+      ],
+      "target": [
+        25,
+        8,
+        0
+      ],
+      "storm": true,
+      "stormTime": 48,
+      "time": 48,
+      "orbit": 0.14,
+      "light": 0.6
+    },
+    {
+      "id": "13-radiant",
+      "city": "urithiru",
+      "kind": "scene",
+      "scene": "radiant-arts",
+      "order": "lightweaver",
+      "eye": [
+        -852,
+        2.8,
+        -309
+      ],
+      "target": [
+        -844,
+        1.3,
+        -320
+      ],
+      "duration": 5,
+      "orbit": 0.18,
+      "time": 8,
+      "light": 0.55
+    },
+    {
+      "id": "14-flight",
+      "city": "urithiru",
+      "kind": "radiants",
+      "duration": 6,
+      "offset": [
+        5,
+        1.8,
+        7
+      ],
+      "orbit": 0.26,
+      "time": 16,
+      "light": 0.65
+    },
+    {
+      "id": "15-urithiru",
+      "city": "urithiru",
+      "kind": "overview",
+      "duration": 9,
+      "orbit": 0.26,
+      "dolly": 0.25,
+      "light": 0.66,
+      "eye": [
+        -1420,
+        820,
+        1330
+      ],
+      "target": [
+        -140,
+        350,
+        0
+      ]
+    }
+  ]
+}
